@@ -1,0 +1,11 @@
+name: FormatCheck
+on: push
+
+jobs:
+  FormatCheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      # Checkout code base
+      - name: Checkout code
+        uses: ./.github/actions/pycodestyle

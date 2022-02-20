@@ -1,0 +1,6 @@
+[flake8]
+max_line_length = 100
+suppress_none_returning = True
+mypyy_init_return = True
+suppress_dummy_args = True
+ignore = ANN101
