@@ -1,6 +1,9 @@
+"""Game control interface for key strokes and mouse clicks."""
 import ctypes
 from ctypes import wintypes
+from typing import Any
 import time
+
 import numpy as np
 
 from soulsgym.envs.utils.tables import keybindings, keymap
@@ -26,8 +29,8 @@ class _KEYBDINPUT(ctypes.Structure):
     _fields_ = (("wVk", wintypes.WORD), ("wScan", wintypes.WORD), ("dwFlags", wintypes.DWORD),
                 ("time", wintypes.DWORD), ("dwExtraInfo", wintypes.ULONG_PTR))
 
-    def __init__(self, *args, **kwds):
-        super(_KEYBDINPUT, self).__init__(*args, **kwds)
+    def __init__(self, *args: Any, **kwargs: Any):
+        super(_KEYBDINPUT, self).__init__(*args, **kwargs)
         if not self.dwFlags & KEYEVENTF_UNICODE:
             self.wScan = USER32.MapVirtualKeyExW(self.wVk, MAPVK_VK_TO_VSC, 0)
 
@@ -49,11 +52,10 @@ LPINPUT = ctypes.POINTER(_INPUT)
 
 
 class GameInput:
-    """
-    A class that abstracts in-game interaction by simulating keystrokes to the game.
-    """
+    """Abstract in-game interaction by simulating keystrokes to the game."""
 
     def __init__(self):
+        """Initialize the key state dictionary."""
         self.state = {
             'Forward': False,
             'Backward': False,
@@ -65,9 +67,8 @@ class GameInput:
             'LockOn': False
         }
 
-    def update(self, new_state: dict) -> None:
-        """
-        Updates the pressed keys such that the current state represents the given state.
+    def update(self, new_state: dict):
+        """Update the pressed keys such that the current state represents the given state.
 
         Args:
             new_state: The state dict for the new input state.
@@ -90,13 +91,12 @@ class GameInput:
                 self.state[action] = False
                 GameInput._release_key(keymap[keybindings[action]])
 
-    def array_update(self, array_state: np.ndarray) -> None:
-        """
-        Interfaces update with boolean array encoded action selection.
+    def array_update(self, array_state: np.ndarray):
+        """Interface update with boolean array encoded action selection.
 
         Args:
-            array_update: The states given as an boolean array. The order is 'Forward', 'Backward',
-            'Left', 'Right', 'LightAttack', 'Roll', 'UseItem', 'LockOn'.
+            array_state: The states given as an boolean array. The order is 'Forward', 'Backward',
+                'Left', 'Right', 'LightAttack', 'Roll', 'UseItem', 'LockOn'.
         """
         buff_dict = {
             'Forward': bool(array_state[0]),
@@ -110,18 +110,15 @@ class GameInput:
         }
         self.update(buff_dict)
 
-    def restart(self) -> None:
-        """
-        Releases all keys and sets the press state to False.
-        """
+    def restart(self):
+        """Release all keys and sets the press state to False."""
         for action in self.state:
             if self.state[action]:
                 self._release_key(keymap[keybindings[action]])
                 self.state[action] = False
 
-    def single_action(self, action: str, press_time: float = 0.15) -> None:
-        """
-        Performs a single action for a given amount of time.
+    def single_action(self, action: str, press_time: float = 0.15):
+        """Perform a single action for a given amount of time.
 
         Args:
             action: The action that shall be performed (see the keybinding table)
@@ -132,9 +129,8 @@ class GameInput:
         GameInput._release_key(keymap[keybindings[action]])
 
     @staticmethod
-    def _press_key(key_hex_code: int) -> None:
-        """
-        Presses a key identified by its hex code.
+    def _press_key(key_hex_code: int):
+        """Press a key identified by its hex code.
 
         Args:
             key_hex_code: The hex code to specify the key.
@@ -143,9 +139,8 @@ class GameInput:
         USER32.SendInput(1, ctypes.byref(x), ctypes.sizeof(x))
 
     @staticmethod
-    def _release_key(key_hex_code: int) -> None:
-        """
-        Releases a key identified by its hex code.
+    def _release_key(key_hex_code: int):
+        """Release a key identified by its hex code.
 
         Args:
             key_hex_code: The hex code to specify the key.

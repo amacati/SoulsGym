@@ -1,3 +1,8 @@
+"""Read various tables and make them available as python objects.
+
+Todo:
+    * Clean up this mess. Highly unstructured at the moment.
+"""
 from pathlib import Path
 import yaml
 from soulsgym.envs.utils.onehot import OneHotEncoder

@@ -4,3 +4,4 @@ suppress_none_returning = True
 mypyy_init_return = True
 suppress_dummy_args = True
 ignore = ANN101
+per-file-ignores = **/__init__.py:D104

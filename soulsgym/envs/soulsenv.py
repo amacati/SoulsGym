@@ -106,7 +106,7 @@ class SoulsEnv(gym.Env, gym.utils.EzPickle, ABC):
         self._sub_step_check(log)
         self._update_internal_state(log)
         game.reset_player_hp()
-        game.reset_targeted_hp()
+        game.reset_target_hp()
 
     def _sub_step_check(self, game_log):
         if not game_log.locked_on:
@@ -174,7 +174,7 @@ class SoulsGym:
     actions = actions
     MAX_REWARD = 1
     MIN_REWARD = -1.05
-    STATE_DIM = GameState.state_size()
+    STATE_DIM = 0
     ACTION_DIM = len(tables.action_list)
     action_space = gym.spaces.Discrete(len(tables.action_list))
 
@@ -441,7 +441,7 @@ class SoulsGym:
         Resets both player and boss hp.
         """
         game.reset_player_hp()
-        game.reset_targeted_hp()
+        game.reset_target_hp()
 
     def _try_reestablish_lockon(self) -> bool:
         for d in range(5):

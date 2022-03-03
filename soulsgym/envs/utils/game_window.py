@@ -1,19 +1,21 @@
+"""Interface to the game window for future screen capturing etc."""
 import time
 from typing import Callable
+
 import numpy as np
 import mss
-import cv2
-import win32gui, win32api, win32con, win32com, win32com.client
+import win32gui
+import win32api
+import win32con
+import win32com
+import win32com.client
 
 
 class GameWindow:
-    """
-    This class manages interactions with the game window.
-    """
+    """Manage interactions with the game window."""
 
     def __init__(self, processing: Callable = None):
-        """
-        Initializes the monitor and screen frame grab.
+        """Initialize the monitor and screen frame grab.
 
         Args:
             processing: Optional function for raw image processing.
@@ -21,14 +23,10 @@ class GameWindow:
         self._app_id = self._get_ds_app_id()
         self._monitor = self._get_monitor()
         self._sct = mss.mss()
-        if processing is None:
-            self._process_func = self._default_processing
-        else:
-            self._process_func = processing
+        self._process_func = processing or self._default_processing
 
     def screenshot(self, return_raw: bool = False) -> np.ndarray:
-        """
-        Fetches the current screen.
+        """Fetch the current screen.
 
         Args:
             return_raw: Option to get the unprocessed frame.
@@ -41,9 +39,8 @@ class GameWindow:
             return raw
         return self._process_func(raw)
 
-    def focus_application(self) -> None:
-        """
-        Shifts the application focus of windows to the game application.
+    def focus_application(self):
+        """Shift the application focus of windows to the game application.
 
         Also sets the cursor within the game window.
         """
@@ -56,16 +53,32 @@ class GameWindow:
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, left + 100, top + 5, 0, 0)
 
     def _get_monitor(self) -> dict:
+        """Get the window pixel positions.
+
+        Returns:
+            A dictionary containing the pixel coordinates of `top`, `left`, `width`, `height`.
+        """
         left, top, right, bottom = win32gui.GetWindowRect(self._app_id)
         width = right - left
         height = bottom - top
         monitor = {"top": top + 46, "left": left + 11, "width": width - 22, "height": height - 56}
         return monitor
 
-    def _window_enumeration_handler(self, hwnd, top_windows):
+    def _window_enumeration_handler(self, hwnd: int, top_windows: list):
+        """Handle the EnumWindows callback.
+
+        Args:
+            hwnd: A handle to a top-level window
+            top_windows: The application-defined value given in EnumWindows
+        """
         top_windows.append((hwnd, win32gui.GetWindowText(hwnd)))
 
     def _get_ds_app_id(self) -> int:
+        """Get the Dark Souls III application ID.
+
+        Returns:
+            The app ID.
+        """
         top_windows = []
         win32gui.EnumWindows(self._window_enumeration_handler, top_windows)
         ds_app_id = 0
@@ -79,6 +92,12 @@ class GameWindow:
 
     @staticmethod
     def _default_processing(raw: np.ndarray) -> np.ndarray:
-        grey = cv2.cvtColor(raw, cv2.COLOR_BGRA2GRAY)
-        small = cv2.resize(grey, (400, 225))
-        return small
+        """Identity processing function.
+
+        Args:
+            raw: Raw input image.
+
+        Returns:
+            The processed input image (same as raw in this case).
+        """
+        return raw
