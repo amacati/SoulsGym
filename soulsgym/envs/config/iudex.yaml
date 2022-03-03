@@ -1,0 +1,11 @@
+# Setup args
+init_msg: "Iudex Gundyr gym. Please make sure you start at the `Cemetry of Ash` bonfire!"
+p_setup_coords: [104, 507,-50]  # Cemetry of Ash bonfire coords
+iudex_init_pos: [141.3, 591.9, -68.8, 1.9]
+
+
+# StateSpace args
+space_stats_low: [0, 0, 0]
+space_stats_high: [454, 95, -1]
+space_coords_low: [120., 550., -74.]
+space_coords_high: [180., 630., -55.]

@@ -1,0 +1,144 @@
+keybindings:
+  Forward: w
+  Backward: s
+  Left: a
+  Right: d
+  LightAttack: l
+  Roll: ' '
+  UseItem: r
+  LockOn: q
+  Interact: e
+  CameraLeft: o
+  CameraRight: p
+
+keymap:
+  e: 0x45
+  w: 0x57
+  s: 0x53
+  ' ': 0x20
+  a: 0x41
+  d: 0x44
+  e: 0x45
+  l: 0x4C
+  ' ': 0x20
+  r: 0x52
+  o: 0x4F
+  p: 0x50
+  s: 0x53
+  q: 0x51
+  r: 0x52
+  w: 0x57
+
+phase1_animations:
+  - Attack3000_P1
+  - Attack3001_P1
+  - Attack3002_P1
+  - Attack3003_P1
+  - Attack3004_P1
+  - Attack3005_P1
+  - Attack3006_P1
+  - Attack3007_P1
+  - Attack3008_P1
+  - Attack3009_P1
+  - Attack3010_P1
+  - Attack3011_P1
+  - Attack3012_P1
+  - Attack3013_P1
+  - Attack3014_P1
+  - Attack3015_P1
+  - Attack3029_P1
+  - ThrowAttack_P1
+
+action_list:
+  - s  # All directions
+  - as 
+  - a
+  - aw
+  - w
+  - dw
+  - d
+  - ds
+  - "s "  # All directions with rolling
+  - "as "
+  - "a "
+  - "aw "
+  - "w "
+  - "dw "
+  - "d "
+  - "ds "
+  - l  # Hitting
+
+coordinates:
+  iudex: [125.710762, 558.4857178, -64.05046082, -2.987891674]
+  arena_center: [142., 595., -68.8, 0.]
+  iudex_limits: 
+    x: [120., 180.]
+    y: [550., 630.]
+    z: [-74., -55.]
+  player_init_pos: [132.4, 575., -68., -2.8]
+
+player_animations:
+  no_interrupt:
+    # Damage
+    AddDamageDefault: 1 # TODO
+    AddDamageStartLeft: 1 # TODO
+    AddDamageStartRight: 1 # TODO
+    AddDamageStartFront: 1 # TODO
+    AddDamageStartBack: 1 # TODO
+    DamageSmall: 10
+    DamageMiddle: 8
+    DamageUpper: 22
+    DamageLarge: 1 #
+    DamageExLarge: 19
+    DamageFling: 17
+    DamagePush: 11
+    DamageSmallBlow: 29
+    ThrowAtk: 44
+    ThrowDef: 79
+    EStepDown: 8
+    GuardDamageSmall: 4
+    GuardBreak: 16
+  interrupt:
+    # Movement
+    HandChangeStart: 1 #TODO
+    DashStop: 3
+    Idle: 1
+    Move: 1
+    None: 1
+    BackStepNomal: 5
+    Jump: 4
+    JumpLong: 9
+    RollingMedium: 6
+    RollingMediumSelftra: 6
+    RunStopFront: 1
+    RunStopBack: 1
+    RunStopLeft: 1
+    RunStopRight: 1
+    QuickTurnLeft180: 5
+    QuickTurnRight180: 5
+    # Attacks
+    GuardStart: 1
+    GuardEnd: 1
+    AttackRightLight1: 6
+    AttackRightLight2: 13
+    AttackRightLight3: 9
+    AttackRightLightStep: 7
+    AttackRightLightDash: 11
+    AttackBothLight1: 10
+    AttackBothLight2: 10
+    AttackBothLight3: 6
+    AttackBothLightStep: 9
+    AttackBothLightKick: 9
+    AttackBothDash: 12
+    AttackRightHeavy1Sta: 3
+    AttackRightHeavy1Sub: 2
+    AttackRightHeavy1End: 9
+    AttackRightHeavy2Sta: 3
+    AttackRightHeavy2End: 10
+    AttackBothHeavy1Star: 22
+    AttackRightHeavyKick: 1 #TODO
+    AttackRightLightKick: 5
+    ParryLeftStart: 10
+    GuardOn: 1
+    DrawStanceRightAttac: 12
+  
