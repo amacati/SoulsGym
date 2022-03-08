@@ -1,3 +1,4 @@
+"""SoulsGym environment for Iudex Gundyr."""
 import logging
 import time
 from pymem.exception import MemoryReadError
@@ -5,7 +6,8 @@ import numpy as np
 from gym import spaces
 from gym.error import RetriesExceededError
 
-from soulsgym.envs.soulsenv import SoulsEnv
+from soulsgym.envs.soulsenv import ObsType, SoulsEnv
+from soulsgym.envs.utils.gamestate import GameState
 from soulsgym.exception import GameStateError, InvalidPlayerStateError
 from soulsgym.envs.utils import distance
 from soulsgym.envs.utils.tables import phase1_animations, player_animations, coordinates
@@ -15,9 +17,12 @@ logger = logging.getLogger("SoulsGym")
 
 
 class IudexEnv(SoulsEnv):
+    """SoulsEnv implementation for Iudex Gundyr."""
+
     ENV_ID = "iudex"
 
     def __init__(self):
+        """Initialize the SoulsGym and define the state/action spaces."""
         super().__init__()
         # The state space consists of multiple spaces. These represent:
         # 1) Boss phase. Either 1 or 2 for Iudex
@@ -43,6 +48,14 @@ class IudexEnv(SoulsEnv):
         })
 
     def _env_setup(self, init_retries: int = 3):
+        """Execute the Iudex environment setup.
+
+        Args:
+            init_retries: Maximum number of retries in case of initialization failure.
+
+        Raises:
+            RetriesExceededError: Setup failed more than `init_retries` times.
+        """
         self._env_setup_check()
         while not self._reset_check(self._game_logger.log(no_target=True)) and init_retries > 0:
             if not init_retries:
@@ -56,9 +69,14 @@ class IudexEnv(SoulsEnv):
                 continue  # Player has died on teleport
             self._initial_key_sequence()
         game.pause_game()
-        print(self._game_logger.log())
+        print(self._game_logger.log())  # TODO: Remove
 
-    def reset(self):
+    def reset(self) -> ObsType:
+        """Reset the environment to the beginning of an episode.
+
+        Returns:
+            The first observation after a reset.
+        """
         game_log = self._game_logger.log()
         if not self._reset_check(game_log) or True:
             game.teleport_player(coordinates["player_init_pos"])
@@ -75,7 +93,8 @@ class IudexEnv(SoulsEnv):
 
     def _iudex_setup(self):
         game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
-        # game.reset_iudex_and_die()  # Sets boss flags and makes sure player state is as expected. TODO: Reenable
+        # TODO: Reenable
+        # game.reset_iudex_and_die()  # Sets boss flags and makes sure player state is as expected
         logger.debug("_iudex_setup: Reset success")
         # time.sleep(3)  # Wait until loading screen comes up to focus on the application
         self._game_window.focus_application()
@@ -106,13 +125,29 @@ class IudexEnv(SoulsEnv):
         self._game_input.single_action("LockOn")
         logger.debug("_init_key_sequence: Success")
 
-    def compute_reward(self, game_log):
+    def compute_reward(self, game_log: GameState) -> float:
+        """Compute the reward from a game observation.
+
+        Args:
+            game_log: A game state.
+
+        Returns:
+            The reward for the provided game observation.
+        """
         player_hp_penalty = 1 - game_log.player_hp / game_log.player_max_hp
         player_sp_penalty = 1 - game_log.player_sp / game_log.player_max_sp
         boss_hp_reward = 1 - game_log.boss_hp / game_log.boss_max_hp
         return boss_hp_reward - player_hp_penalty - 0.05 * player_sp_penalty
 
-    def _reset_check(self, game_log):
+    def _reset_check(self, game_log: GameState) -> bool:
+        """Check if the environment reset was successful.
+
+        Args:
+            game_log: Current game log.
+
+        Returns:
+            True if the reset was successful, else False.
+        """
         if game.get_iudex_defeated() or not game.get_iudex_encountered():
             logger.debug("_reset_check failed: Iudex flags not set properly")
             return False
@@ -132,6 +167,12 @@ class IudexEnv(SoulsEnv):
         return True
 
     def _env_setup_check(self):
+        """Check if the environment setup was successful.
+
+        Raises:
+            GameStateError: Game state is outside of expected values.
+            InvalidPlayerStateError: Player state is outside of expected values.
+        """
         try:
             game_log = self._game_logger.log(no_target=True)
         except MemoryReadError:

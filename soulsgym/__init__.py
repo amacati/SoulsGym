@@ -11,10 +11,10 @@ def _check_ds3_path() -> bool:
     # DarkSoulsIII is not registered in Window's registry, therefore we look for the path itself
     ds3path = Path()
     drives = win32api.GetLogicalDriveStrings().split('\000')[:-1]
+    steam_path = Path("Program Files (x86)") / "Steam" / "steamapps" / "common" / "DARK SOULS III" \
+        / "Game" / "DarkSoulsIII.exe"
     for drive in drives:
-        ds3path = Path(
-            drive
-        ) / "Program Files (x86)" / "Steam" / "steamapps" / "common" / "DARK SOULS III" / "Game" / "DarkSoulsIII.exe"
+        ds3path = Path(drive) / steam_path
         if ds3path.is_file():
             return True
     return False
