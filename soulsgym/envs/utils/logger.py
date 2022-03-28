@@ -6,7 +6,7 @@ Todo:
 import threading
 from typing import Callable
 
-import soulsgym.envs.utils.game_interface as game
+from soulsgym.envs.utils.game_interface import Game
 from soulsgym.envs.utils.gamestate import GameState
 
 
@@ -16,6 +16,7 @@ class Logger:
     def __init__(self):
         """Initialize logging threads."""
         self._log = None
+        self.game = Game()
         # Create threads for every kind of task, to read data more quickly
         # Tread order matters! First threads are without targeted_entity_info necessary
         tasks = [
@@ -38,8 +39,8 @@ class Logger:
             A log as a GameState.
         """
         if self._log is None:
-            self._log = GameState(player_max_hp=game.get_player_max_hp(),
-                                  player_max_sp=game.get_player_max_sp())
+            self._log = GameState(player_max_hp=self.game.get_player_max_hp(),
+                                  player_max_sp=self.game.get_player_max_sp())
         # re-read all data
         if no_target:
             for thread in self.threads[:4]:  # Only read non target values
@@ -54,29 +55,29 @@ class Logger:
         return self._log.copy()
 
     def _player_stats_task(self):
-        hp, sp = game.get_player_hp_sp()
+        hp, sp = self.game.get_player_hp_sp()
         self._log.player_hp = hp
         self._log.player_sp = sp
 
     def _boss_hp_task(self):
-        self._log.boss_hp = game.get_target_hp()
-        self._log.boss_max_hp = game.get_target_max_hp()  # Target might change
+        self._log.boss_hp = self.game.get_target_hp()
+        self._log.boss_max_hp = self.game.get_target_max_hp()  # Target might change
 
     def _boss_def_task(self):
-        self._log.iudex_def = game.get_iudex_defeated()
+        self._log.iudex_def = self.game.get_iudex_defeated()
 
     def _player_pos_task(self):
-        self._log.player_pos = game.get_player_position()
+        self._log.player_pos = self.game.get_player_position()
 
     def _boss_pos_task(self):
-        self._log.boss_pos = game.get_target_position()
+        self._log.boss_pos = self.game.get_target_position()
 
     def _player_anim_task(self):
-        animation = game.get_player_animation()
+        animation = self.game.get_player_animation()
         self._log.player_animation = animation
 
     def _boss_anim_task(self):
-        animation_name = game.get_target_animation()
+        animation_name = self.game.get_target_animation()
         self._log.phase = 1 if self._log.phase == 1 and animation_name != "Attack1500" else 2
         animation_name = animation_name + "_P2" if self._log.phase == 2 else animation_name + "_P1"
 
@@ -88,7 +89,7 @@ class Logger:
         self._log.animation = animation_name
 
     def _locked_on_task(self):
-        self._log.locked_on = game.get_locked_on()
+        self._log.locked_on = self.game.get_locked_on()
 
 
 class ThreadBoost:

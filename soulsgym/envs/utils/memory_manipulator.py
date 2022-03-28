@@ -1,11 +1,7 @@
-"""Low level memory manipulation interface.
-
-Since memory access has to be fast, we instantiate an object of the _MemoryManipulator class at
-import time and export the MemoryManipulator object itself.
-"""
+"""Low level memory manipulation interface."""
 from __future__ import annotations
 import ctypes
-from typing import Any, Callable, List, Optional
+from typing import List, Optional
 
 import psutil
 import win32process
@@ -69,7 +65,15 @@ VIRTUAL_ALLOC.restype = ctypes.c_ulonglong
 # VirtualFree.argtypes = [ ctypes.wintypes.LPVOID, ctypes.c_ulonglong, ctypes.wintypes.DWORD ]
 
 
-class _MemoryManipulator:
+class Singleton(object):
+
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Singleton, cls).__new__(cls)
+        return cls.instance
+
+
+class MemoryManipulator(Singleton):
     """Handle the memory manipulation of the game.
 
     At heart this class wraps pymem functions for memory read and writes. For better useability it
@@ -80,66 +84,27 @@ class _MemoryManipulator:
         """Initialize the cache and pointer attributes.
 
         If the game is not open, the pointer values can't be inferred which causes an exception.
-        However we immediately initialize this class on file import. In order to make an import
-        possible without starting Dark Souls III first, we mark functions that need valid pointer
-        values and lazily retry initializing the pointers on first actual use.
 
         Args:
             process_name: The target process name. Should always be DarkSoulsIII.exe, unless the app
                 name changes.
         """
-        self.cache = {}
-        self.process_name = process_name
-        # Initialize attributes of lazy_initialize in __init__
-        self.pid = None
-        self.process_handle = None
-        self.base_address = None
-        self.pymem = None
-        self.target_ptr = None
-        self.target_event = None
-        self.target_ptr_volatile = None
-        try:
-            self.lazy_initalize()
-            self.init = True
+        if not hasattr(self, "is_init"):
+            self.cache = {}
+            self.process_name = process_name
+            self.pid = self.get_pid(self.process_name)
+            # Get the base address
+            self.process_handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, False, self.pid)
+            modules = win32process.EnumProcessModules(self.process_handle)
+            self.base_address = modules[0]
+            # Create Pymem object once, this has a relative long initialziation
+            self.pymem = Pymem()
+            self.pymem.open_process_from_id(self.pid)
+            self.target_ptr = self.pymem.allocate(8)
+            self.target_event = self.pymem.allocate(8)
+            self.target_ptr_volatile = self.pymem.allocate(8)
             self._inject_targeted_entity_tracking()
-        except Exception as e:
-            print(e)
-            self.init = False
-
-    def lazy_initalize(self):
-        """Initialize the relevant pointers into the Dark Souls III game memory."""
-        self.pid = self.get_pid(self.process_name)
-        # Get the base address
-        self.process_handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, False, self.pid)
-        modules = win32process.EnumProcessModules(self.process_handle)
-        self.base_address = modules[0]
-
-        # Create Pymem object once, this has a relative long initialziation
-        self.pymem = Pymem()
-        self.pymem.open_process_from_id(self.pid)
-        self.target_ptr = self.pymem.allocate(8)
-        self.target_event = self.pymem.allocate(8)
-        self.target_ptr_volatile = self.pymem.allocate(8)
-
-    def require_initalize(func) -> Callable:
-        """Decorate functions that require properly initialized memory pointers.
-
-        Args:
-            func: The target function for the decorator.
-
-        Returns:
-            A wrapper which initializes the pointers if they are still invalid and then executes the
-            target function.
-        """
-
-        def wrapper(self: _MemoryManipulator, *args: Any, **kwargs: Any) -> Any:
-            if not self.init:
-                self.lazy_initalize()
-                self.init = True
-                self._inject_targeted_entity_tracking()
-            return func(self, *args, **kwargs)
-
-        return wrapper
+            self.is_init = True
 
     def clear_cache(self):
         """Clear the reference look-up cache of the memory manipulator."""
@@ -159,7 +124,6 @@ class _MemoryManipulator:
             if proc.name() == process_name:
                 return proc.pid
 
-    @require_initalize
     def resolve_address(self, addr_offsets: List[int], base: int) -> int:
         """Resolve an address by its offsets and a base.
 
@@ -192,7 +156,6 @@ class _MemoryManipulator:
         self.cache[u_id] = helper
         return helper
 
-    @require_initalize
     def read_int(self, address: int) -> int:
         """Read an integer from memory.
 
@@ -207,7 +170,6 @@ class _MemoryManipulator:
         """
         return self.pymem.read_long(address)
 
-    @require_initalize
     def read_float(self, address: int) -> float:
         """Read a float from memory.
 
@@ -222,7 +184,6 @@ class _MemoryManipulator:
         """
         return self.pymem.read_float(address)
 
-    @require_initalize
     def read_string(self,
                     address: int,
                     length: int,
@@ -255,7 +216,6 @@ class _MemoryManipulator:
                 s = s + bytes(1)  # Add null termination for strings which exceed 20 chars.
         return s.decode(codec)
 
-    @require_initalize
     def read_bytes(self, address: int, length: int) -> bytes:
         """Read raw bytes from memory.
 
@@ -271,7 +231,6 @@ class _MemoryManipulator:
         """
         return self.pymem.read_bytes(address, length)
 
-    @require_initalize
     def write_bit(self, address: int, index: int, value: int):
         """Write a single bit.
 
@@ -290,7 +249,6 @@ class _MemoryManipulator:
             byte = (byte[0] | mask[0]).to_bytes(1, "little")
         self.write_bytes(address, byte)
 
-    @require_initalize
     def write_int(self, address: int, value: int):
         """Write an integer to memory.
 
@@ -303,7 +261,6 @@ class _MemoryManipulator:
         """
         pym.memory.write_long(self.pymem.process_handle, address, value)
 
-    @require_initalize
     def write_float(self, address: int, value: float):
         """Write a float to memory.
 
@@ -316,7 +273,6 @@ class _MemoryManipulator:
         """
         pym.memory.write_float(self.pymem.process_handle, address, value)
 
-    @require_initalize
     def write_bytes(self, address: int, buffer: bytes):
         """Write a series of bytes to memory.
 
@@ -329,7 +285,6 @@ class _MemoryManipulator:
         """
         pym.memory.write_bytes(self.pymem.process_handle, address, buffer, len(buffer))
 
-    @require_initalize
     def activate_targeted_entity_info(self):
         """Inject the target entity info code pointer into targeted entity info.
 
@@ -338,13 +293,11 @@ class _MemoryManipulator:
         self.write_bytes(self.base_address + TARGETED_ENTITY_CODE_POS,
                          self.targeted_entity_injection)
 
-    @require_initalize
     def deactivate_targeted_entity_info(self):
         """Inject the default game code pointer into the JMP instruction at targeted entity info."""
         self.write_bytes(self.target_ptr_volatile, bytes(8))  # reset volatile ptr
         self.write_bytes(self.base_address + TARGETED_ENTITY_CODE_POS, TARGETED_ENTITY_OLD_CODE)
 
-    @require_initalize
     def _inject_targeted_entity_tracking(self):
         """Inject the targeted entity tracking binary into the running game."""
         # Make space for injection.
@@ -371,10 +324,3 @@ class _MemoryManipulator:
         injection = b'\xe9' + adr_offset.to_bytes(4, byteorder="little", signed=True) + b'\x90\x90'
         self.targeted_entity_injection = injection
         pym.memory.write_bytes(self.pymem.process_handle, inj_point, code, len(code))
-
-
-# MemoryManipulator is an already instanced class of type _MemoryManipulator!
-# _MemoryManipulator instancing takes too long for single function calls, therefore we offer an
-# already instanced object for functions to import
-
-MemoryManipulator = _MemoryManipulator()

@@ -11,7 +11,6 @@ from soulsgym.envs.utils.gamestate import GameState
 from soulsgym.exception import GameStateError, InvalidPlayerStateError
 from soulsgym.envs.utils import distance
 from soulsgym.envs.utils.tables import phase1_animations, player_animations, coordinates
-import soulsgym.envs.utils.game_interface as game
 
 logger = logging.getLogger("SoulsGym")
 
@@ -22,8 +21,8 @@ class IudexEnv(SoulsEnv):
     ENV_ID = "iudex"
 
     def __init__(self):
-        """Initialize the SoulsGym and define the state/action spaces."""
-        super().__init__()
+        """Fefine the state/action spaces and initialize the game interface."""
+        super().__init__()  # DarkSoulsIII needs to be open at this point
         # The state space consists of multiple spaces. These represent:
         # 1) Boss phase. Either 1 or 2 for Iudex
         # 2) Player and boss stats. In order: Player HP, Player SP, Boss HP
@@ -63,12 +62,12 @@ class IudexEnv(SoulsEnv):
                 raise RetriesExceededError("Iudex environment setup failed")
             init_retries -= 1
             self._iudex_setup()
-            if not distance(coordinates["iudex"], game.get_player_position(), flat=False) < 1:
+            if not distance(coordinates["iudex"], self.game.get_player_position(), flat=False) < 1:
                 continue  # Omit initial key sequence for speed
-            if game.get_player_hp_sp()[0] == 0:
+            if self.game.get_player_hp_sp()[0] == 0:
                 continue  # Player has died on teleport
             self._initial_key_sequence()
-        game.pause_game()
+        self.game.pause_game()
         print(self._game_logger.log())  # TODO: Remove
 
     def reset(self) -> ObsType:
@@ -79,46 +78,48 @@ class IudexEnv(SoulsEnv):
         """
         game_log = self._game_logger.log()
         if not self._reset_check(game_log) or True:
-            game.teleport_player(coordinates["player_init_pos"])
-            game.teleport_target(self.env_args.iudex_init_pos)
-            game.reset_player_hp()
-            game.reset_player_sp()
-            game.reset_target_hp()
-            game.set_player_animation("Idle")
-            game.set_target_animation("WalkFrontBattle_P1")
+            self.game.teleport_player(coordinates["player_init_pos"])
+            self.game.teleport_target(self.env_args.iudex_init_pos)
+            self.game.reset_player_hp()
+            self.game.reset_player_sp()
+            self.game.reset_target_hp()
+            self.game.set_player_animation("Idle")
+            self.game.set_target_animation("WalkFrontBattle_P1")
             self._lock_on()
         self._internal_state = self._game_logger.log()
         assert self._reset_check(self._internal_state)
         return self._internal_state
 
     def _iudex_setup(self):
-        game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
+        self.game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
         # TODO: Reenable
-        # game.reset_iudex_and_die()  # Sets boss flags and makes sure player state is as expected
+        # self.game.reset_iudex_and_die()  # Sets boss flags and makes sure player state is as expected
         logger.debug("_iudex_setup: Reset success")
         # time.sleep(3)  # Wait until loading screen comes up to focus on the application
         self._game_window.focus_application()
         logger.debug("_iudex_setup: Focus success")
-        game.clear_cache()  # Reset memory manupulator cache after death has invalidated addresses
+        self.game.clear_cache(
+        )  # Reset memory manupulator cache after death has invalidated addresses
         while True:
             time.sleep(1)
             try:
-                if game.get_player_animation() == "" or "DeathIdle":  # Game cache invalid at death
-                    game.clear_cache()
-                if game.get_player_animation() == "Idle":
+                if self.game.get_player_animation(
+                ) == "" or "DeathIdle":  # Game cache invalid at death
+                    self.game.clear_cache()
+                if self.game.get_player_animation() == "Idle":
                     time.sleep(0.05)  # Give game time to get to a "stable" state
                     break
             except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
                 continue
         logger.debug("_iudex_setup: Player respawn success")
-        game.teleport_player(coordinates["iudex"])
+        self.game.teleport_player(coordinates["iudex"])
         time.sleep(1)
         logger.debug("_iudex_setup: Success")
 
     def _initial_key_sequence(self):
         self._game_input.single_action("Interact")
         while True:
-            if game.get_player_animation() == "Idle":
+            if self.game.get_player_animation() == "Idle":
                 break
             time.sleep(0.1)
         self._game_input.single_action("Forward", press_time=4.0)
@@ -148,7 +149,7 @@ class IudexEnv(SoulsEnv):
         Returns:
             True if the reset was successful, else False.
         """
-        if game.get_iudex_defeated() or not game.get_iudex_encountered():
+        if self.game.get_iudex_defeated() or not self.game.get_iudex_encountered():
             logger.debug("_reset_check failed: Iudex flags not set properly")
             return False
         if distance(game_log.player_pos, coordinates["player_init_pos"], flat=False) > 2:
@@ -179,7 +180,7 @@ class IudexEnv(SoulsEnv):
             raise GameStateError("Player does not seem to be ingame")
         if game_log.player_animation != "Idle":
             raise InvalidPlayerStateError("Player is not idle")
-        if distance(game.get_player_position(), self.env_args.p_setup_coords) > 30:
+        if distance(self.game.get_player_position(), self.env_args.p_setup_coords) > 30:
             raise InvalidPlayerStateError("Player is not close to the bonfire `Cemetry of Ash`")
         if game_log.player_hp != self.env_args.space_stats_high[0]:
             raise InvalidPlayerStateError("Player HP differs from expected value. Please make sure \

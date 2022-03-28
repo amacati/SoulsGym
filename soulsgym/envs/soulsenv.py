@@ -12,13 +12,13 @@ import numpy as np
 
 from soulsgym.envs.utils.game_input import GameInput
 from soulsgym.envs.utils.logger import Logger, GameState
-import soulsgym.envs.utils.game_interface as game
+from soulsgym.envs.utils.game_interface import Game
 import soulsgym.envs.utils.tables as tables
 from soulsgym.envs.utils.tables import coordinates, actions, player_animations
 from soulsgym.envs.utils.game_window import GameWindow
 from soulsgym.exception import LockOnFailure, ResetNeeded, InvalidPlayerStateError
 
-logger = logging.getLogger("SoulsGym")
+logger = logging.getLogger(__name__)
 ObsType = TypeVar("ObsType")
 
 
@@ -44,7 +44,8 @@ class SoulsEnv(gym.Env, ABC):
         self._game_input = GameInput()
         self._game_window = GameWindow()
         self._check_ds3_running()
-        game.resume_game()  # In case gym crashed while paused
+        self.game = Game()
+        self.game.resume_game()  # In case gym crashed while paused
         self.config_path = Path(__file__).parent / "config"
         self.env_args = self._load_env_args()
         logger.info(self.env_args.init_msg)
@@ -149,14 +150,14 @@ class SoulsEnv(gym.Env, ABC):
 
     def _sub_step(self):
         """Perform a 0.1s step ingame and update the environment."""
-        game.resume_game()
+        self.game.resume_game()
         time.sleep(self._step_size)
-        game.pause_game()
+        self.game.pause_game()
         log = self._game_logger.log()
         self._sub_step_check(log)
         self._update_internal_state(log)
-        game.reset_player_hp()
-        game.reset_target_hp()
+        self.game.reset_player_hp()
+        self.game.reset_target_hp()
 
     def _sub_step_check(self, game_log: GameState):
         """Check if game and player state are within expected values.
@@ -205,11 +206,10 @@ class SoulsEnv(gym.Env, ABC):
             self._internal_state.boss_hp = 0
         self.done = self._internal_state.player_hp == 0 or self._internal_state.boss_hp == 0
 
-    @staticmethod
-    def close():
+    def close(self):
         """Unpause the game and kill the player to restore the original game state."""
-        game.resume_game()
-        game.reset_iudex_and_die()  # TODO: Replace with generic death
+        self.game.resume_game()
+        self.game.reset_iudex_and_die()  # TODO: Replace with generic death
         logger.debug("SoulsEnv close successful")
 
     def _lock_on(self) -> bool:
@@ -223,12 +223,12 @@ class SoulsEnv(gym.Env, ABC):
             self._game_input.single_action("LockOn")
             time.sleep(
                 0.5)  # Give some time to either reset cam or propagate lock on. TODO: Optimize time
-            if game.get_locked_on():
+            if self.game.get_locked_on():
                 return True
         for d in range(1, 5):
             self._game_input.single_action("CameraLeft", press_time=.5 * d)  # Walk into the arena
             self._game_input.single_action("LockOn")
             time.sleep(0.5)  # Give some time to either reset cam or propagate lock on
-            if game.get_locked_on():
+            if self.game.get_locked_on():
                 return True
         return False
