@@ -39,8 +39,8 @@ class Logger:
             A log as a GameState.
         """
         if self._log is None:
-            self._log = GameState(player_max_hp=self.game.get_player_max_hp(),
-                                  player_max_sp=self.game.get_player_max_sp())
+            self._log = GameState(player_max_hp=self.game.player_max_hp,
+                                  player_max_sp=self.game.player_max_sp)
         # re-read all data
         if no_target:
             for thread in self.threads[:4]:  # Only read non target values
@@ -55,29 +55,27 @@ class Logger:
         return self._log.copy()
 
     def _player_stats_task(self):
-        hp, sp = self.game.get_player_hp_sp()
-        self._log.player_hp = hp
-        self._log.player_sp = sp
+        self._log.player_hp = self.game.player_hp
+        self._log.player_sp = self.game.player_sp
 
     def _boss_hp_task(self):
-        self._log.boss_hp = self.game.get_target_hp()
-        self._log.boss_max_hp = self.game.get_target_max_hp()  # Target might change
+        self._log.boss_hp = self.game.target_hp
+        self._log.boss_max_hp = self.game.target_max_hp  # Target might change
 
     def _boss_def_task(self):
         self._log.iudex_def = self.game.get_iudex_defeated()
 
     def _player_pos_task(self):
-        self._log.player_pos = self.game.get_player_position()
+        self._log.player_pos = self.game.player_position
 
     def _boss_pos_task(self):
-        self._log.boss_pos = self.game.get_target_position()
+        self._log.boss_pos = self.game.target_position
 
     def _player_anim_task(self):
-        animation = self.game.get_player_animation()
-        self._log.player_animation = animation
+        self._log.player_animation = self.game.player_animation
 
     def _boss_anim_task(self):
-        animation_name = self.game.get_target_animation()
+        animation_name = self.game.target_animation
         self._log.phase = 1 if self._log.phase == 1 and animation_name != "Attack1500" else 2
         animation_name = animation_name + "_P2" if self._log.phase == 2 else animation_name + "_P1"
 

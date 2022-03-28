@@ -111,7 +111,7 @@ class MemoryManipulator(Singleton):
         self.cache = {}
 
     @staticmethod
-    def get_pid(process_name: str) -> Optional[int]:
+    def get_pid(process_name: str) -> int:
         """Fetch the process PID of a process identified by a given name.
 
         Args:
@@ -119,10 +119,14 @@ class MemoryManipulator(Singleton):
 
         Returns:
             The process PID.
+
+        Raises:
+            RuntimeError: No process with name `process_name` currently open.
         """
         for proc in psutil.process_iter():
             if proc.name() == process_name:
                 return proc.pid
+        raise RuntimeError(f"Process {process_name} not open")
 
     def resolve_address(self, addr_offsets: List[int], base: int) -> int:
         """Resolve an address by its offsets and a base.

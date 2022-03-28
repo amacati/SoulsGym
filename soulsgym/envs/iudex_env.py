@@ -62,9 +62,9 @@ class IudexEnv(SoulsEnv):
                 raise RetriesExceededError("Iudex environment setup failed")
             init_retries -= 1
             self._iudex_setup()
-            if not distance(coordinates["iudex"], self.game.get_player_position(), flat=False) < 1:
+            if not distance(coordinates["iudex"], self.game.player_position, flat=False) < 1:
                 continue  # Omit initial key sequence for speed
-            if self.game.get_player_hp_sp()[0] == 0:
+            if self.game.player_hp == 0:
                 continue  # Player has died on teleport
             self._initial_key_sequence()
         self.game.pause_game()
@@ -78,13 +78,13 @@ class IudexEnv(SoulsEnv):
         """
         game_log = self._game_logger.log()
         if not self._reset_check(game_log) or True:
-            self.game.teleport_player(coordinates["player_init_pos"])
-            self.game.teleport_target(self.env_args.iudex_init_pos)
+            self.game.player_pos = coordinates["player_init_pos"]
+            self.game.target_pos = self.env_args.iudex_init_pos
             self.game.reset_player_hp()
             self.game.reset_player_sp()
             self.game.reset_target_hp()
-            self.game.set_player_animation("Idle")
-            self.game.set_target_animation("WalkFrontBattle_P1")
+            self.game.player_animation = "Idle"
+            self.game.target_animation = "WalkFrontBattle_P1"
             self._lock_on()
         self._internal_state = self._game_logger.log()
         assert self._reset_check(self._internal_state)
@@ -103,23 +103,22 @@ class IudexEnv(SoulsEnv):
         while True:
             time.sleep(1)
             try:
-                if self.game.get_player_animation(
-                ) == "" or "DeathIdle":  # Game cache invalid at death
+                if self.game.player_animation in ("", "DeathIdle"):  # Game cache invalid at death
                     self.game.clear_cache()
-                if self.game.get_player_animation() == "Idle":
+                if self.game.player_animation == "Idle":
                     time.sleep(0.05)  # Give game time to get to a "stable" state
                     break
             except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
                 continue
         logger.debug("_iudex_setup: Player respawn success")
-        self.game.teleport_player(coordinates["iudex"])
+        self.game.player_position = coordinates["iudex"]
         time.sleep(1)
         logger.debug("_iudex_setup: Success")
 
     def _initial_key_sequence(self):
         self._game_input.single_action("Interact")
         while True:
-            if self.game.get_player_animation() == "Idle":
+            if self.game.player_animation == "Idle":
                 break
             time.sleep(0.1)
         self._game_input.single_action("Forward", press_time=4.0)
@@ -180,7 +179,7 @@ class IudexEnv(SoulsEnv):
             raise GameStateError("Player does not seem to be ingame")
         if game_log.player_animation != "Idle":
             raise InvalidPlayerStateError("Player is not idle")
-        if distance(self.game.get_player_position(), self.env_args.p_setup_coords) > 30:
+        if distance(self.game.player_position, self.env_args.p_setup_coords) > 30:
             raise InvalidPlayerStateError("Player is not close to the bonfire `Cemetry of Ash`")
         if game_log.player_hp != self.env_args.space_stats_high[0]:
             raise InvalidPlayerStateError("Player HP differs from expected value. Please make sure \
