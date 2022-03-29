@@ -92,8 +92,9 @@ class IudexEnv(SoulsEnv):
 
     def _iudex_setup(self):
         self.game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
-        # TODO: Reenable
-        # self.game.reset_iudex_and_die()  # Sets boss flags and makes sure player state is as expected
+        if not self.game.check_boss_flags("iudex"):
+            self.game.set_boss_flags("iudex", True)
+            self.game.reload()
         logger.debug("_iudex_setup: Reset success")
         # time.sleep(3)  # Wait until loading screen comes up to focus on the application
         self._game_window.focus_application()
@@ -148,7 +149,7 @@ class IudexEnv(SoulsEnv):
         Returns:
             True if the reset was successful, else False.
         """
-        if self.game.get_iudex_defeated() or not self.game.get_iudex_encountered():
+        if not self.game.check_boss_flags("iudex"):
             logger.debug("_reset_check failed: Iudex flags not set properly")
             return False
         if distance(game_log.player_pos, coordinates["player_init_pos"], flat=False) > 2:

@@ -219,31 +219,55 @@ class Game:
     def target_max_hp(self, _: int):
         logger.warning("Target maximum HP can't be set. Ignoring for now")
 
-    def get_iudex_encountered(self) -> bool:
-        """Check whether Iudex is already defeated.
+    def check_boss_flags(self, name: str) -> bool:
+        if name.lower() == "iudex":
+            return self.iudex_flags
+        logger.warning(f"Boss name {name} currently not supported")
+        raise KeyError(f"Boss name {name} currently not supported")
+
+    def set_boss_flags(self, name: str, flag: bool):
+        if name.lower() == "iudex":
+            self.iudex_flags = flag
+        else:
+            logger.warning(f"Boss name {name} currently not supported")
+            raise KeyError(f"Boss name {name} currently not supported")
+
+    @property
+    def iudex_flags(self) -> bool:
+        """Check whether Iudex boss flags are set correctly.
 
         Returns:
-            True if defeated, False otherwise.
+            True if all flags are correct, False otherwise.
         """
         buff = self.mem.read_int(
             self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
                                      base=self.mem.base_address + BASES["GameFlagData"]))
         # The leftmost 3 bits tell if iudex is defeated(7), encountered(6) and his sword is pulled
-        # out (5). We need him encountered and his sword pulled out, so shifting by five has to be
-        # equal to xxxxxx11 (binary), therefore we check if the value is higher than 2.
-        return bool((buff >> 5) > 2)
+        # out (5). We need him encountered and his sword pulled out but not defeated, so shifting
+        # the bits by five has to be equal to xxxxx011 (binary). Therefore we check if the value is
+        # 3 (python fills with 0 bits)
+        return (buff >> 5) == 3
 
-    def get_iudex_defeated(self) -> bool:
-        """Check whether Iudex is already defeated.
+    @iudex_flags.setter
+    def iudex_flags(self, val: bool):
+        """Set Iudex flags encoutered and sword pulled out flags to `val` and defeated to 0.
 
-        Returns:
-            True if defeated, False otherwise.
+        Args:
+            val: Whether to set the flags or not.
         """
-        buff = self.mem.read_int(
+        flag = 1 if val else 0
+        # Encountered flag
+        self.mem.write_bit(
             self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
-                                     base=self.mem.base_address + BASES["GameFlagData"]))
-        # Bit shift by 7 since the first bit is important
-        return bool(buff >> 7)
+                                     base=self.mem.base_address + BASES["GameFlagData"]), 5, flag)
+        # Sword pulled out flag
+        self.mem.write_bit(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
+                                     base=self.mem.base_address + BASES["GameFlagData"]), 6, flag)
+        # Defeated flag
+        self.mem.write_bit(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
+                                     base=self.mem.base_address + BASES["GameFlagData"]), 7, 0)
 
     @property
     def player_animation(self) -> str:
@@ -336,29 +360,13 @@ class Game:
         """Reset the targeted entity's hit points to its maximum."""
         self.target_hp = self.target_max_hp
 
-    def set_iudex_flag(self, flag: int):
-        """Set the flag whether Iudex is 'defeated' (0/1).
+    def reload(self):
+        """Kill the player and clear the address cache.
 
-        Always sets Iudex to 'encountered' and 'sword pulled out'.
-
-        Args:
-            flag: Boolean whether to set or unset the flag.
+        Note:
+            Does not wait for the player respawn to complete.
         """
-        # Bit 7 saves the state of Iudex defeat.
-        self.mem.write_bit(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
-                                     base=self.mem.base_address + BASES["GameFlagData"]), 5, 1)
-        self.mem.write_bit(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
-                                     base=self.mem.base_address + BASES["GameFlagData"]), 6, 1)
-        self.mem.write_bit(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
-                                     base=self.mem.base_address + BASES["GameFlagData"]), 7, flag)
-
-    def reset_iudex_and_die(self):
-        """Reset Iudex and kill the player."""
         self.clear_cache()
-        self.set_iudex_flag(0)
         self.player_hp = 0
 
     @property

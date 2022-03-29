@@ -20,9 +20,13 @@ class Logger:
         # Create threads for every kind of task, to read data more quickly
         # Tread order matters! First threads are without targeted_entity_info necessary
         tasks = [
-            self._locked_on_task, self._player_pos_task, self._player_stats_task,
-            self._player_anim_task, self._boss_pos_task, self._boss_hp_task, self._boss_anim_task,
-            self._boss_def_task
+            self._locked_on_task,
+            self._player_pos_task,
+            self._player_stats_task,
+            self._player_anim_task,
+            self._boss_pos_task,
+            self._boss_hp_task,
+            self._boss_anim_task,
         ]
         self.threads = [ThreadBoost(task) for task in tasks]
 
@@ -61,9 +65,6 @@ class Logger:
     def _boss_hp_task(self):
         self._log.boss_hp = self.game.target_hp
         self._log.boss_max_hp = self.game.target_max_hp  # Target might change
-
-    def _boss_def_task(self):
-        self._log.iudex_def = self.game.get_iudex_defeated()
 
     def _player_pos_task(self):
         self._log.player_pos = self.game.player_position

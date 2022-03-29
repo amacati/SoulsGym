@@ -1,7 +1,7 @@
 """Low level memory manipulation interface."""
 from __future__ import annotations
 import ctypes
-from typing import List, Optional
+from typing import List
 
 import psutil
 import win32process
