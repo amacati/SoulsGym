@@ -10,7 +10,7 @@ from soulsgym.envs.soulsenv import ObsType, SoulsEnv
 from soulsgym.envs.utils.gamestate import GameState
 from soulsgym.exception import GameStateError, InvalidPlayerStateError
 from soulsgym.envs.utils import distance
-from soulsgym.envs.utils.tables import phase1_animations, player_animations, coordinates
+from soulsgym.envs.utils.static import iudex_animations, player_animations, coordinates
 
 logger = logging.getLogger("SoulsGym")
 
@@ -31,7 +31,6 @@ class IudexEnv(SoulsEnv):
         # 4) Player animation
         # 5) Boss animation
         # 6) Boss animation duration (in 0.1s ticks). We assume no animation takes longer than 10s
-        # TODO: Replace phase1_animations with total animations
         p_anim_len = len(player_animations["interrupt"]) + len(player_animations["no_interrupt"])
         stats_space = spaces.Box(np.array(self.env_args.space_stats_low, dtype=np.float32),
                                  np.array(self.env_args.space_stats_high, dtype=np.float32))
@@ -41,7 +40,7 @@ class IudexEnv(SoulsEnv):
             "phase": spaces.Discrete(2),
             "stats": stats_space,
             "coords": coords_space,
-            "player_animation": spaces.Discrete(len(phase1_animations)),
+            "player_animation": spaces.Discrete(len(iudex_animations)),
             "boss_animation": spaces.Discrete(p_anim_len),
             "boss_animation_counter": spaces.Discrete(100)
         })
@@ -62,7 +61,8 @@ class IudexEnv(SoulsEnv):
                 raise RetriesExceededError("Iudex environment setup failed")
             init_retries -= 1
             self._iudex_setup()
-            if not distance(coordinates["iudex"], self.game.player_position, flat=False) < 1:
+            if not distance(coordinates["iudex"]["boss"], self.game.player_position,
+                            flat=False) < 1:
                 continue  # Omit initial key sequence for speed
             if self.game.player_hp == 0:
                 continue  # Player has died on teleport
@@ -78,7 +78,7 @@ class IudexEnv(SoulsEnv):
         """
         game_log = self._game_logger.log()
         if not self._reset_check(game_log) or True:
-            self.game.player_pos = coordinates["player_init_pos"]
+            self.game.player_pos = coordinates["iudex"]["player_init_pos"]
             self.game.target_pos = self.env_args.iudex_init_pos
             self.game.reset_player_hp()
             self.game.reset_player_sp()
@@ -112,18 +112,18 @@ class IudexEnv(SoulsEnv):
             except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
                 continue
         logger.debug("_iudex_setup: Player respawn success")
-        self.game.player_position = coordinates["iudex"]
+        self.game.player_position = coordinates["iudex"]["boss"]
         time.sleep(1)
         logger.debug("_iudex_setup: Success")
 
     def _initial_key_sequence(self):
-        self._game_input.single_action("Interact")
+        self._game_input.single_action("interact")
         while True:
             if self.game.player_animation == "Idle":
                 break
             time.sleep(0.1)
-        self._game_input.single_action("Forward", press_time=4.0)
-        self._game_input.single_action("LockOn")
+        self._game_input.single_action("forward", press_time=4.0)
+        self._game_input.single_action("lockon")
         logger.debug("_init_key_sequence: Success")
 
     def compute_reward(self, game_log: GameState) -> float:
@@ -152,7 +152,7 @@ class IudexEnv(SoulsEnv):
         if not self.game.check_boss_flags("iudex"):
             logger.debug("_reset_check failed: Iudex flags not set properly")
             return False
-        if distance(game_log.player_pos, coordinates["player_init_pos"], flat=False) > 2:
+        if distance(game_log.player_pos, coordinates["iudex"]["player_init_pos"], flat=False) > 2:
             logger.debug("_reset_check failed: Player position out of tolerances")
             return False
         if game_log.player_hp != game_log.player_max_hp:

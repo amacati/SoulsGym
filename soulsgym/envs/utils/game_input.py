@@ -1,12 +1,12 @@
 """Game control interface for key strokes and mouse clicks."""
 import ctypes
 from ctypes import wintypes
-from typing import Any
+from typing import Any, List
 import time
 
 import numpy as np
 
-from soulsgym.envs.utils.tables import keybindings, keymap
+from soulsgym.envs.utils.static import keybindings, keymap
 
 INPUT_KEYBOARD = 1
 KEYEVENTF_EXTENDEDKEY = 0x0001
@@ -56,31 +56,22 @@ class GameInput:
 
     def __init__(self):
         """Initialize the key state dictionary."""
-        self.state = {
-            'Forward': False,
-            'Backward': False,
-            'Left': False,
-            'Right': False,
-            'LightAttack': False,
-            'Roll': False,
-            'UseItem': False,
-            'LockOn': False
-        }
+        self.state = {key: False for key in keybindings.keys()}
 
-    def update(self, new_state: dict):
-        """Update the pressed keys such that the current state represents the given state.
+    def update(self, actions: List):
+        """Update the pressed keys state and execute key presses/releases.
 
         Args:
-            new_state: The state dict for the new input state.
+            actions: A list of pressed actions.
         """
         for action in self.state:
-            if action == "Roll" and new_state[action]:
+            if action == "roll" and action in actions:
                 GameInput._press_key(keymap[keybindings[action]])
                 time.sleep(0.02)
                 GameInput._release_key(keymap[keybindings[action]])
                 continue
             # nothing new, continue
-            if self.state[action] == new_state[action]:
+            if self.state[action] == (action in actions):
                 continue
             # key was not pressed before
             if not self.state[action]:
@@ -91,24 +82,17 @@ class GameInput:
                 self.state[action] = False
                 GameInput._release_key(keymap[keybindings[action]])
 
-    def array_update(self, array_state: np.ndarray):
+    def array_update(self, action_array: np.ndarray):
         """Interface update with boolean array encoded action selection.
 
         Args:
-            array_state: The states given as an boolean array. The order is 'Forward', 'Backward',
-                'Left', 'Right', 'LightAttack', 'Roll', 'UseItem', 'LockOn'.
+            action_array: The actions given as an boolean array. The order is 'forward', 'backward',
+                'left', 'right', 'lightattack', 'roll', 'useitem', 'lockon'.
         """
-        buff_dict = {
-            'Forward': bool(array_state[0]),
-            'Backward': bool(array_state[1]),
-            'Left': bool(array_state[2]),
-            'Right': bool(array_state[3]),
-            'LightAttack': bool(array_state[4]),
-            'Roll': bool(array_state[5]),
-            'UseItem': bool(array_state[6]),
-            'LockOn': bool(array_state[7])
-        }
-        self.update(buff_dict)
+        actions = [
+            "forward", "backward", "left", "right", "lightattack", "roll", "useitem", "lockon"
+        ]
+        self.update([actions[i] for i in range(len(actions)) if action_array[i]])
 
     def restart(self):
         """Release all keys and sets the press state to False."""

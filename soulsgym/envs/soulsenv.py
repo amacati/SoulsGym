@@ -13,8 +13,7 @@ import numpy as np
 from soulsgym.envs.utils.game_input import GameInput
 from soulsgym.envs.utils.logger import Logger, GameState
 from soulsgym.envs.utils.game_interface import Game
-import soulsgym.envs.utils.tables as tables
-from soulsgym.envs.utils.tables import coordinates, actions, player_animations
+from soulsgym.envs.utils.static import coordinates, actions, player_animations
 from soulsgym.envs.utils.game_window import GameWindow
 from soulsgym.exception import LockOnFailure, ResetNeeded, InvalidPlayerStateError
 
@@ -37,7 +36,7 @@ class SoulsEnv(gym.Env, ABC):
     def __init__(self):
         """Initialize the game managers and run the environment setup sequence."""
         super().__init__()
-        self.action_space = gym.spaces.Discrete(len(tables.action_list))
+        self.action_space = gym.spaces.Discrete(len(actions))
         self._internal_state = None
         self.done = False
         self._game_logger = Logger()
@@ -107,7 +106,7 @@ class SoulsEnv(gym.Env, ABC):
         if self.done:
             logger.error("step: Environment step called after environment was done")
             raise ResetNeeded("Environment step called after environment was done")
-        self._game_input.array_update(actions[action])
+        self._game_input.update(actions[action])
         self._step_callback()
         reward = self.compute_reward(self._internal_state)
         return self._internal_state, reward, self.done, {}
@@ -178,7 +177,7 @@ class SoulsEnv(gym.Env, ABC):
             logger.debug("_sub_step_check: Player HP is 0")
             raise InvalidPlayerStateError("Player HP is 0")
         # Check if player is inside the borders of the arena
-        limits = [coordinates["iudex_limits"][c] for c in ["x", "y", "z"]]
+        limits = [coordinates[self.ENV_ID]["limits"][c] for c in ["x", "y", "z"]]
         if not all([lim[0] < pos < lim[1] for pos, lim in zip(game_log.player_pos, limits)]):
             logger.debug("_sub_step_check: Player outside of arena bounds")
             raise InvalidPlayerStateError("Player outside of arena bounds")
@@ -209,7 +208,7 @@ class SoulsEnv(gym.Env, ABC):
     def close(self):
         """Unpause the game and kill the player to restore the original game state."""
         self.game.resume_game()
-        self.game.set_boss_flags(self.ENV_ID, False)
+        #self.game.set_boss_flags(self.ENV_ID, False)  TODO: Reenable?
         self.game.reload()
         logger.debug("SoulsEnv close successful")
 
@@ -220,15 +219,15 @@ class SoulsEnv(gym.Env, ABC):
             True if lock on was established, False otherwise.
         """
         for d in range(5):
-            self._game_input.single_action("CameraRight", press_time=.5 * d)  # Spin camera around
-            self._game_input.single_action("LockOn")
+            self._game_input.single_action("cameraright", press_time=.5 * d)  # Spin camera around
+            self._game_input.single_action("lockon")
             time.sleep(
                 0.5)  # Give some time to either reset cam or propagate lock on. TODO: Optimize time
             if self.game.get_locked_on():
                 return True
         for d in range(1, 5):
-            self._game_input.single_action("CameraLeft", press_time=.5 * d)  # Walk into the arena
-            self._game_input.single_action("LockOn")
+            self._game_input.single_action("cameraleft", press_time=.5 * d)  # Walk into the arena
+            self._game_input.single_action("lockon")
             time.sleep(0.5)  # Give some time to either reset cam or propagate lock on
             if self.game.get_locked_on():
                 return True
