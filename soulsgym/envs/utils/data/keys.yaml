@@ -12,6 +12,7 @@ binding:
   cameradown: k
   cameraleft: o
   cameraright: p
+  heavyattack: y
 
 keymap:
   e: 0x45
@@ -32,3 +33,4 @@ keymap:
   w: 0x57
   j: 0x4A
   k: 0x4B
+  y: 0x59

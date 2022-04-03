@@ -79,26 +79,25 @@ class IudexEnv(SoulsEnv):
         self._game_input.reset()
         self.game.pause_game()
         game_log = self._game_logger.log()
-        if not self._reset_check(game_log):
-            self.game.target_attacks = False
-            self.game.player_position = coordinates["iudex"]["player_init_pos"]
+        self.game.target_attacks = False
+        self.game.player_position = coordinates["iudex"]["player_init_pos"]
+        self.game.target_position = coordinates["iudex"]["boss_init_pos"]
+        self.game.reset_player_hp()
+        self.game.reset_player_sp()
+        self.game.reset_target_hp()
+        if not self._game_logger.log().locked_on:
+            self._lock_on()
+        while not game_log.animation == "WalkFrontBattle_P1" or not game_log.player_animation == "Idle":  # noqa: E501
+            self.game.resume_game()
+            self.game.global_speed = 3  # Recover faster on reset
+            time.sleep(0.1)
+            self.game.pause_game()
             self.game.target_position = coordinates["iudex"]["boss_init_pos"]
-            self.game.reset_player_hp()
-            self.game.reset_player_sp()
-            self.game.reset_target_hp()
-            if not self._game_logger.log().locked_on:
-                self._lock_on()
-            while not game_log.animation == "WalkFrontBattle_P1" or not game_log.player_animation == "Idle":  # noqa: E501
-                self.game.resume_game()
-                self.game.global_speed = 3  # Recover faster on reset
-                time.sleep(0.1)
-                self.game.pause_game()
-                self.game.target_position = coordinates["iudex"]["boss_init_pos"]
-                self.game.player_position = coordinates["iudex"]["player_init_pos"]
-                game_log = self._game_logger.log()
-            if not game_log.locked_on:
-                self._lock_on()
-            self.game.target_attacks = True
+            self.game.player_position = coordinates["iudex"]["player_init_pos"]
+            game_log = self._game_logger.log()
+        if not game_log.locked_on:
+            self._lock_on()
+        self.game.target_attacks = True
         self._internal_state = self._game_logger.log()
         assert self._reset_check(self._internal_state)
         return self._internal_state
@@ -139,6 +138,8 @@ class IudexEnv(SoulsEnv):
                 break
             time.sleep(0.1)
         self.game.camera_pose = self.env_args.cam_setup_orient
+        if distance(self.game.player_position, coordinates["iudex"]["post_fog_wall"]) > 0.1:
+            return  # Player has not entered the fog wall, abort early
         self._game_input.single_action("forward", press_time=4.0)
         # During the initial key press sequence, we haven't targeted Iudex before. We therefore need
         # to manually specify his position

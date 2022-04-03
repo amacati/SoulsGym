@@ -21,6 +21,7 @@ class Game(Singleton):
     We need Game to be a Singleton in order to limit access to `get_locked_on` across all threads
     and instances.
     """
+
     lockon_lock = Lock()  # Protect from concurrent access to `get_locked_on()`
     last_lockon_access = None  # Time of the last call to `get_locked_on()`
 
@@ -237,12 +238,29 @@ class Game(Singleton):
         logger.warning("Target maximum HP can't be set. Ignoring for now")
 
     def check_boss_flags(self, name: str) -> bool:
+        """Check if the boss flags are correct.
+
+        Args:
+            name: Name of the boss whose flags are checked for.
+
+        Returns:
+            True if all boss flags are correct else False.
+        """
         if name.lower() == "iudex":
             return self.iudex_flags
         logger.warning(f"Boss name {name} currently not supported")
         raise KeyError(f"Boss name {name} currently not supported")
 
     def set_boss_flags(self, name: str, flag: bool):
+        """Set the boss flags of a boss.
+
+        Args:
+            name: Name of the boss whose flags are set.
+            flag: Value of the boss flags.
+
+        Returns:
+            True if all boss flags are correct else False.
+        """
         if name.lower() == "iudex":
             self.iudex_flags = flag
         else:
@@ -307,13 +325,15 @@ class Game(Singleton):
         Args:
             animation: The animation identifier string.
         """
-        self.mem.write_bytes(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerAnimation"],
-                                     base=self.mem.base_address + BASES["B"]),
-            bytes(animation, encoding="utf-16"))
+        raise NotImplementedError("Setting the player animation is not supported at the moment")
 
     @property
     def player_stats(self) -> Tuple[int]:
+        """Read the current player stats from the game.
+
+        Returns:
+            A Tuple with all player attributes in the same order as in the game.
+        """
         sl = self.mem.read_int(
             self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["SoulLevel"],
                                      base=self.mem.base_address + BASES["A"]))
@@ -451,12 +471,15 @@ class Game(Singleton):
         Args:
             animation: The animation identifier string.
         """
-        self.mem.write_bytes(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetedAnimation"],
-                                     base=self.mem.target_ptr), bytes(animation, encoding="utf-16"))
+        raise NotImplementedError("Setting a target animation is not supported at the moment")
 
     @property
-    def target_attacks(self):
+    def target_attacks(self) -> bool:
+        """Read the current target's attack flag.
+
+        Returns:
+            True if the target is allowed to attack, else False.
+        """
         return self.mem.read_bytes(
             self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetAttack"],
                                      base=self.mem.target_ptr), 1)

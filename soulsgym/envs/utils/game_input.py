@@ -70,7 +70,7 @@ class GameInput:
                 time.sleep(0.02)
                 GameInput._release_key(keymap[keybindings[action]])
                 continue
-            if action == "lightattack" and action in actions:
+            if (action == "lightattack" or action == "heavyattack") and action in actions:
                 GameInput._press_key(keymap[keybindings[action]])
                 time.sleep(0.02)
                 GameInput._release_key(keymap[keybindings[action]])
