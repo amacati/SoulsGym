@@ -1,11 +1,4 @@
-"""Logger for the internal game state.
-
-Todo:
-    * Rework the logger to simplify the threading construct.
-"""
-import threading
-from typing import Callable
-
+"""Logger for the internal game state."""
 from soulsgym.envs.utils.game_interface import Game
 from soulsgym.envs.utils.gamestate import GameState
 
@@ -19,7 +12,7 @@ class Logger:
         self.game = Game()
         # Create threads for every kind of task, to read data more quickly
         # Tread order matters! First threads are without targeted_entity_info necessary
-        tasks = [
+        self.tasks = [
             self._locked_on_task,
             self._player_pos_task,
             self._player_stats_task,
@@ -28,34 +21,28 @@ class Logger:
             self._boss_hp_task,
             self._boss_anim_task,
         ]
-        self.threads = [ThreadBoost(task) for task in tasks]
 
     def log(self, no_target: bool = False) -> GameState:
         """Read the current game state.
-
-        Logging works by pinging all threads once.
 
         Args:
             no_target: Switch off target tasks which can crash if no target was locked prior to the
                 call.
 
         Returns:
-            A log as a GameState.
+            A copy of the current GameState.
         """
         if self._log is None:
             self._log = GameState(player_max_hp=self.game.player_max_hp,
                                   player_max_sp=self.game.player_max_sp)
-        # re-read all data
-        if no_target:
-            for thread in self.threads[:4]:  # Only read non target values
-                thread.ping()
-            for thread in self.threads[:4]:
-                thread.wait_for()
-            return self._log.copy()
-        for thread in self.threads:
-            thread.ping()  # Releases wait for lock, starts one iteration of the inner loop
-        for thread in self.threads:
-            thread.wait_for()
+        self._locked_on_task()
+        if not no_target:
+            self._boss_pos_task()
+            self._boss_hp_task()
+            self._boss_anim_task()
+        self._player_anim_task()
+        self._player_pos_task()
+        self._player_stats_task()
         return self._log.copy()
 
     def _player_stats_task(self):
@@ -89,35 +76,3 @@ class Logger:
 
     def _locked_on_task(self):
         self._log.locked_on = self.game.get_locked_on()
-
-
-class ThreadBoost:
-    """A helper class that calls a task on notification and can await its completion."""
-
-    def __init__(self, task: Callable):
-        """Initialize the locks and task thread.
-
-        Args:
-            task: The target task.
-        """
-        self.task = task
-        self._task_lock = threading.Lock()
-        self._join_lock = threading.Lock()
-        self._thread = threading.Thread(target=self._run, daemon=True)
-        self._thread.start()
-
-    def ping(self):
-        """Ping the ThreadBoost object to perform its task."""
-        self._task_lock.release()
-
-    def wait_for(self):
-        """Block the call while waiting for the completion of the task."""
-        self._join_lock.acquire()
-
-    def _run(self):
-        self._task_lock.acquire()
-        self._join_lock.acquire()
-        while True:
-            self._task_lock.acquire()
-            self.task()
-            self._join_lock.release()

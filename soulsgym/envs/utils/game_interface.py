@@ -52,10 +52,12 @@ class Game(Singleton):
         Returns:
             The current player position (x,y,z,a).
         """
-        buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerA"],
-                                                            base=self.mem.base_address +
-                                                            BASES["B"]),
-                                   length=24)
+        buff = self.mem.read_bytes(
+            self.mem.resolve_address(
+                VALUE_ADDRESS_OFFSETS["PlayerA"],
+                base=self.mem.base_address +  # noqa: W504, E501
+                BASES["B"]),
+            length=24)
         a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure.
         return x, y, z, a
 
@@ -386,10 +388,12 @@ class Game(Singleton):
             The current camera rotation as quarternion and position as coordinates
             (q1, q2, q3, q4, x, y, z).
         """
-        buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["CamQ1"],
-                                                            base=self.mem.base_address +
-                                                            BASES["Cam"]),
-                                   length=36)
+        buff = self.mem.read_bytes(
+            self.mem.resolve_address(
+                VALUE_ADDRESS_OFFSETS["CamQ1"],
+                base=self.mem.base_address +  # noqa: W504, E501
+                BASES["Cam"]),
+            length=36)
         # cam orientation seems to be given as a normal vector for the camera plane. As with the
         # position, the game switches y and z
         _, nx, nz, ny, x, z, y = struct.unpack('f' + 4 * 'x' + 'fff' + 4 * 'x' + 'fff', buff)
