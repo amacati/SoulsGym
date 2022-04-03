@@ -228,21 +228,12 @@ class SoulsEnv(gym.Env, ABC):
         self.game.reload()
         logger.debug("SoulsEnv close successful")
 
-    def _lock_on(self, target_position: Optional[List[float]] = None) -> bool:
-        """Reestablish lock on by rotating the camera around the player and press lock on.
-
-        Returns:
-            True if lock on was established, False otherwise.
-        """
+    def _lock_on(self, target_position: Optional[List[float]] = None):
+        """Reestablish lock on by rotating the camera around the player and press lock on."""
         game_speed = self.game.global_speed
         self.game.pause_game()
-        try:
-            t_pos = target_position or self.game.target_position
-            p_pos = self.game.player_position
-            self.game.camera_pose = [t_pos[0] - p_pos[0], t_pos[1] - p_pos[1], t_pos[2] - p_pos[2]]
-            self._game_input.single_action("lockon")
-            if self.game.get_locked_on():
-                return True
-            return False
-        finally:
-            self.game.global_speed = game_speed
+        t_pos = target_position or self.game.target_position
+        p_pos = self.game.player_position
+        self.game.camera_pose = [t_pos[0] - p_pos[0], t_pos[1] - p_pos[1], t_pos[2] - p_pos[2]]
+        self._game_input.single_action("lockon")
+        self.game.global_speed = game_speed

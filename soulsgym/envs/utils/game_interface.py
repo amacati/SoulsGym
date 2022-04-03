@@ -2,19 +2,27 @@
 import struct
 from typing import Tuple
 import logging
+from threading import Lock
+import time
 
 import numpy as np
 
 from soulsgym.envs.utils.memory_manipulator import MemoryManipulator
 from soulsgym.envs.utils.memory_manipulator import BASES, VALUE_ADDRESS_OFFSETS
 from soulsgym.envs.utils.game_input import GameInput
-from soulsgym.envs.utils.utils import wrap_to_pi
+from soulsgym.envs.utils.utils import wrap_to_pi, Singleton
 
 logger = logging.getLogger(__name__)
 
 
-class Game:
-    """Game interface class."""
+class Game(Singleton):
+    """Game interface class.
+
+    We need Game to be a Singleton in order to limit access to `get_locked_on` across all threads
+    and instances.
+    """
+    lockon_lock = Lock()  # Protect from concurrent access to `get_locked_on()`
+    last_lockon_access = None  # Time of the last call to `get_locked_on()`
 
     def __init__(self):
         """Initialize the MemoryManipulator which acts as an abstraction for pymem and GameInput.
@@ -458,12 +466,24 @@ class Game:
     def get_locked_on(self) -> bool:
         """Read the player's current lock on status.
 
+        Lock on detection works by checking if ``mem.target_ptr_volatile` is currently empty. If it
+        has been written to, it has been set by a lock on event. We reset the pointer by
+        deactivating and reactivating the targeted entity info for future calls to `get_locked_on`.
+        This in turn means that two calls in succession almost surely return "False" since the game
+        did not have the time to rewrite `mem.target_ptr_volatile`. Therefore we enforce at least
+        0.1s to pass between two consecutive calls to `get_locked_on`.
+
         Returns:
             True if the player has currently a locked on target, else False.
         """
-        buff = self.mem.read_int(self.mem.target_ptr_volatile)
-        self.mem.deactivate_targeted_entity_info()
-        self.mem.activate_targeted_entity_info()
+        with self.lockon_lock:  # Make sure `get_locked_on` hasn't been accessed in the last 0.1s
+            td = time.time() - (self.last_lockon_access or 0)
+            if td < 0.1:
+                time.sleep(0.1 - td)
+            buff = self.mem.read_int(self.mem.target_ptr_volatile)
+            self.mem.deactivate_targeted_entity_info()
+            self.mem.activate_targeted_entity_info()
+            self.last_lockon_access = time.time()
         return buff != 0
 
     def reset_player_hp(self):

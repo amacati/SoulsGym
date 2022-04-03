@@ -78,37 +78,37 @@ class IudexEnv(SoulsEnv):
         self.done = False
         self.game.pause_game()
         game_log = self._game_logger.log()
-        if not self._reset_check(game_log) or True:  # TODO: remove or true, dev only
+        if not self._reset_check(game_log):
             self.game.target_attacks = False
             self.game.player_position = coordinates["iudex"]["player_init_pos"]
             self.game.target_position = coordinates["iudex"]["boss_init_pos"]
-            self.game.resume_game()
-            time.sleep(0.1)
-            self.game.pause_game()
             self.game.reset_player_hp()
             self.game.reset_player_sp()
             self.game.reset_target_hp()
             if not self._game_logger.log().locked_on:
                 self._lock_on()
-            while not game_log.animation == "WalkFrontBattle_P1" or not game_log.player_animation == "Idle":
+            while not game_log.animation == "WalkFrontBattle_P1" or not game_log.player_animation == "Idle":  # noqa: E501
                 self.game.resume_game()
                 time.sleep(0.1)
                 self.game.pause_game()
                 self.game.target_position = coordinates["iudex"]["boss_init_pos"]
                 self.game.player_position = coordinates["iudex"]["player_init_pos"]
                 game_log = self._game_logger.log()
-            if not self._game_logger.log().locked_on:
+            if not game_log.locked_on:
                 self._lock_on()
             self.game.target_attacks = True
         self._internal_state = self._game_logger.log()
         assert self._reset_check(self._internal_state)
-        self.game.resume_game()
         return self._internal_state
 
     def _iudex_setup(self):
         self.game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
         if not self.game.check_boss_flags("iudex"):
             self.game.set_boss_flags("iudex", True)
+            self.game.reload()
+        # In case the player has entered the arena on a previous try, Iudex has to deaggro before
+        # the player can enter the arena again. This forces us to reload
+        if distance(self.game.player_position, coordinates["iudex"]["bonfire"]) > 30:
             self.game.reload()
         logger.debug("_iudex_setup: Reset success")
         self._game_window.focus_application()
@@ -179,10 +179,8 @@ class IudexEnv(SoulsEnv):
             logger.debug("_reset_check failed: Boss HP is not at maximum")
             return False
         if not game_log.locked_on:
-            for _ in range(5):
-                logger.debug(self._game_logger.log().locked_on)
             logger.debug("_reset_check failed: No lock on")
-            # return False  TODO: Reenable
+            return False
         logger.debug("_reset_check: Done")
         return True
 

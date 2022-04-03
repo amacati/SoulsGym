@@ -10,6 +10,8 @@ import win32con
 import pymem as pym
 from pymem import Pymem
 
+from soulsgym.envs.utils.utils import Singleton
+
 BASES = {
     "A": 0x4740178,
     "B": 0x4768E78,
@@ -80,14 +82,6 @@ VIRTUAL_ALLOC.restype = ctypes.c_ulonglong
 # VirtualFree = ctypes.windll.kernel32.VirtualFree
 # VirtualFree.restype = ctypes.wintypes.BOOL
 # VirtualFree.argtypes = [ ctypes.wintypes.LPVOID, ctypes.c_ulonglong, ctypes.wintypes.DWORD ]
-
-
-class Singleton(object):
-
-    def __new__(cls):
-        if not hasattr(cls, 'instance'):
-            cls.instance = super(Singleton, cls).__new__(cls)
-        return cls.instance
 
 
 class MemoryManipulator(Singleton):

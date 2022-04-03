@@ -29,3 +29,12 @@ def wrap_to_pi(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
         The wrapped angle.
     """
     return ((x + np.pi) % (2 * np.pi)) - np.pi
+
+
+class Singleton(object):
+    """Implement a Singleton parent class for inheritance."""
+
+    def __new__(cls):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Singleton, cls).__new__(cls)
+        return cls.instance
