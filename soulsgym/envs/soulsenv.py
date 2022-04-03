@@ -224,7 +224,7 @@ class SoulsEnv(gym.Env, ABC):
     def close(self):
         """Unpause the game and kill the player to restore the original game state."""
         self.game.resume_game()
-        #self.game.set_boss_flags(self.ENV_ID, False)  TODO: Reenable?
+        self._game_input.reset()
         self.game.reload()
         logger.debug("SoulsEnv close successful")
 

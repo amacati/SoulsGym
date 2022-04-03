@@ -76,6 +76,7 @@ class IudexEnv(SoulsEnv):
             The first observation after a reset.
         """
         self.done = False
+        self._game_input.reset()
         self.game.pause_game()
         game_log = self._game_logger.log()
         if not self._reset_check(game_log):
@@ -89,6 +90,7 @@ class IudexEnv(SoulsEnv):
                 self._lock_on()
             while not game_log.animation == "WalkFrontBattle_P1" or not game_log.player_animation == "Idle":  # noqa: E501
                 self.game.resume_game()
+                self.game.global_speed = 3  # Recover faster on reset
                 time.sleep(0.1)
                 self.game.pause_game()
                 self.game.target_position = coordinates["iudex"]["boss_init_pos"]

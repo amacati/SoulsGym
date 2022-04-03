@@ -400,8 +400,8 @@ class Game(Singleton):
         """Set the camera's current orientation.
 
         Args:
-            normal: Target vector normal to the camera plane. The reasoning behind this 
-                representation of orientation is that the camera never rotates around the normal 
+            normal: Target vector normal to the camera plane. The reasoning behind this
+                representation of orientation is that the camera never rotates around the normal
                 vector.
         """
         assert len(normal) == 3, "Normal vector must have 3 elements"

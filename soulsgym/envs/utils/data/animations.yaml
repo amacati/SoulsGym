@@ -6,6 +6,7 @@ player:  # Numbers indicate duration in 0.1s (gym sample rate)
     AddDamageStartRight: 1 # TODO
     AddDamageStartFront: 1 # TODO
     AddDamageStartBack: 1 # TODO
+    GuardBreakWall: 1 # TODO
     DamageSmall: 10
     DamageMiddle: 8
     DamageUpper: 22

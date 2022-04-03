@@ -70,6 +70,11 @@ class GameInput:
                 time.sleep(0.02)
                 GameInput._release_key(keymap[keybindings[action]])
                 continue
+            if action == "lightattack" and action in actions:
+                GameInput._press_key(keymap[keybindings[action]])
+                time.sleep(0.02)
+                GameInput._release_key(keymap[keybindings[action]])
+                continue
             # nothing new, continue
             if self.state[action] == (action in actions):
                 continue
@@ -81,6 +86,10 @@ class GameInput:
             elif self.state[action]:
                 self.state[action] = False
                 GameInput._release_key(keymap[keybindings[action]])
+
+    def reset(self):
+        """Reset the game input keys."""
+        self.update([])
 
     def array_update(self, action_array: np.ndarray):
         """Interface update with boolean array encoded action selection.
