@@ -1,4 +1,5 @@
 """Miscellaneous utils functions."""
+from typing import Union
 import numpy as np
 
 
@@ -16,3 +17,15 @@ def distance(coords_a: list, coords_b: list, flat: bool = True) -> np.ndarray:
     coords_a, coords_b = np.array(coords_a), np.array(coords_b)
     dim = 2 if flat else 3
     return np.linalg.norm(coords_a[0:dim] - coords_b[0:dim])
+
+
+def wrap_to_pi(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+    """Wrap an angle into the interval of [-pi, pi].
+
+    Args:
+        x: Single angle or array of angles in radians.
+
+    Returns:
+        The wrapped angle.
+    """
+    return ((x + np.pi) % (2 * np.pi)) - np.pi

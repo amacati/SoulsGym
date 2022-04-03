@@ -3,8 +3,12 @@ import struct
 from typing import Tuple
 import logging
 
+import numpy as np
+
 from soulsgym.envs.utils.memory_manipulator import MemoryManipulator
 from soulsgym.envs.utils.memory_manipulator import BASES, VALUE_ADDRESS_OFFSETS
+from soulsgym.envs.utils.game_input import GameInput
+from soulsgym.envs.utils.utils import wrap_to_pi
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +17,7 @@ class Game:
     """Game interface class."""
 
     def __init__(self):
-        """Initialize the MemoryManipulator which acts as an abstraction for pymem.
+        """Initialize the MemoryManipulator which acts as an abstraction for pymem and GameInput.
 
         Initialization takes some time, we therefore reuse the manipulator instead of creating a new
         one for each pymem call.
@@ -23,6 +27,7 @@ class Game:
             will fail.
         """
         self.mem = MemoryManipulator()
+        self._game_input = GameInput()  # Necessary for camera control etc
 
     def clear_cache(self):
         """Clear the resolving cache of the memory manipulator.
@@ -53,6 +58,7 @@ class Game:
         Args:
             coordinates: The tuple of coordinates (x,y,z,a).
         """
+        hp = self.player_hp
         base = self.mem.base_address + BASES["B"]
         x_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerX"], base=base)
         y_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerY"], base=base)
@@ -67,6 +73,7 @@ class Game:
         self.mem.write_float(z_addr, coordinates[2])
         self.mem.write_float(a_addr, coordinates[3])
         self.mem.write_bit(grav_addr, 6, 0)  # Switch gravity back on
+        self.player_hp = hp  # Sometimes player looses HP on teleport
 
     @property
     def target_position(self) -> Tuple[float]:
@@ -76,7 +83,7 @@ class Game:
             The position (x, y, z, a) for the targeted entity. If no entity is targeted returns
             (0, 0 , 0, 0).
         """
-        buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetedX"],
+        buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetX"],
                                                             base=self.mem.target_ptr),
                                    length=16)
         if buff is not None:
@@ -91,13 +98,13 @@ class Game:
         Args:
             coordinates: The tuple of coordinates (x,y,z,a).
         """
-        x_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetedX"],
+        x_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetXUpdate"],
                                           base=self.mem.target_ptr)
-        y_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetedY"],
+        y_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetYUpdate"],
                                           base=self.mem.target_ptr)
-        z_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetedZ"],
+        z_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetZUpdate"],
                                           base=self.mem.target_ptr)
-        a_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetedA"],
+        a_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetAUpdate"],
                                           base=self.mem.target_ptr)
         grav_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["noGravity"],
                                              base=self.mem.target_ptr)
@@ -295,7 +302,76 @@ class Game:
                                      base=self.mem.base_address + BASES["B"]),
             bytes(animation, encoding="utf-16"))
 
-    def get_camera_pose(self) -> Tuple[float]:
+    @property
+    def player_stats(self) -> Tuple[int]:
+        sl = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["SoulLevel"],
+                                     base=self.mem.base_address + BASES["A"]))
+        vigor = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vigor"],
+                                     base=self.mem.base_address + BASES["A"]))
+        att = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Attunement"],
+                                     base=self.mem.base_address + BASES["A"]))
+        endurance = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Endurance"],
+                                     base=self.mem.base_address + BASES["A"]))
+        vit = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vitality"],
+                                     base=self.mem.base_address + BASES["A"]))
+        strength = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Strength"],
+                                     base=self.mem.base_address + BASES["A"]))
+        dex = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Dexterity"],
+                                     base=self.mem.base_address + BASES["A"]))
+        intelligence = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Intelligence"],
+                                     base=self.mem.base_address + BASES["A"]))
+        faith = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Faith"],
+                                     base=self.mem.base_address + BASES["A"]))
+        luck = self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Luck"],
+                                     base=self.mem.base_address + BASES["A"]))
+        return (sl, vigor, att, endurance, vit, strength, dex, intelligence, faith, luck)
+
+    @player_stats.setter
+    def player_stats(self, stats: Tuple[int]):
+        assert len(stats) == 10, "Stats tuple dimension does not match requirements"
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["SoulLevel"],
+                                     base=self.mem.base_address + BASES["A"]), stats[0])
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vigor"],
+                                     base=self.mem.base_address + BASES["A"]), stats[1])
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Attunement"],
+                                     base=self.mem.base_address + BASES["A"]), stats[2])
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Endurance"],
+                                     base=self.mem.base_address + BASES["A"]), stats[3])
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vitality"],
+                                     base=self.mem.base_address + BASES["A"]), stats[4])
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Strength"],
+                                     base=self.mem.base_address + BASES["A"]), stats[5])
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Dexterity"],
+                                     base=self.mem.base_address + BASES["A"]), stats[6])
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Intelligence"],
+                                     base=self.mem.base_address + BASES["A"]), stats[7])
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Faith"],
+                                     base=self.mem.base_address + BASES["A"]), stats[8])
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Luck"],
+                                     base=self.mem.base_address + BASES["A"]), stats[9])
+
+    @property
+    def camera_pose(self) -> Tuple[float]:
         """Read the camera's current position and rotation.
 
         Returns:
@@ -304,10 +380,43 @@ class Game:
         """
         buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["CamQ1"],
                                                             base=self.mem.base_address +
-                                                            BASES["D"]),
+                                                            BASES["Cam"]),
                                    length=36)
-        q1, q2, q3, q4, x, z, y = struct.unpack('f' + 4 * 'x' + 'fff' + 4 * 'x' + 'fff', buff)
-        return q1, q2, q3, q4, x, y, z
+        # cam orientation seems to be given as a normal vector for the camera plane. As with the
+        # position, the game switches y and z
+        _, nx, nz, ny, x, z, y = struct.unpack('f' + 4 * 'x' + 'fff' + 4 * 'x' + 'fff', buff)
+        return nx, ny, nz, x, y, z
+
+    @camera_pose.setter
+    def camera_pose(self, normal: Tuple[float]):
+        """Set the camera's current orientation.
+
+        Args:
+            normal: Target vector normal to the camera plane. The reasoning behind this 
+                representation of orientation is that the camera never rotates around the normal 
+                vector.
+        """
+        assert len(normal) == 3, "Normal vector must have 3 elements"
+        normal = np.array(normal, dtype=np.float64)
+        normal /= np.linalg.norm(normal)
+        normal_angle = np.arctan2(*normal[:2])
+        dz = self.camera_pose[2] - normal[2]
+        t = 0
+        # If lock on is already established and target is out of tolerances, the cam can't move. We
+        # limit camera rotations to 50 actions to not run into an infinite loop where the camera
+        # tries to move but can't because lock on prevents it from actually moving
+        while abs(dz) > 0.05 and t < 50:
+            self._game_input.single_action("cameradown" if dz > 0 else "cameraup", .02)
+            dz = self.camera_pose[2] - normal[2]
+            t += 1
+        cpose = self.camera_pose
+        d_angle = wrap_to_pi(np.arctan2(cpose[0], cpose[1]) - normal_angle)
+        t = 0
+        while abs(d_angle) > 0.05 and t < 50:
+            self._game_input.single_action("cameraleft" if d_angle > 0 else "cameraright", .02)
+            cpose = self.camera_pose
+            d_angle = wrap_to_pi(np.arctan2(cpose[0], cpose[1]) - normal_angle)
+            t += 1
 
     @property
     def target_animation(self) -> str:
@@ -334,14 +443,23 @@ class Game:
             self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetedAnimation"],
                                      base=self.mem.target_ptr), bytes(animation, encoding="utf-16"))
 
+    @property
+    def target_attacks(self):
+        return self.mem.read_bytes(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetAttack"],
+                                     base=self.mem.target_ptr), 1)
+
+    @target_attacks.setter
+    def target_attacks(self, val: bool):
+        self.mem.write_bit(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["TargetAttack"],
+                                     base=self.mem.target_ptr), 0, int(val))
+
     def get_locked_on(self) -> bool:
         """Read the player's current lock on status.
 
         Returns:
             True if the player has currently a locked on target, else False.
-
-        Todo:
-            * Does not work correctly yet; investigate.
         """
         buff = self.mem.read_int(self.mem.target_ptr_volatile)
         self.mem.deactivate_targeted_entity_info()

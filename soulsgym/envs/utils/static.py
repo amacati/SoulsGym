@@ -25,3 +25,7 @@ with open(root / "animations.yaml", "r") as f:
 
 player_animations = animations["player"]
 iudex_animations = animations["iudex"]
+
+# Stats
+with open(root / "player.yaml", "r") as f:
+    player_stats = yaml.load(f, Loader=yaml.SafeLoader)

@@ -18,3 +18,5 @@
 15: ["left", "forward", "roll"]
 # Hitting
 16: ["lightattack"]
+# Nothing
+17: []

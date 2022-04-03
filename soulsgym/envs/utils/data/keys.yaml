@@ -8,6 +8,8 @@ binding:
   useitem: r
   lockon: q
   interact: e
+  cameraup: j
+  cameradown: k
   cameraleft: o
   cameraright: p
 
@@ -28,3 +30,5 @@ keymap:
   q: 0x51
   r: 0x52
   w: 0x57
+  j: 0x4A
+  k: 0x4B

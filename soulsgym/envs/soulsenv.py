@@ -1,7 +1,7 @@
 """Core abstract SoulsEnv class for gym environments in Dark Souls III."""
 import time
 import logging
-from typing import Tuple, TypeVar
+from typing import Tuple, TypeVar, List, Optional
 from pathlib import Path
 from abc import ABC, abstractmethod
 from argparse import Namespace
@@ -13,7 +13,7 @@ import numpy as np
 from soulsgym.envs.utils.game_input import GameInput
 from soulsgym.envs.utils.logger import Logger, GameState
 from soulsgym.envs.utils.game_interface import Game
-from soulsgym.envs.utils.static import coordinates, actions, player_animations
+from soulsgym.envs.utils.static import coordinates, actions, player_animations, player_stats
 from soulsgym.envs.utils.game_window import GameWindow
 from soulsgym.exception import LockOnFailure, ResetNeeded, InvalidPlayerStateError
 
@@ -47,9 +47,10 @@ class SoulsEnv(gym.Env, ABC):
         self.game.resume_game()  # In case gym crashed while paused
         self.config_path = Path(__file__).parent / "config"
         self.env_args = self._load_env_args()
+        self.game.player_stats = player_stats[self.ENV_ID]
         logger.info(self.env_args.init_msg)
         self._env_setup()
-        logger.debug("Gym init complete")
+        logger.debug("Env init complete")
 
     @abstractmethod
     def reset(self) -> ObsType:
@@ -109,6 +110,8 @@ class SoulsEnv(gym.Env, ABC):
         self._game_input.update(actions[action])
         self._step_callback()
         reward = self.compute_reward(self._internal_state)
+        if self.done:
+            logger.debug("step: Episode finished")
         return self._internal_state, reward, self.done, {}
 
     def _step_callback(self):
@@ -142,6 +145,9 @@ class SoulsEnv(gym.Env, ABC):
                 # Animation count had finished
                 if anim_cnt == player_animations["interrupt"][p_anim] - 2:
                     break
+            # Critical animations which need special recovery routines
+            elif p_anim in player_animations["critical"]:
+                self._handle_critical_animation(p_anim)
             # Unknown player animation. Shouldn't happen, add animation to tables!
             else:
                 logger.error(f"_step_callback: Unknown player animation {p_anim}")
@@ -205,6 +211,16 @@ class SoulsEnv(gym.Env, ABC):
             self._internal_state.boss_hp = 0
         self.done = self._internal_state.player_hp == 0 or self._internal_state.boss_hp == 0
 
+    def _handle_critical_animation(self, p_anim: str):
+        if p_anim == "FallStart":
+            # Player is falling. Set 0 HP and rely on reset for teleport to prevent death
+            log = self._game_logger.log()
+            self._sub_step_check(log)
+            log.player_hp = 0
+            self._update_internal_state(log)
+            self.game.reset_player_hp()
+            self.game.reset_target_hp()
+
     def close(self):
         """Unpause the game and kill the player to restore the original game state."""
         self.game.resume_game()
@@ -212,23 +228,21 @@ class SoulsEnv(gym.Env, ABC):
         self.game.reload()
         logger.debug("SoulsEnv close successful")
 
-    def _lock_on(self) -> bool:
+    def _lock_on(self, target_position: Optional[List[float]] = None) -> bool:
         """Reestablish lock on by rotating the camera around the player and press lock on.
 
         Returns:
             True if lock on was established, False otherwise.
         """
-        for d in range(5):
-            self._game_input.single_action("cameraright", press_time=.5 * d)  # Spin camera around
+        game_speed = self.game.global_speed
+        self.game.pause_game()
+        try:
+            t_pos = target_position or self.game.target_position
+            p_pos = self.game.player_position
+            self.game.camera_pose = [t_pos[0] - p_pos[0], t_pos[1] - p_pos[1], t_pos[2] - p_pos[2]]
             self._game_input.single_action("lockon")
-            time.sleep(
-                0.5)  # Give some time to either reset cam or propagate lock on. TODO: Optimize time
             if self.game.get_locked_on():
                 return True
-        for d in range(1, 5):
-            self._game_input.single_action("cameraleft", press_time=.5 * d)  # Walk into the arena
-            self._game_input.single_action("lockon")
-            time.sleep(0.5)  # Give some time to either reset cam or propagate lock on
-            if self.game.get_locked_on():
-                return True
-        return False
+            return False
+        finally:
+            self.game.global_speed = game_speed

@@ -62,6 +62,9 @@ player:  # Numbers indicate duration in 0.1s (gym sample rate)
     ParryLeftStart: 10
     GuardOn: 1
     DrawStanceRightAttac: 12
+  critical:  # Animations require special handling
+    FallStart: 0
+    DeathIdle: 0
 
 iudex:
   - Attack3000_P1

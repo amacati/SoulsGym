@@ -12,7 +12,7 @@ from soulsgym.exception import GameStateError, InvalidPlayerStateError
 from soulsgym.envs.utils import distance
 from soulsgym.envs.utils.static import iudex_animations, player_animations, coordinates
 
-logger = logging.getLogger("SoulsGym")
+logger = logging.getLogger(__name__)
 
 
 class IudexEnv(SoulsEnv):
@@ -61,14 +61,13 @@ class IudexEnv(SoulsEnv):
                 raise RetriesExceededError("Iudex environment setup failed")
             init_retries -= 1
             self._iudex_setup()
-            if not distance(coordinates["iudex"]["boss"], self.game.player_position,
+            if not distance(coordinates["iudex"]["fog_wall"], self.game.player_position,
                             flat=False) < 1:
                 continue  # Omit initial key sequence for speed
             if self.game.player_hp == 0:
                 continue  # Player has died on teleport
             self._initial_key_sequence()
         self.game.pause_game()
-        print(self._game_logger.log())  # TODO: Remove
 
     def reset(self) -> ObsType:
         """Reset the environment to the beginning of an episode.
@@ -76,18 +75,34 @@ class IudexEnv(SoulsEnv):
         Returns:
             The first observation after a reset.
         """
+        self.done = False
+        self.game.pause_game()
         game_log = self._game_logger.log()
-        if not self._reset_check(game_log) or True:
-            self.game.player_pos = coordinates["iudex"]["player_init_pos"]
-            self.game.target_pos = self.env_args.iudex_init_pos
+        if not self._reset_check(game_log) or True:  # TODO: remove or true, dev only
+            self.game.target_attacks = False
+            self.game.player_position = coordinates["iudex"]["player_init_pos"]
+            self.game.target_position = coordinates["iudex"]["boss_init_pos"]
+            self.game.resume_game()
+            time.sleep(0.1)
+            self.game.pause_game()
             self.game.reset_player_hp()
             self.game.reset_player_sp()
             self.game.reset_target_hp()
-            self.game.player_animation = "Idle"
-            self.game.target_animation = "WalkFrontBattle_P1"
-            self._lock_on()
+            if not self._game_logger.log().locked_on:
+                self._lock_on()
+            while not game_log.animation == "WalkFrontBattle_P1" or not game_log.player_animation == "Idle":
+                self.game.resume_game()
+                time.sleep(0.1)
+                self.game.pause_game()
+                self.game.target_position = coordinates["iudex"]["boss_init_pos"]
+                self.game.player_position = coordinates["iudex"]["player_init_pos"]
+                game_log = self._game_logger.log()
+            if not self._game_logger.log().locked_on:
+                self._lock_on()
+            self.game.target_attacks = True
         self._internal_state = self._game_logger.log()
         assert self._reset_check(self._internal_state)
+        self.game.resume_game()
         return self._internal_state
 
     def _iudex_setup(self):
@@ -96,11 +111,9 @@ class IudexEnv(SoulsEnv):
             self.game.set_boss_flags("iudex", True)
             self.game.reload()
         logger.debug("_iudex_setup: Reset success")
-        # time.sleep(3)  # Wait until loading screen comes up to focus on the application
         self._game_window.focus_application()
         logger.debug("_iudex_setup: Focus success")
-        self.game.clear_cache(
-        )  # Reset memory manupulator cache after death has invalidated addresses
+        self.game.clear_cache()  # Reset game address cache after death has invalidated addresses
         while True:
             time.sleep(1)
             try:
@@ -112,19 +125,23 @@ class IudexEnv(SoulsEnv):
             except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
                 continue
         logger.debug("_iudex_setup: Player respawn success")
-        self.game.player_position = coordinates["iudex"]["boss"]
+        self.game.player_position = coordinates["iudex"]["fog_wall"]
         time.sleep(1)
-        logger.debug("_iudex_setup: Success")
+        logger.debug("_iudex_setup: Done")
 
     def _initial_key_sequence(self):
+        self.game.camera_pose = self.env_args.cam_setup_orient
         self._game_input.single_action("interact")
         while True:
             if self.game.player_animation == "Idle":
                 break
             time.sleep(0.1)
+        self.game.camera_pose = self.env_args.cam_setup_orient
         self._game_input.single_action("forward", press_time=4.0)
-        self._game_input.single_action("lockon")
-        logger.debug("_init_key_sequence: Success")
+        # During the initial key press sequence, we haven't targeted Iudex before. We therefore need
+        # to manually specify his position
+        self._lock_on(target_position=coordinates["iudex"]["boss_init_pos"])
+        logger.debug("_init_key_sequence: Done")
 
     def compute_reward(self, game_log: GameState) -> float:
         """Compute the reward from a game observation.
@@ -162,9 +179,11 @@ class IudexEnv(SoulsEnv):
             logger.debug("_reset_check failed: Boss HP is not at maximum")
             return False
         if not game_log.locked_on:
+            for _ in range(5):
+                logger.debug(self._game_logger.log().locked_on)
             logger.debug("_reset_check failed: No lock on")
             # return False  TODO: Reenable
-        logger.debug("_reset_check successful")
+        logger.debug("_reset_check: Done")
         return True
 
     def _env_setup_check(self):
@@ -180,7 +199,7 @@ class IudexEnv(SoulsEnv):
             raise GameStateError("Player does not seem to be ingame")
         if game_log.player_animation != "Idle":
             raise InvalidPlayerStateError("Player is not idle")
-        if distance(self.game.player_position, self.env_args.p_setup_coords) > 30:
+        if distance(self.game.player_position, coordinates["iudex"]["bonfire"]) > 30:
             raise InvalidPlayerStateError("Player is not close to the bonfire `Cemetry of Ash`")
         if game_log.player_hp != self.env_args.space_stats_high[0]:
             raise InvalidPlayerStateError("Player HP differs from expected value. Please make sure \
