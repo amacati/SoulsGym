@@ -13,6 +13,7 @@ binding:
   cameraleft: o
   cameraright: p
   heavyattack: y
+  parry: m
 
 keymap:
   e: 0x45
@@ -34,3 +35,4 @@ keymap:
   j: 0x4A
   k: 0x4B
   y: 0x59
+  m: 0x4D

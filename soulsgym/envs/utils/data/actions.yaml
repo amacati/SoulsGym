@@ -19,5 +19,7 @@
 # Hitting
 16: ["lightattack"]
 17: ["heavyattack"]
+# Parry
+18: ["parry"]
 # Nothing
-17: []
+19: []

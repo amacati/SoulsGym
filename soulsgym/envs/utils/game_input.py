@@ -65,7 +65,7 @@ class GameInput:
             actions: A list of pressed actions.
         """
         for action in self.state:
-            if action in ("roll", "lightattack", "heavyattack") and action in actions:
+            if action in ("roll", "lightattack", "heavyattack", "parry") and action in actions:
                 GameInput._press_key(keymap[keybindings[action]])
                 time.sleep(0.02)
                 GameInput._release_key(keymap[keybindings[action]])
