@@ -19,7 +19,8 @@ BASES = {
     "D": 0x4743A80,
     "GameFlagData": 0x473BE28,
     "GlobalSpeed": 0x999C28,
-    "Cam": 0x47809C8
+    "Cam": 0x47809C8,
+    "LockOn": 0x4766CA0
 }
 
 VALUE_ADDRESS_OFFSETS = {
@@ -65,6 +66,8 @@ VALUE_ADDRESS_OFFSETS = {
     "CameraX": [0x18, 0xE8, 0x40],
     "CameraY": [0x18, 0xE8, 0x48],
     "CameraZ": [0x18, 0xE8, 0x44],
+    "LoSLockOnTime": [0x2910],
+    "LockOnBonusRange": [0x2914],
     "noGravity": [0x80, 0x1a08]  # Bit 6 saves the gravity flag!
 }
 
@@ -162,7 +165,7 @@ class MemoryManipulator(Singleton):
         # Look up the cache
         if u_id in self.cache:
             return self.cache[u_id]
-        # When no cache hit: resolve
+        # When no cache hit: resolve by following the pointer chain until its last link
         helper = self.pymem.read_longlong(base)
         for o in addr_offsets[:-1]:
             helper = self.pymem.read_longlong(helper + o)

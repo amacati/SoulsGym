@@ -10,7 +10,7 @@ from soulsgym.envs.soulsenv import ObsType, SoulsEnv
 from soulsgym.envs.utils.gamestate import GameState
 from soulsgym.exception import GameStateError, InvalidPlayerStateError
 from soulsgym.envs.utils import distance
-from soulsgym.envs.utils.static import iudex_animations, player_animations, coordinates
+from soulsgym.envs.utils.static import boss_animations, player_animations, coordinates
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ class IudexEnv(SoulsEnv):
         # 4) Player animation
         # 5) Boss animation
         # 6) Boss animation duration (in 0.1s ticks). We assume no animation takes longer than 10s
-        p_anim_len = len(player_animations["interrupt"]) + len(player_animations["no_interrupt"])
+        p_anim_len = len(player_animations["standard"]) + len(player_animations["critical"])
         stats_space = spaces.Box(np.array(self.env_args.space_stats_low, dtype=np.float32),
                                  np.array(self.env_args.space_stats_high, dtype=np.float32))
         coords_space = spaces.Box(np.array(self.env_args.space_coords_low, dtype=np.float32),
@@ -40,7 +40,7 @@ class IudexEnv(SoulsEnv):
             "phase": spaces.Discrete(2),
             "stats": stats_space,
             "coords": coords_space,
-            "player_animation": spaces.Discrete(len(iudex_animations)),
+            "player_animation": spaces.Discrete(len(boss_animations["iudex"])),
             "boss_animation": spaces.Discrete(p_anim_len),
             "boss_animation_counter": spaces.Discrete(100)
         })
@@ -87,7 +87,7 @@ class IudexEnv(SoulsEnv):
         self.game.reset_target_hp()
         if not self._game_logger.log().locked_on:
             self._lock_on()
-        while not game_log.animation == "WalkFrontBattle_P1" or not game_log.player_animation == "Idle":  # noqa: E501
+        while "Walk" not in game_log.boss_animation or not game_log.player_animation == "Idle":  # noqa: E501
             self.game.resume_game()
             self.game.global_speed = 3  # Recover faster on reset
             time.sleep(0.1)
@@ -95,8 +95,9 @@ class IudexEnv(SoulsEnv):
             self.game.target_position = coordinates["iudex"]["boss_init_pos"]
             self.game.player_position = coordinates["iudex"]["player_init_pos"]
             game_log = self._game_logger.log()
-        if not game_log.locked_on:
+        while not game_log.locked_on:
             self._lock_on()
+            game_log = self._game_logger.log()
         self.game.target_attacks = True
         self._internal_state = self._game_logger.log()
         assert self._reset_check(self._internal_state)

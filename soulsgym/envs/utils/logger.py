@@ -63,16 +63,11 @@ class Logger:
         self._log.player_animation = self.game.player_animation
 
     def _boss_anim_task(self):
-        animation_name = self.game.target_animation
-        self._log.phase = 1 if self._log.phase == 1 and animation_name != "Attack1500" else 2
-        animation_name = animation_name + "_P2" if self._log.phase == 2 else animation_name + "_P1"
-
-        if self._log.animation == animation_name:
-            self._log.animation_count += 1
-        else:
-            self._log.animation_count = 0
-
-        self._log.animation = animation_name
+        anim_name = self.game.target_animation
+        self._log.phase = 1 if self._log.phase == 1 and anim_name != "Attack1500" else 2
+        if "Attack" in anim_name or "Atk" in anim_name:
+            anim_name = anim_name + "_P2" if self._log.phase == 2 else anim_name + "_P1"
+        self._log.boss_animation = anim_name
 
     def _locked_on_task(self):
         self._log.locked_on = self.game.get_locked_on()

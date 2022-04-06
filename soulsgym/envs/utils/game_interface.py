@@ -535,6 +535,47 @@ class Game(Singleton):
         self.player_hp = 0
 
     @property
+    def lock_on_range(self) -> float:
+        """Read the current lock on range.
+
+        Returns:
+            The lock on range.
+        """
+        dist = self.mem.read_float(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOnBonusRange"],
+                                     base=self.mem.base_address + BASES["LockOn"]))
+        return dist + 15  # Default lock on range is 15
+
+    @lock_on_range.setter
+    def lock_on_range(self, val: float):
+        """Set the current lock on range.
+
+        Args:
+            val: Lock on range (minimum range is 15).
+        """
+        assert val >= 15, "Bonus lock on range must be greater or equal default (15)"
+        self.mem.write_float(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOnBonusRange"],
+                                     base=self.mem.base_address + BASES["LockOn"]), val - 15)
+
+    @property
+    def los_lock_on_deactivate_time(self) -> float:
+        """Read the current line of sight lock on deactivate time.
+
+        Returns:
+            The los lock on deactivation time.
+        """
+        return self.mem.read_float(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LoSLockOnTime"],
+                                     base=self.mem.base_address + BASES["LockOn"]))
+
+    @los_lock_on_deactivate_time.setter
+    def los_lock_on_deactivate_time(self, val: float):
+        self.mem.write_float(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LoSLockOnTime"],
+                                     base=self.mem.base_address + BASES["LockOn"]), val)
+
+    @property
     def global_speed(self) -> float:
         """Read the game loop speed.
 

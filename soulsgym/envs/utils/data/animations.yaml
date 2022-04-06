@@ -1,88 +1,111 @@
 player:  # Numbers indicate duration in 0.1s (gym sample rate)
-  no_interrupt:
+  standard:
     # Damage
-    AddDamageDefault: 1 # TODO
-    AddDamageStartLeft: 1 # TODO
-    AddDamageStartRight: 1 # TODO
-    AddDamageStartFront: 1 # TODO
-    AddDamageStartBack: 1 # TODO
-    GuardBreakWall: 1 # TODO
-    DamageSmall: 10
-    DamageMiddle: 8
-    DamageUpper: 22
-    DamageLarge: 1 #
-    DamageExLarge: 19
-    DamageFling: 17
-    DamagePush: 11
-    DamageSmallBlow: 29
-    ThrowAtk: 44
-    ThrowDef: 79
-    EStepDown: 8
-    GuardDamageSmall: 4
-    GuardBreak: 16
-  interrupt:
-    # Movement
-    HandChangeStart: 1 # TODO
-    DashStop: 3
-    Idle: 1
-    Move: 1
-    None: 1
-    BackStepNomal: 5
-    Jump: 4
-    JumpLong: 9
-    RollingMedium: 6
-    RollingMediumSelftra: 6
-    RunStopFront: 1
-    RunStopBack: 1
-    RunStopLeft: 1
-    RunStopRight: 1
-    QuickTurnLeft180: 5
-    QuickTurnRight180: 5
+    - AddDamageDefault
+    - AddDamageStartLeft
+    - AddDamageStartRight
+    - AddDamageStartFront
+    - AddDamageStartBack
+    - GuardBreakWall
+    - DamageSmall
+    - DamageMiddle
+    - DamageUpper
+    - DamageLarge
+    - DamageExLarge
+    - DamageFling
+    - DamagePush
+    - DamageSmallBlow
+    - ThrowAtk
+    - ThrowDef
+    - EStepDown
+    - GuardDamageSmall
+    - GuardBreak
+    # Movemen
+    - HandChangeStart
+    - DashStop
+    - Idle
+    - Move
+    - None
+    - BackStepNomal
+    - Jump
+    - JumpLong
+    - RollingMedium
+    - RollingMediumSelftra
+    - RunStopFront
+    - RunStopBack
+    - RunStopLeft
+    - RunStopRight
+    - QuickTurnLeft180
+    - QuickTurnRight180
+    - LandFaceDown
     # Attacks
-    GuardStart: 1
-    GuardEnd: 1
-    AttackRightLight1: 6
-    AttackRightLight2: 13
-    AttackRightLight3: 9
-    AttackRightLightStep: 7
-    AttackRightLightDash: 11
-    AttackBothLight1: 10
-    AttackBothLight2: 10
-    AttackBothLight3: 6
-    AttackBothLightStep: 9
-    AttackBothLightKick: 9
-    AttackBothDash: 12
-    AttackRightHeavy1Sta: 3
-    AttackRightHeavy1Sub: 2
-    AttackRightHeavy1End: 9
-    AttackRightHeavy2Sta: 3
-    AttackRightHeavy2End: 10
-    AttackBothHeavy1Star: 22
-    AttackRightHeavyKick: 1 #TODO
-    AttackRightLightKick: 5
-    ParryLeftStart: 10
-    GuardOn: 1
-    DrawStanceRightAttac: 12
+    - GuardStart
+    - GuardEnd
+    - AttackRightLight1
+    - AttackRightLight2
+    - AttackRightLight3
+    - AttackRightLightStep
+    - AttackRightLightDash
+    - AttackBothLight1
+    - AttackBothLight2
+    - AttackBothLight3
+    - AttackBothLightStep
+    - AttackBothLightKick
+    - AttackBothDash
+    - AttackRightHeavy1Sta
+    - AttackRightHeavy1Sub
+    - AttackRightHeavy1End
+    - AttackRightHeavy2Sta
+    - AttackRightHeavy2End
+    - AttackBothHeavy1Star
+    - AttackRightHeavyKick
+    - AttackRightLightKick
+    - ParryLeftStart
+    - GuardOn
+    - DrawStanceRightAttac
+    - LandLow
   critical:  # Animations require special handling
-    FallStart: 0
-    DeathIdle: 0
+    - FallLoopFaceUp
+    - FallStartFaceDown
+    - FallStart
+    - FallStartFaceUp
+    - DeathIdle
 
-iudex:
-  - Attack3000_P1
-  - Attack3001_P1
-  - Attack3002_P1
-  - Attack3003_P1
-  - Attack3004_P1
-  - Attack3005_P1
-  - Attack3006_P1
-  - Attack3007_P1
-  - Attack3008_P1
-  - Attack3009_P1
-  - Attack3010_P1
-  - Attack3011_P1
-  - Attack3012_P1
-  - Attack3013_P1
-  - Attack3014_P1
-  - Attack3015_P1
-  - Attack3029_P1
-  - ThrowAttack_P1
+boss:
+  iudex:
+    attacks:
+      - Attack3000_P1
+      - Attack3001_P1
+      - Attack3002_P1
+      - Attack3003_P1
+      - Attack3004_P1
+      - Attack3005_P1
+      - Attack3006_P1
+      - Attack3007_P1
+      - Attack3008_P1
+      - Attack3009_P1
+      - Attack3010_P1
+      - Attack3011_P1
+      - Attack3012_P1
+      - Attack3013_P1
+      - Attack3014_P1
+      - Attack3015_P1
+      - Attack3029_P1
+      - ThrowAttack_P1
+      - ThrowAtk_P1
+    movement:
+      - WalkFrontBattle
+      - SABlend_Add_Front
+      - WalkLeftBattle
+      - IdleBattle
+      - TurnBattle_Right90
+      - WalkRightBattle
+      - WalkBackBattle
+      - SABlend_NoAdd
+      - SABlend_Add_Right
+      - TurnBattle_Right180
+      - TurnBattle_Left90
+      - SABlend_Add_Left
+      - TurnBattle_Left180
+      - SABlend_Add_Back
+      - SABreak

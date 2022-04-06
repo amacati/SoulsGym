@@ -4,9 +4,6 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-from nptyping import NDArray
-
-Position = NDArray[np.float32]
 
 
 @dataclass
@@ -20,11 +17,12 @@ class GameState:
     player_max_sp: int = 0
     boss_hp: int = 0
     boss_max_hp: int = 0
-    player_pos: Position = np.zeros(4, dtype=np.float32)
-    boss_pos: Position = np.zeros(4, dtype=np.float32)
-    animation: str = "NoAnimation"
+    player_pos: np.ndarray = np.zeros(4, dtype=np.float32)
+    boss_pos: np.ndarray = np.zeros(4, dtype=np.float32)
     player_animation: str = "NoAnimation"
-    animation_count: int = 0
+    player_animation_count: int = 0
+    boss_animation: str = "NoAnimation"
+    boss_animation_count: int = 0
     locked_on: bool = False
 
     def copy(self) -> GameState:
