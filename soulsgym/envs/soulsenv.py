@@ -223,11 +223,12 @@ class SoulsEnv(gym.Env, ABC):
         if "Fall" in p_anim:
             # Player is falling. Set 0 HP and rely on reset for teleport to prevent death
             log = self._game_logger.log()
-            # self._step_check(log)  Exclude for now since player might already be out of arena bounds
             log.player_hp = 0
             self._update_internal_state(log)
             self.game.reset_player_hp()
             self.game.reset_target_hp()
+            # Eagerly teleport player to safety so that the fall is guaranteed to be nonlethal
+            self.game.player_position = coordinates[self.ENV_ID]["player_init_pos"]
 
     def close(self):
         """Unpause the game and kill the player to restore the original game state."""
