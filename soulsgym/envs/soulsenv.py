@@ -17,7 +17,6 @@ from soulsgym.envs.utils.static import coordinates, actions, player_animations, 
 from soulsgym.envs.utils.static import boss_animations
 from soulsgym.envs.utils.game_window import GameWindow
 from soulsgym.exception import LockOnFailure, ResetNeeded, InvalidPlayerStateError
-from soulsgym.exception import InvalidBossStateError
 
 logger = logging.getLogger(__name__)
 ObsType = TypeVar("ObsType")

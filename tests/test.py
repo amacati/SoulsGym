@@ -5,7 +5,8 @@ import json
 import soulsgym  # noqa: F401
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.WARNING)
+    soulsgym.set_log_level(level=logging.DEBUG)
     env = gym.make("SoulsGymIudex-v0")
     try:
         for i in range(500):

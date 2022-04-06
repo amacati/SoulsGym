@@ -1,21 +1,25 @@
 """Exception classes for SoulsGym."""
 
 
-class GameStateError(Exception):
+class SoulsGymException(Exception):
+    """Base class for SoulsGym exceptions."""
+
+
+class GameStateError(SoulsGymException):
     """Raised when the game state deviates from expected values."""
 
 
-class InvalidPlayerStateError(Exception):
+class InvalidPlayerStateError(SoulsGymException):
     """Raised when the player state deviates from expected values."""
 
 
-class InvalidBossStateError(Exception):
+class InvalidBossStateError(SoulsGymException):
     """Raised when the boss state deviates from expected values."""
 
 
-class ResetNeeded(Exception):
+class ResetNeeded(SoulsGymException):
     """Raised when an environment needs to be reset, but is called with `step()`."""
 
 
-class LockOnFailure(Exception):
+class LockOnFailure(SoulsGymException):
     """Raised when lock on can't be established."""

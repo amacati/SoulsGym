@@ -1,10 +1,11 @@
 """Gym registration and module setup."""
-from gym.envs.registration import register
 from pathlib import Path
 import logging
+
+from gym.envs.registration import register
 import win32api
 
-logger = logging.getLogger("SoulsGym")
+logger = logging.getLogger(__name__)
 
 
 def _check_ds3_path() -> bool:
@@ -22,6 +23,16 @@ def _check_ds3_path() -> bool:
 
 if not _check_ds3_path():
     logger.warning("Could not find Dark Souls III executable. Continuing for now...")
+
+
+def set_log_level(level: int):
+    """Set log level for the soulsgym module.
+
+    Args:
+        level: Logger level for the module. Uses the standard library logging module levels.
+    """
+    logger.setLevel(level)
+
 
 # Register environments in OpenAI gym
 register(id="SoulsGymIudex-v0",
