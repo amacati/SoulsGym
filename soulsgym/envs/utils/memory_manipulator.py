@@ -20,7 +20,8 @@ BASES = {
     "GameFlagData": 0x473BE28,
     "GlobalSpeed": 0x999C28,
     "Cam": 0x47809C8,
-    "LockOn": 0x4766CA0
+    "LockOn": 0x4766CA0,
+    "WeaponDurability": 0x4775D58,
 }
 
 VALUE_ADDRESS_OFFSETS = {
@@ -68,6 +69,7 @@ VALUE_ADDRESS_OFFSETS = {
     "CameraZ": [0x18, 0xE8, 0x44],
     "LoSLockOnTime": [0x2910],
     "LockOnBonusRange": [0x2914],
+    "WeaponDurability": [0x368, 0x10],
     "noGravity": [0x80, 0x1a08]  # Bit 6 saves the gravity flag!
 }
 

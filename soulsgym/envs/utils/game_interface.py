@@ -535,6 +535,24 @@ class Game(Singleton):
         self.player_hp = 0
 
     @property
+    def weapon_durability(self) -> int:
+        """Read the current weapon durability.
+
+        Returns:
+            The weapon durability value.
+        """
+        return self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["WeaponDurability"],
+                                     base=self.mem.base_address + BASES["WeaponDurability"]))
+
+    @weapon_durability.setter
+    def weapon_durability(self, val: int):
+        assert 0 <= val <= 70, "Weapon durability has to be in [0, 70]"
+        self.mem.write_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["WeaponDurability"],
+                                     base=self.mem.base_address + BASES["WeaponDurability"]), val)
+
+    @property
     def lock_on_range(self) -> float:
         """Read the current lock on range.
 

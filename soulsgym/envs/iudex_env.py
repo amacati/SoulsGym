@@ -85,6 +85,7 @@ class IudexEnv(SoulsEnv):
         self.game.reset_player_hp()
         self.game.reset_player_sp()
         self.game.reset_target_hp()
+        self.game.weapon_durability = 70  # 70 is maximum durability
         if not self._game_logger.log().locked_on:
             self._lock_on()
         while "Walk" not in game_log.boss_animation or not game_log.player_animation == "Idle":  # noqa: E501
