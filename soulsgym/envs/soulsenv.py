@@ -10,12 +10,12 @@ import gym
 import yaml
 import numpy as np
 
-from soulsgym.envs.utils.game_input import GameInput
-from soulsgym.envs.utils.logger import Logger, GameState
-from soulsgym.envs.utils.game_interface import Game
-from soulsgym.envs.utils.static import coordinates, actions, player_animations, player_stats
-from soulsgym.envs.utils.static import boss_animations
-from soulsgym.envs.utils.game_window import GameWindow
+from soulsgym.utils.game_input import GameInput
+from soulsgym.utils.logger import Logger, GameState
+from soulsgym.utils.game_interface import Game
+from soulsgym.utils.static import coordinates, actions, player_animations, player_stats
+from soulsgym.utils.static import boss_animations
+from soulsgym.utils.game_window import GameWindow
 from soulsgym.exception import LockOnFailure, ResetNeeded, InvalidPlayerStateError
 
 logger = logging.getLogger(__name__)

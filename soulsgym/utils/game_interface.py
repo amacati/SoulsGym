@@ -7,10 +7,10 @@ import time
 
 import numpy as np
 
-from soulsgym.envs.utils.memory_manipulator import MemoryManipulator
-from soulsgym.envs.utils.memory_manipulator import BASES, VALUE_ADDRESS_OFFSETS
-from soulsgym.envs.utils.game_input import GameInput
-from soulsgym.envs.utils.utils import wrap_to_pi, Singleton
+from soulsgym.utils.memory_manipulator import MemoryManipulator
+from soulsgym.utils.memory_manipulator import BASES, VALUE_ADDRESS_OFFSETS
+from soulsgym.utils.game_input import GameInput
+from soulsgym.utils.utils import wrap_to_pi, Singleton
 
 logger = logging.getLogger(__name__)
 

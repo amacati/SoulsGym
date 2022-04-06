@@ -1,6 +1,6 @@
 """Logger for the internal game state."""
-from soulsgym.envs.utils.game_interface import Game
-from soulsgym.envs.utils.gamestate import GameState
+from soulsgym.utils.game_interface import Game
+from soulsgym.utils.gamestate import GameState
 
 
 class Logger:

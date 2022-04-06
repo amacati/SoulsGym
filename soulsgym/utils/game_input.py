@@ -6,7 +6,7 @@ import time
 
 import numpy as np
 
-from soulsgym.envs.utils.static import keybindings, keymap
+from soulsgym.utils.static import keybindings, keymap
 
 INPUT_KEYBOARD = 1
 KEYEVENTF_EXTENDEDKEY = 0x0001

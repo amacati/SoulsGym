@@ -7,10 +7,10 @@ from gym import spaces
 from gym.error import RetriesExceededError
 
 from soulsgym.envs.soulsenv import ObsType, SoulsEnv
-from soulsgym.envs.utils.gamestate import GameState
+from soulsgym.utils.gamestate import GameState
 from soulsgym.exception import GameStateError, InvalidPlayerStateError
-from soulsgym.envs.utils import distance
-from soulsgym.envs.utils.static import boss_animations, player_animations, coordinates
+from soulsgym.utils import distance
+from soulsgym.utils.static import boss_animations, player_animations, coordinates
 
 logger = logging.getLogger(__name__)
 

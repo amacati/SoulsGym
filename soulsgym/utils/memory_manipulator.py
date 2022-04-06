@@ -10,7 +10,7 @@ import win32con
 import pymem as pym
 from pymem import Pymem
 
-from soulsgym.envs.utils.utils import Singleton
+from soulsgym.utils.utils import Singleton
 
 BASES = {
     "A": 0x4740178,
