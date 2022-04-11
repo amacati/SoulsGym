@@ -17,13 +17,13 @@ class GameState:
     player_max_sp: int = 0
     boss_hp: int = 0
     boss_max_hp: int = 0
-    player_pos: np.ndarray = np.zeros(4, dtype=np.float32)
-    boss_pos: np.ndarray = np.zeros(4, dtype=np.float32)
+    player_pose: np.ndarray = np.zeros(4, dtype=np.float32)
+    boss_pose: np.ndarray = np.zeros(4, dtype=np.float32)
     player_animation: str = "NoAnimation"
     player_animation_count: int = 0
     boss_animation: str = "NoAnimation"
     boss_animation_count: int = 0
-    locked_on: bool = False
+    lock_on: bool = False
 
     def copy(self) -> GameState:
         """Copy the object.

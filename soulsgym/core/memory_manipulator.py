@@ -10,7 +10,7 @@ import win32con
 import pymem as pym
 from pymem import Pymem
 
-from soulsgym.utils.utils import Singleton
+from soulsgym.core.utils import Singleton
 
 BASES = {
     "A": 0x4740178,
@@ -20,8 +20,12 @@ BASES = {
     "GameFlagData": 0x473BE28,
     "GlobalSpeed": 0x999C28,
     "Cam": 0x47809C8,
-    "LockOn": 0x4766CA0,
+    "LockOn": 0x0474C2F8,
+    "LockOnParam": 0x4766CA0,
     "WeaponDurability": 0x4775D58,
+    "IudexA": 0x04743668,
+    "IudexB": 0x04754B40,
+    "IudexC": 0x04739958,
 }
 
 VALUE_ADDRESS_OFFSETS = {
@@ -70,7 +74,15 @@ VALUE_ADDRESS_OFFSETS = {
     "LoSLockOnTime": [0x2910],
     "LockOnBonusRange": [0x2914],
     "WeaponDurability": [0x368, 0x10],
-    "noGravity": [0x80, 0x1a08]  # Bit 6 saves the gravity flag!
+    "noGravity": [0x80, 0x1a08],  # Bit 6 saves the gravity flag!
+    "IudexHP": [0x0, 0x320, 0x0, 0x3158],  # IudexA
+    "IudexAnimation": [0x0, 0x320, 0x0, 0x1B00, 0x38, 0x898],  # IudexA
+    "IudexPoseX": [0x0, 0x88, 0x1AF8, 0x158, 0xA8, 0x40, 0x70],  # IudexC
+    "IudexPoseY": [0x0, 0x88, 0x1AF8, 0x158, 0xA8, 0x40, 0x78],
+    "IudexPoseZ": [0x0, 0x88, 0x1AF8, 0x158, 0xA8, 0x40, 0x74],
+    "IudexPoseA": [0x0, 0x88, 0x1AF8, 0x158, 0xA8, 0x40, 0x7C],
+    "IudexAttacks": [0x0, 0x320, 0x0, 0x1EE8],  # IudexA
+    "LockOn": [0x24B0]
 }
 
 TARGETED_ENTITY_CODE_POS = 0x85a74a
@@ -117,10 +129,6 @@ class MemoryManipulator(Singleton):
             self.pymem = Pymem()
             self.pymem.open_process_from_id(self.pid)
             self.target_ptr = self.pymem.allocate(8)
-            self.target_event = self.pymem.allocate(8)
-            self.target_ptr_volatile = self.pymem.allocate(8)
-            self._inject_targeted_entity_tracking()
-            self.is_init = True
 
     def clear_cache(self):
         """Clear the reference look-up cache of the memory manipulator."""

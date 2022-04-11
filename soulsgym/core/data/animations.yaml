@@ -91,8 +91,8 @@ boss:
       - Attack3014_P1
       - Attack3015_P1
       - Attack3029_P1
-      - ThrowAttack_P1
       - ThrowAtk_P1
+      - ThrowDef
     movement:
       - WalkFrontBattle
       - SABlend_Add_Front
@@ -109,3 +109,4 @@ boss:
       - TurnBattle_Left180
       - SABlend_Add_Back
       - SABreak
+      - DamageParryEnemy1

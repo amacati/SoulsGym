@@ -4,22 +4,6 @@ from typing import Union
 import numpy as np
 
 
-def distance(coords_a: list, coords_b: list, flat: bool = True) -> np.ndarray:
-    """Calculate the distance between two positions.
-
-    Args:
-        coords_a: First position.
-        coords_b: Second position.
-        flat: Toggle between 3D and projected 2D distance.
-
-    Returns:
-        The distance in meters.
-    """
-    coords_a, coords_b = np.array(coords_a), np.array(coords_b)
-    dim = 2 if flat else 3
-    return np.linalg.norm(coords_a[0:dim] - coords_b[0:dim])
-
-
 def wrap_to_pi(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     """Wrap an angle into the interval of [-pi, pi].
 
