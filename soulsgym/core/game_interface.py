@@ -232,26 +232,26 @@ class Game:
     def player_stats(self, stats: Tuple[int]):
         assert len(stats) == 10, "Stats tuple dimension does not match requirements"
         base = self.mem.base_address + BASES["A"]
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["SoulLevel"], base=base), stats[0])
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vigor"], base=base), stats[1])
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Attunement"], base=base), stats[2])
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Endurance"], base=base), stats[3])
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vitality"], base=base), stats[4])
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Strength"], base=base), stats[5])
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Dexterity"], base=base), stats[6])
+        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["SoulLevel"], base=base),
+                           stats[0])
+        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vigor"], base=base),
+                           stats[1])
+        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Attunement"], base=base),
+                           stats[2])
+        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Endurance"], base=base),
+                           stats[3])
+        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vitality"], base=base),
+                           stats[4])
+        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Strength"], base=base),
+                           stats[5])
+        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Dexterity"], base=base),
+                           stats[6])
         self.mem.write_int(
             self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Intelligence"], base=base), stats[7])
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Faith"], base=base), stats[8])
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Luck"], base=base), stats[9])
+        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Faith"], base=base),
+                           stats[8])
+        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Luck"], base=base),
+                           stats[9])
 
     def check_boss_flags(self, boss_id: str) -> bool:
         """Check if the boss flags are correct.
@@ -309,14 +309,14 @@ class Game:
         flag = 1 if val else 0
         base = self.mem.base_address + BASES["GameFlagData"]
         # Encountered flag
-        self.mem.write_bit(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
-                                                    base=base), 5, flag)
+        self.mem.write_bit(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base), 5, flag)
         # Sword pulled out flag
-        self.mem.write_bit(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
-                                                    base=base), 6, flag)
+        self.mem.write_bit(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base), 6, flag)
         # Defeated flag
-        self.mem.write_bit(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
-                                                    base=base), 7, 0)
+        self.mem.write_bit(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base), 7, 0)
 
     def get_boss_max_hp(self, boss_id: str):
         if boss_id == "iudex":
@@ -345,8 +345,8 @@ class Game:
             The current hit points of Iudex.
         """
         base = self.mem.base_address + BASES["IudexA"]
-        return self.mem.read_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexHP"],
-                                                          base=base))
+        return self.mem.read_int(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexHP"], base=base))
 
     @iudex_hp.setter
     def iudex_hp(self, hp: int):
@@ -380,13 +380,14 @@ class Game:
         Returns:
             The pose [x, y, z, a] for Iudex or zeros if Iudex is not in fight mode.
         """
-        base = self.mem.base_address + BASES["IudexC"]
+        base = self.mem.base_address + BASES["IudexA"]
         try:
-            buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseX"],
-                                                                base=base), length=16)
+            buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseA"],
+                                                                base=base),
+                                       length=24)
         except MemoryReadError:
             return np.zeros(4)
-        x, z, y, a = struct.unpack('ffff', buff)  # Order as in the memory structure.
+        a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure
         return np.array([x, y, z, a])
 
     @iudex_pose.setter
@@ -398,7 +399,7 @@ class Game:
         """
         game_speed = self.global_speed
         self.pause_game()
-        base = self.mem.base_address + BASES["IudexC"]
+        base = self.mem.base_address + BASES["IudexA"]
         x_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseX"], base=base)
         y_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseY"], base=base)
         z_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseZ"], base=base)
@@ -425,9 +426,10 @@ class Game:
         """
         # animation string has maximum of 20 chars (utf-16)
         base = self.mem.base_address + BASES["IudexA"]
-        return self.mem.read_string(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAnimation"], base=base),
-            40, codec="utf-16")
+        return self.mem.read_string(self.mem.resolve_address(
+            VALUE_ADDRESS_OFFSETS["IudexAnimation"], base=base),
+                                    40,
+                                    codec="utf-16")
 
     def set_boss_attacks(self, boss_id: str, flag: bool):
         if boss_id == "iudex":
@@ -444,17 +446,18 @@ class Game:
             True if Iudex is allowed to attack, else False.
         """
         base = self.mem.base_address + BASES["IudexA"]
-        no_atk = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"],
-                                     base=base), 1)  # Checks if attacks are forbidden
-        return no_atk == 0
+        no_atk = self.mem.read_bytes(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"], base=base),
+            1)  # Checks if attacks are forbidden
+        return (no_atk[0] & 64) == 0  # Flag is saved in bit 6 (including 0)
 
     @iudex_attacks.setter
     def iudex_attacks(self, val: bool):
-        flag = not val  # Flag has to be False if Iudex is allowed to attack
+        flag = not val
         base = self.mem.base_address + BASES["IudexA"]
+        # Flag is saved in bit 6 (including 0)
         self.mem.write_bit(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"], base=base), 0, int(flag)
-            )
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"], base=base), 6, flag)
 
     @property
     def camera_pose(self) -> np.ndarray:
@@ -549,16 +552,16 @@ class Game:
             True if the player is currently locked on a target, else False.
         """
         base = self.mem.base_address + BASES["LockOn"]
-        buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOn"],
-                                                            base=base), 1)
+        buff = self.mem.read_bytes(
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOn"], base=base), 1)
         lock_on = struct.unpack("?", buff)[0]  # Interpret buff as boolean
         # We suspect the lock on flag actually signals the alignment of the target with the camera.
         # If lock_on is False, we therefore wait a small amount of time and recheck to make sure we
         # don't get too many False negatives
         if not lock_on:
             time.sleep(0.05)
-            buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOn"],
-                                                                base=base), 1)
+            buff = self.mem.read_bytes(
+                self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOn"], base=base), 1)
             lock_on = struct.unpack("?", buff)[0]
         return lock_on
 

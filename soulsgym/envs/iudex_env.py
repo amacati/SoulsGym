@@ -78,6 +78,7 @@ class IudexEnv(SoulsEnv):
         self.done = False
         self._game_input.reset()
         self.game.pause_game()
+        self.game.clear_cache()  # Todo: remove
         player_init_pose = coordinates["iudex"]["player_init_pose"]
         iudex_init_pose = coordinates["iudex"]["boss_init_pose"]
         game_log = self._game_logger.log()
@@ -231,24 +232,25 @@ class IudexEnv(SoulsEnv):
         if not self.game.check_boss_flags("iudex"):
             logger.debug("_reset_inner_check failed: Iudex flags not set properly")
             return False
-        # We need the position tolerance to be greater than for the regular check because the player
-        # might finish an animation from a previous episode that moves him away from the teleport
-        # coordinates
-        if np.linalg.norm(game_log.player_pose[:2] -
-                          coordinates["iudex"]["player_init_pose"][:2]) > 10:
-            logger.debug("_reset_inner_check failed: Player position out of tolerances")
+        # Make sure the player and Iudex are still within arena bounds
+        bounds = (low < pos < high for low, pos, high in zip(
+            self.env_args.space_coords_low, game_log.player_pose, self.env_args.space_coords_high))
+        if not all(bounds):
+            logger.debug("_reset_inner_check failed: Player position out of arena bounds")
             logger.debug(game_log)
             return False
-        # We need to stay sensitive to changes in z to detect glitching through the arena floor
-        if game_log.player_pose[2] < self.env_args.space_coords_low[2]:
-            logger.debug("_reset_inner_check failed: Player z coordinate is out of tolerances")
+        bounds = (low < pos < high for low, pos, high in zip(
+            self.env_args.space_coords_low, game_log.boss_pose, self.env_args.space_coords_high))
+        if not all(bounds):
+            logger.debug("_reset_inner_check failed: Iudex position out of arena bounds")
             logger.debug(game_log)
             return False
-        if game_log.player_hp != game_log.player_max_hp:
-            logger.debug("_reset_check failed: Player HP is not at maximum")
+        # Player and Iudex have to be alive
+        if game_log.player_hp <= 0:
+            logger.debug("_reset_check failed: Player HP below 1")
             return False
-        if game_log.boss_hp != game_log.boss_max_hp:
-            logger.debug("_reset_check failed: Boss HP is not at maximum")
+        if game_log.boss_hp <= 0:
+            logger.debug("_reset_check failed: Boss HP below 1")
             return False
         return True
 

@@ -10,6 +10,7 @@ from collections import deque
 import gym
 import yaml
 import numpy as np
+from pymem.exception import MemoryReadError
 
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.logger import Logger, GameState
@@ -17,7 +18,7 @@ from soulsgym.core.game_interface import Game
 from soulsgym.core.static import coordinates, actions, player_animations, player_stats
 from soulsgym.core.static import boss_animations
 from soulsgym.core.game_window import GameWindow
-from soulsgym.exception import LockOnFailure, ResetNeeded, InvalidPlayerStateError
+from soulsgym.exception import GameStateError, LockOnFailure, ResetNeeded, InvalidPlayerStateError
 
 logger = logging.getLogger(__name__)
 
@@ -40,11 +41,15 @@ class SoulsEnv(gym.Env, ABC):
         self.action_space = gym.spaces.Discrete(len(actions))
         self._internal_state = None
         self.done = False
-        self._game_logger = Logger(self.ENV_ID)
         self._game_input = GameInput()
         self._game_window = GameWindow()
         self._game_check()
         self.game = Game()
+        try:
+            self._game_logger = Logger(self.ENV_ID)
+        except MemoryReadError:
+            logger.error("__init__: Player is not loaded into the game")
+            raise GameStateError("Player is not loaded into the game")
         self.game.lock_on_range = 50  # Increase lock on range for bosses
         self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
         self.game.resume_game()  # In case gym crashed while paused
@@ -134,7 +139,7 @@ class SoulsEnv(gym.Env, ABC):
         time.sleep(self._step_size)
         self.game.pause_game()
         # TODO: REMOVE
-        # self.img_cache.append(self._game_window.screenshot())
+        self.img_cache.append(self._game_window.screenshot())
         # END TODO
         log = self._game_logger.log()
         # Critical animations need special recovery routines
