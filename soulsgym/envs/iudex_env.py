@@ -61,8 +61,8 @@ class IudexEnv(SoulsEnv):
                 raise RetriesExceededError("Iudex environment setup failed")
             init_retries -= 1
             self._iudex_setup()
-            if not np.linalg.norm(coordinates["iudex"]["fog_wall"][:3] -
-                                  self.game.player_pose[:3]) < 1:
+            dist = np.linalg.norm(coordinates["iudex"]["fog_wall"][:3] - self.game.player_pose[:3])
+            if not dist < 1:
                 continue  # Teleport not successful, reset again
             if self.game.player_hp == 0:
                 continue  # Player has died on teleport
@@ -84,36 +84,21 @@ class IudexEnv(SoulsEnv):
         game_log = self._game_logger.log()
         self.game.iudex_attacks = False
         # Wait for the teleport to take effect. This ensures lock on is possible in the next steps
-        while (np.linalg.norm(self.game.player_pose[:3] - player_init_pose[:3]) > 1
-               or  # noqa: W504, E501
-               np.linalg.norm(self.game.iudex_pose[:3] - iudex_init_pose[:3]) > 1):
-            self.game.player_pose = player_init_pose
-            self.game.iudex_pose = iudex_init_pose
-            time.sleep(0.01)  # Allow teleport to take effect
-            game_log = self._game_logger.log()
-            if not self._reset_inner_check(game_log):  # Make sure the player and Iudex are alive
+        player_distance = np.linalg.norm(self.game.player_pose[:3] - player_init_pose[:3])
+        iudex_distance = np.linalg.norm(self.game.iudex_pose[:3] - iudex_init_pose[:3])
+        while player_distance > 1 or iudex_distance > 1:
+            if not self._reset_position():
                 self.game.reload()
                 self._env_setup()
                 return self.reset()
-            self.game.resume_game()
-            time.sleep(0.1)  # Give animations time to finish if they block the teleport
-            self.game.pause_game()
+            player_distance = np.linalg.norm(self.game.player_pose[:3] - player_init_pose[:3])
+            iudex_distance = np.linalg.norm(self.game.iudex_pose[:3] - iudex_init_pose[:3])
         self.game.reset_player_hp()
         self.game.reset_player_sp()
         self.game.reset_boss_hp("iudex")
         self.game.weapon_durability = 70  # 70 is maximum durability
         while "Walk" not in game_log.boss_animation or game_log.player_animation != "Idle":
-            self.game.player_pose = player_init_pose
-            self.game.iudex_pose = iudex_init_pose
-            time.sleep(0.01)  # Allow teleport to take effect
-            self.game.resume_game()
-            self.game.global_speed = 3  # Recover faster on reset
-            time.sleep(0.1)
-            self.game.pause_game()
-            game_log = self._game_logger.log()
-            # Check if player or boss have died. If so, completely reset everything
-            if not self._reset_inner_check(game_log):
-                self.game.resume_game()
+            if not self._reset_position():
                 self.game.reload()  # Guarantees player is in Idle mode at the bonfire
                 self._env_setup()
                 return self.reset()
@@ -127,6 +112,18 @@ class IudexEnv(SoulsEnv):
         self._internal_state = self._game_logger.log()
         assert self._reset_check(self._internal_state), f"Fail in GameState {self._internal_state}"
         return self._internal_state
+
+    def _reset_position(self) -> bool:
+        self.game.player_pose = coordinates["iudex"]["player_init_pose"]
+        self.game.iudex_pose = coordinates["iudex"]["boss_init_pose"]
+        time.sleep(0.01)  # Allow teleport to take effect
+        game_log = self._game_logger.log()
+        if not self._reset_inner_check(game_log):  # Make sure the player and Iudex are alive
+            return False
+        self.game.resume_game()
+        time.sleep(0.1)  # Give animations time to finish if they block the teleport
+        self.game.pause_game()
+        return True
 
     def _iudex_setup(self) -> None:
         self.game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
@@ -167,8 +164,8 @@ class IudexEnv(SoulsEnv):
                 break
             time.sleep(0.1)
         self.game.camera_pose = self.env_args.cam_setup_orient
-        if np.linalg.norm(self.game.player_pose[:3] -
-                          coordinates["iudex"]["post_fog_wall"][:3]) > 0.1:
+        dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"][:3])
+        if dist > 0.1:
             return  # Player has not entered the fog wall, abort early
         self._game_input.single_action("forward", press_time=4.0)  # Enter the arena
         self._lock_on()
@@ -202,8 +199,8 @@ class IudexEnv(SoulsEnv):
             logger.debug("_reset_check failed: Iudex flags not set properly")
             logger.debug(game_log)
             return False
-        if np.linalg.norm(game_log.player_pose[:3] -
-                          coordinates["iudex"]["player_init_pose"][:3]) > 2:
+        dist = np.linalg.norm(game_log.player_pose[:3] - coordinates["iudex"]["player_init_pose"][:3])  # noqa: E501, yapf: disable
+        if dist > 2:
             logger.debug("_reset_check failed: Player position out of tolerances")
             logger.debug(game_log)
             return False

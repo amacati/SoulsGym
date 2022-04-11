@@ -18,7 +18,7 @@ from soulsgym.core.game_interface import Game
 from soulsgym.core.static import coordinates, actions, player_animations, player_stats
 from soulsgym.core.static import boss_animations
 from soulsgym.core.game_window import GameWindow
-from soulsgym.exception import GameStateError, LockOnFailure, ResetNeeded, InvalidPlayerStateError
+from soulsgym.exception import GameStateError, ResetNeeded, InvalidPlayerStateError
 
 logger = logging.getLogger(__name__)
 
@@ -263,6 +263,4 @@ class SoulsEnv(gym.Env, ABC):
                         self.img_cache.append(self._game_window.screenshot())
                         logger.warning("_lock_on: Failed to reestablish lock on")
                         # Player is still oriented towards Iudex, so we should be fine
-                        # logger.error(self._game_logger.log())
-                        # raise LockOnFailure("Failed to reestablish lock on")
         self.game.global_speed = game_speed

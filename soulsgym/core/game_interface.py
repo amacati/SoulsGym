@@ -47,9 +47,9 @@ class Game:
         Returns:
             The player's current hit points.
         """
-        return self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerHP"],
-                                     base=self.mem.base_address + BASES["B"]))
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerHP"], base=base)
+        return self.mem.read_int(address)
 
     @player_hp.setter
     def player_hp(self, hp: int):
@@ -58,9 +58,9 @@ class Game:
         Args:
             hp: The amount of hit points to set. Zeroing this value will kill the player.
         """
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerHP"],
-                                     base=self.mem.base_address + BASES["B"]), hp)
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerHP"], base=base)
+        self.mem.write_int(address, hp)
 
     @property
     def player_sp(self) -> int:
@@ -69,9 +69,9 @@ class Game:
         Returns:
             The player's current stamina points.
         """
-        return self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerSP"],
-                                     base=self.mem.base_address + BASES["B"]))
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerSP"])
+        return self.mem.read_int(address, base=base)
 
     @player_sp.setter
     def player_sp(self, sp: int):
@@ -80,9 +80,9 @@ class Game:
         Args:
             sp: The amount of stamina points to set.
         """
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerSP"],
-                                     base=self.mem.base_address + BASES["B"]), sp)
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerSP"], base=base)
+        self.mem.write_int(address, sp)
 
     @property
     def player_max_hp(self) -> int:
@@ -91,9 +91,9 @@ class Game:
         Returns:
             The maximum hit points the player can currently have.
         """
-        return self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerMaxHP"],
-                                     base=self.mem.base_address + BASES["B"]))
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerMaxHP"], base=base)
+        return self.mem.read_int(address)
 
     @player_max_hp.setter
     def player_max_hp(self, _: int):
@@ -106,9 +106,9 @@ class Game:
         Returns:
             The maximum stamina points the player can currently have.
         """
-        return self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerMaxSP"],
-                                     base=self.mem.base_address + BASES["B"]))
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerMaxSP"], base=base)
+        return self.mem.read_int(address)
 
     @player_max_sp.setter
     def player_max_sp(self, _: int):
@@ -131,12 +131,9 @@ class Game:
         Returns:
             The current player pose as [x, y, z, a].
         """
-        buff = self.mem.read_bytes(
-            self.mem.resolve_address(
-                VALUE_ADDRESS_OFFSETS["PlayerA"],
-                base=self.mem.base_address +  # noqa: W504, E501
-                BASES["B"]),
-            length=24)
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerA"], base=base)
+        buff = self.mem.read_bytes(address, length=24)
         a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure.
         return np.array([x, y, z, a])
 
@@ -174,11 +171,9 @@ class Game:
             The current animation of the player as an identifier string.
         """
         # animation string has maximum of 20 chars (utf-16)
-        return self.mem.read_string(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerAnimation"],
-                                     base=self.mem.base_address + BASES["B"]),
-            40,  # noqa: E126
-            codec="utf-16")
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerAnimation"], base=base)
+        return self.mem.read_string(address, 40, codec="utf-16")
 
     @player_animation.setter
     def player_animation(self, animation: str):
@@ -196,36 +191,26 @@ class Game:
         Returns:
             A Tuple with all player attributes in the same order as in the game.
         """
+        base = self.mem.base_address + BASES["A"]
         sl = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["SoulLevel"],
-                                     base=self.mem.base_address + BASES["A"]))
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["SoulLevel"], base=base))
         vigor = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vigor"],
-                                     base=self.mem.base_address + BASES["A"]))
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vigor"], base=base))
         att = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Attunement"],
-                                     base=self.mem.base_address + BASES["A"]))
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Attunement"], base=base))
         endurance = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Endurance"],
-                                     base=self.mem.base_address + BASES["A"]))
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Endurance"], base=base))
         vit = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vitality"],
-                                     base=self.mem.base_address + BASES["A"]))
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vitality"], base=base))
         strength = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Strength"],
-                                     base=self.mem.base_address + BASES["A"]))
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Strength"], base=base))
         dex = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Dexterity"],
-                                     base=self.mem.base_address + BASES["A"]))
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Dexterity"], base=base))
         intelligence = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Intelligence"],
-                                     base=self.mem.base_address + BASES["A"]))
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Intelligence"], base=base))
         faith = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Faith"],
-                                     base=self.mem.base_address + BASES["A"]))
-        luck = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Luck"],
-                                     base=self.mem.base_address + BASES["A"]))
+            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Faith"], base=base))
+        luck = self.mem.read_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Luck"], base=base))
         return (sl, vigor, att, endurance, vit, strength, dex, intelligence, faith, luck)
 
     @player_stats.setter
@@ -290,9 +275,9 @@ class Game:
         Returns:
             True if all flags are correct, False otherwise.
         """
-        buff = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"],
-                                     base=self.mem.base_address + BASES["GameFlagData"]))
+        base = self.mem.base_address + BASES["GameFlagData"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base)
+        buff = self.mem.read_int(address)
         # The leftmost 3 bits tell if iudex is defeated(7), encountered(6) and his sword is pulled
         # out (5). We need him encountered and his sword pulled out but not defeated, so shifting
         # the bits by five has to be equal to xxxxx011 (binary). Therefore we check if the value is
@@ -309,28 +294,57 @@ class Game:
         flag = 1 if val else 0
         base = self.mem.base_address + BASES["GameFlagData"]
         # Encountered flag
-        self.mem.write_bit(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base), 5, flag)
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base)
+        self.mem.write_bit(address, 5, flag)
         # Sword pulled out flag
-        self.mem.write_bit(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base), 6, flag)
+        self.mem.write_bit(address, 6, flag)
         # Defeated flag
-        self.mem.write_bit(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base), 7, 0)
+        self.mem.write_bit(address, 7, 0)
 
-    def get_boss_max_hp(self, boss_id: str):
+    def get_boss_max_hp(self, boss_id: str) -> int:
+        """Get the maximum health points of a boss.
+
+        Args:
+            boss_id: The boss ID.
+
+        Returns:
+            The maximum health points of the specified boss.
+
+        Raises:
+            KeyError: On unsupported `boss_id`.
+        """
         if boss_id == "iudex":
             return self.iudex_max_hp
         logger.error(f"Boss name {boss_id} currently not supported")
         raise KeyError(f"Boss name {boss_id} currently not supported")
 
-    def get_boss_hp(self, boss_id: str):
+    def get_boss_hp(self, boss_id: str) -> int:
+        """Get the health points of a boss.
+
+        Args:
+            boss_id: The boss ID.
+
+        Returns:
+            The health points of the specified boss.
+
+        Raises:
+            KeyError: On unsupported `boss_id`
+        """
         if boss_id == "iudex":
             return self.iudex_hp
         logger.error(f"Boss name {boss_id} currently not supported")
         raise KeyError(f"Boss name {boss_id} currently not supported")
 
     def set_boss_hp(self, boss_id: str, hp: int):
+        """Set the health points of a boss.
+
+        Args:
+            boss_id: The boss ID.
+            hp: The health points assigned to the boss.
+
+        Raises:
+            KeyError: On unsupported `boss_id`.
+        """
         if boss_id == "iudex":
             self.iudex_hp = hp
         else:
@@ -345,8 +359,8 @@ class Game:
             The current hit points of Iudex.
         """
         base = self.mem.base_address + BASES["IudexA"]
-        return self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexHP"], base=base))
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexHP"], base=base)
+        return self.mem.read_int(address)
 
     @iudex_hp.setter
     def iudex_hp(self, hp: int):
@@ -357,17 +371,36 @@ class Game:
         """
         assert 0 <= hp <= 1037  # Iudex HP has to lie in this range
         base = self.mem.base_address + BASES["IudexA"]
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexHP"], base=base),
-                           hp)
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexHP"], base=base)
+        self.mem.write_int(address, hp)
 
     def reset_boss_hp(self, boss_id: str):
+        """Reset the health points of a boss.
+
+        Args:
+            boss_id: The boss ID.
+
+        Raises:
+            KeyError: On unsupported `boss_id`.
+        """
         if boss_id == "iudex":
             self.iudex_hp = self.iudex_max_hp
         else:
             logger.error(f"Boss name {boss_id} currently not supported")
             raise KeyError(f"Boss {boss_id} not supported!")
 
-    def get_boss_pose(self, boss_id: str):
+    def get_boss_pose(self, boss_id: str) -> np.ndarray:
+        """Get the pose of a boss.
+
+        Args:
+            boss_id: The boss ID.
+
+        Returns:
+            The pose of the specified boss.
+
+        Raises:
+            KeyError: On unsupported `boss_id`.
+        """
         if boss_id == "iudex":
             return self.iudex_pose
         logger.error(f"Boss name {boss_id} currently not supported")
@@ -378,15 +411,11 @@ class Game:
         """Read Iudex pose.
 
         Returns:
-            The pose [x, y, z, a] for Iudex or zeros if Iudex is not in fight mode.
+            The pose [x, y, z, a] for Iudex.
         """
         base = self.mem.base_address + BASES["IudexA"]
-        try:
-            buff = self.mem.read_bytes(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseA"],
-                                                                base=base),
-                                       length=24)
-        except MemoryReadError:
-            return np.zeros(4)
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseA"], base=base)
+        buff = self.mem.read_bytes(address, length=24)
         a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure
         return np.array([x, y, z, a])
 
@@ -410,7 +439,18 @@ class Game:
         self.mem.write_float(a_addr, coordinates[3])
         self.global_speed = game_speed
 
-    def get_boss_animation(self, boss_id: str):
+    def get_boss_animation(self, boss_id: str) -> str:
+        """Get the current animation of a boss.
+
+        Args:
+            boss_id: The boss ID.
+
+        Returns:
+            The animation of the specified boss.
+
+        Raises:
+            KeyError: On unsupported `boss_id`.
+        """
         if boss_id == "iudex":
             return self.iudex_animation
         else:
@@ -426,12 +466,18 @@ class Game:
         """
         # animation string has maximum of 20 chars (utf-16)
         base = self.mem.base_address + BASES["IudexA"]
-        return self.mem.read_string(self.mem.resolve_address(
-            VALUE_ADDRESS_OFFSETS["IudexAnimation"], base=base),
-                                    40,
-                                    codec="utf-16")
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAnimation"], base=base)
+        return self.mem.read_string(address, 40, codec="utf-16")
 
     def set_boss_attacks(self, boss_id: str, flag: bool):
+        """Set the `allow_attack` flag of a boss.
+
+        Args:
+            boss_id: The boss ID.
+
+        Raises:
+            KeyError: On unsupported `boss_id`.
+        """
         if boss_id == "iudex":
             self.iudex_attacks = flag
         else:
@@ -446,18 +492,17 @@ class Game:
             True if Iudex is allowed to attack, else False.
         """
         base = self.mem.base_address + BASES["IudexA"]
-        no_atk = self.mem.read_bytes(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"], base=base),
-            1)  # Checks if attacks are forbidden
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"], base=base)
+        no_atk = self.mem.read_bytes(address, 1)  # Checks if attacks are forbidden
         return (no_atk[0] & 64) == 0  # Flag is saved in bit 6 (including 0)
 
     @iudex_attacks.setter
     def iudex_attacks(self, val: bool):
         flag = not val
         base = self.mem.base_address + BASES["IudexA"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"], base=base)
         # Flag is saved in bit 6 (including 0)
-        self.mem.write_bit(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"], base=base), 6, flag)
+        self.mem.write_bit(address, 6, flag)
 
     @property
     def camera_pose(self) -> np.ndarray:
@@ -467,12 +512,9 @@ class Game:
             The current camera rotation as normal vector and position as coordinates
             [x, y, z, nx, ny, nz].
         """
-        buff = self.mem.read_bytes(
-            self.mem.resolve_address(
-                VALUE_ADDRESS_OFFSETS["CamQ1"],
-                base=self.mem.base_address +  # noqa: W504, E501
-                BASES["Cam"]),
-            length=36)
+        base = self.mem.base_address + BASES["Cam"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["CamQ1"], base=base)
+        buff = self.mem.read_bytes(address, length=36)
         # cam orientation seems to be given as a normal vector for the camera plane. As with the
         # position, the game switches y and z
         _, nx, nz, ny, x, z, y = struct.unpack('f' + 4 * 'x' + 'fff' + 4 * 'x' + 'fff', buff)
@@ -533,16 +575,16 @@ class Game:
         Returns:
             The weapon durability value.
         """
-        return self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["WeaponDurability"],
-                                     base=self.mem.base_address + BASES["WeaponDurability"]))
+        base = self.mem.base_address + BASES["WeaponDurability"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["WeaponDurability"], base=base)
+        return self.mem.read_int(address)
 
     @weapon_durability.setter
     def weapon_durability(self, val: int):
         assert 0 <= val <= 70, "Weapon durability has to be in [0, 70]"
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["WeaponDurability"],
-                                     base=self.mem.base_address + BASES["WeaponDurability"]), val)
+        base = self.mem.base_address + BASES["WeaponDurability"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["WeaponDurability"], base=base)
+        self.mem.write_int(address, val)
 
     @property
     def lock_on(self) -> bool:
@@ -552,16 +594,15 @@ class Game:
             True if the player is currently locked on a target, else False.
         """
         base = self.mem.base_address + BASES["LockOn"]
-        buff = self.mem.read_bytes(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOn"], base=base), 1)
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOn"], base=base)
+        buff = self.mem.read_bytes(address, 1)
         lock_on = struct.unpack("?", buff)[0]  # Interpret buff as boolean
         # We suspect the lock on flag actually signals the alignment of the target with the camera.
         # If lock_on is False, we therefore wait a small amount of time and recheck to make sure we
         # don't get too many False negatives
         if not lock_on:
-            time.sleep(0.05)
-            buff = self.mem.read_bytes(
-                self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOn"], base=base), 1)
+            time.sleep(0.01)
+            buff = self.mem.read_bytes(address, 1)
             lock_on = struct.unpack("?", buff)[0]
         return lock_on
 
@@ -572,9 +613,9 @@ class Game:
         Returns:
             The lock on range.
         """
-        dist = self.mem.read_float(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOnBonusRange"],
-                                     base=self.mem.base_address + BASES["LockOnParam"]))
+        base = self.mem.base_address + BASES["LockOnParam"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOnBonusRange"], base=base)
+        dist = self.mem.read_float(address)
         return dist + 15  # Default lock on range is 15
 
     @lock_on_range.setter
@@ -585,9 +626,9 @@ class Game:
             val: Lock on range (minimum range is 15).
         """
         assert val >= 15, "Bonus lock on range must be greater or equal default (15)"
-        self.mem.write_float(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOnBonusRange"],
-                                     base=self.mem.base_address + BASES["LockOnParam"]), val - 15)
+        base = self.mem.base_address + BASES["LockOnParam"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOnBonusRange"], base=base)
+        self.mem.write_float(address, val - 15)
 
     @property
     def los_lock_on_deactivate_time(self) -> float:
@@ -596,15 +637,15 @@ class Game:
         Returns:
             The los lock on deactivation time.
         """
-        return self.mem.read_float(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LoSLockOnTime"],
-                                     base=self.mem.base_address + BASES["LockOnParam"]))
+        base = self.mem.base_address + BASES["LockOnParam"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LoSLockOnTime"], base=base)
+        return self.mem.read_float(address)
 
     @los_lock_on_deactivate_time.setter
     def los_lock_on_deactivate_time(self, val: float):
-        self.mem.write_float(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LoSLockOnTime"],
-                                     base=self.mem.base_address + BASES["LockOnParam"]), val)
+        base = self.mem.base_address + BASES["LockOnParam"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LoSLockOnTime"], base=base)
+        self.mem.write_float(address, val)
 
     @property
     def global_speed(self) -> float:
