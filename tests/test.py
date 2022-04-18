@@ -5,8 +5,8 @@ import datetime
 from PIL import Image
 
 import gym
-import json
-import soulsgym  # noqa: F401
+import soulsgym
+from soulsgym.core.game_input import GameInput  # noqa: F401
 
 if __name__ == "__main__":
     logging.basicConfig(filename="soulsgym.log",
@@ -34,7 +34,10 @@ if __name__ == "__main__":
             print(f"Current gym uptime: {str(datetime.timedelta(seconds=seconds))}")
             i += 1
     finally:
-        env.close()
+        # game_input = GameInput()
+        # game_input._press_key(0x12)
+        # game_input._press_key(0x73)
+        # game_input.reset()
         t_end = time.time()
         root = Path(__file__).parent / "debug"
         root.mkdir(exist_ok=True)
@@ -42,11 +45,6 @@ if __name__ == "__main__":
         for idx, img in enumerate(env.img_cache):
             im = Image.fromarray(img)
             im.save(root / ("img" + f"{idx:05d}" + ".png"))
-        with open("unknown_animations.json", "w") as f:
-            anim_dict = {
-                "boss": env.unknown_boss_animations,
-                "player": env.unknown_player_animations
-            }
-            json.dump(anim_dict, f)
         print(states)
         print(f"Total gym run time: {str(datetime.timedelta(seconds=round(t_end-t_start)))}")
+        env.close()

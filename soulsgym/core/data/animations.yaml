@@ -1,75 +1,82 @@
 player:  # Numbers indicate duration in 0.1s (gym sample rate)
   standard:
     # Damage
-    - AddDamageDefault
-    - AddDamageStartLeft
-    - AddDamageStartRight
-    - AddDamageStartFront
-    - AddDamageStartBack
-    - GuardBreakWall
-    - DamageSmall
-    - DamageMiddle
-    - DamageUpper
-    - DamageLarge
-    - DamageExLarge
-    - DamageFling
-    - DamagePush
-    - DamageSmallBlow
-    - ThrowAtk
-    - ThrowDef
-    - EStepDown
-    - GuardDamageSmall
-    - GuardBreak
-    # Movemen
-    - HandChangeStart
-    - DashStop
-    - Idle
-    - Move
-    - None
-    - BackStepNomal
-    - Jump
-    - JumpLong
-    - RollingMedium
-    - RollingMediumSelftra
-    - RunStopFront
-    - RunStopBack
-    - RunStopLeft
-    - RunStopRight
-    - QuickTurnLeft180
-    - QuickTurnRight180
-    - LandFaceDown
+    AddDamageDefault: 5
+    AddDamageStartLeft: 5
+    AddDamageStartRight: 5
+    AddDamageStartFront: 5
+    AddDamageStartBack: 5
+    GuardBreakWall: 5
+    DamageSmall: 4
+    DamageMiddle: 8
+    DamageUpper: 20
+    DamageLarge: 11
+    DamageExLarge: 18
+    DamageFling: 9
+    DamagePush: 10
+    DamageSmallBlow: 15
+    ThrowAtk: 32  # Parry attack
+    ThrowDef: 63
+    EStepDown: 6
+    GuardDamageSmall: 3
+    GuardBreak: 14
+    # Movement
+    DashStop: 1
+    Idle: 1
+    Move: 1
+    None: 1
+    BackStepNomal: 6  # Not a typo, animation is called like that
+    RollingMedium: 7
+    RollingMediumSelftra: 7
+    RunStopFront: 1
+    RunStopBack: 1
+    RunStopLeft: 1
+    RunStopRight: 1
+    QuickTurnLeft180: 2
+    QuickTurnRight180: 2
     # Attacks
-    - GuardStart
-    - GuardEnd
-    - AttackRightLight1
-    - AttackRightLight2
-    - AttackRightLight3
-    - AttackRightLightStep
-    - AttackRightLightDash
-    - AttackBothLight1
-    - AttackBothLight2
-    - AttackBothLight3
-    - AttackBothLightStep
-    - AttackBothLightKick
-    - AttackBothDash
-    - AttackRightHeavy1Sta
-    - AttackRightHeavy1Sub
-    - AttackRightHeavy1End
-    - AttackRightHeavy2Sta
-    - AttackRightHeavy2End
-    - AttackBothHeavy1Star
-    - AttackRightHeavyKick
-    - AttackRightLightKick
-    - ParryLeftStart
-    - GuardOn
-    - DrawStanceRightAttac
-    - LandLow
+    AttackRightLight1: 7
+    AttackRightLight2: 7
+    AttackRightLight3: 7
+    AttackRightLightStep: 9
+    AttackRightLightDash: 10
+    AttackRightHeavy1Sta: 5
+    AttackRightHeavy1Sub: 1  # TODO: Verify
+    AttackRightHeavy1End: 5  # Only for follow up attacks, but 
+    AttackRightHeavy2Sta: 3
+    AttackRightHeavy2End: 7
+    ParryLeftStart: 8
+    LandLow: 1  # TODO: Verify
+    Land: 1
+    LandFaceDown: 25
+    FallStartFaceDown: 1
+    FallStart: 1
+    FallStartFaceUp: 1
+    FallLoopFaceUp: 1
+
+  unused:
+    GuardOn: 1
+    GuardStart: 1
+    GuardEnd: 1
+    HandChangeStart: 3
+    Jump: 5
+    JumpLong: 1  # Depends on how long the jump is, but the player is not able to jump, so irrelevant
+    AttackRightHeavyKick: 15
+    AttackRightLightKick: 10
+    DrawStanceRightAttac: 10
+    AttackBothHeavy1Star: 4
+    AttackBothHeavy1End: 4
+    AttackBothHeavy2Star: 4
+    AttackBothHeavy2End: 6
+    AttackBothLight1: 6
+    AttackBothLight2: 7
+    AttackBothLight3: 6
+    AttackBothLightStep: 9
+    AttackBothLightKick: 10
+    AttackBothDash: 10
+
   critical:  # Animations require special handling
-    - FallLoopFaceUp
-    - FallStartFaceDown
-    - FallStart
-    - FallStartFaceUp
-    - DeathIdle
+    DeathIdle: 1
 
 boss:
   iudex:

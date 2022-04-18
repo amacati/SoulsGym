@@ -52,6 +52,7 @@ class SoulsEnv(gym.Env, ABC):
             raise GameStateError("Player is not loaded into the game")
         self.game.lock_on_range = 50  # Increase lock on range for bosses
         self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
+        self.gravity = True
         self.game.resume_game()  # In case gym crashed while paused
         self.config_path = Path(__file__).parent / "config"
         self.env_args = self._load_env_args()
@@ -62,8 +63,6 @@ class SoulsEnv(gym.Env, ABC):
         logger.debug("Env init complete")
         # TODO: REMOVE
         self.img_cache = deque(maxlen=20)
-        self.unknown_boss_animations = []
-        self.unknown_player_animations = []
 
     @abstractmethod
     def reset(self) -> GameState:
@@ -101,7 +100,7 @@ class SoulsEnv(gym.Env, ABC):
         with open(self.config_path / (self.ENV_ID + ".yaml")) as f:
             return Namespace(**(yaml.load(f, Loader=yaml.SafeLoader)))
 
-    def step(self, action: np.ndarray) -> Tuple[GameState, float, bool, dict]:
+    def step(self, action: int) -> Tuple[GameState, float, bool, dict]:
         """Perform a step forward in the environment with a given action.
 
         Environment step size is 0.1s. The game is halted before and after the step. If the player
@@ -120,12 +119,20 @@ class SoulsEnv(gym.Env, ABC):
         if self.done:
             logger.error("step: Environment step called after environment was done")
             raise ResetNeeded("Environment step called after environment was done")
-        self._game_input.update(actions[action])
+        self._apply_action(action)
         self._step()
         reward = self.compute_reward(self._internal_state)
         if self.done:
             logger.debug("step: Episode finished")
         return self._internal_state, reward, self.done, {}
+
+    def _apply_action(self, action: int):
+        player_animation = self._internal_state.player_animation
+        player_animation_count = self._internal_state.player_animation_count
+        if player_animation_count >= player_animations["standard"].get(player_animation, 1):
+            self._game_input.update(actions[action])
+        else:
+            self._game_input.reset()
 
     def _step(self):
         """Perform the actual step ingame.
@@ -139,23 +146,23 @@ class SoulsEnv(gym.Env, ABC):
         time.sleep(self._step_size)
         self.game.pause_game()
         # TODO: REMOVE
-        self.img_cache.append(self._game_window.screenshot())
+        # self.img_cache.append(self._game_window.screenshot())
         # END TODO
         log = self._game_logger.log()
-        # Critical animations need special recovery routines
-        if log.player_animation in player_animations["critical"]:
-            self._handle_critical_animation(log)
+        if not self._step_check(log):
+            self._handle_critical_log(log)
             return
-        self._step_check(log)
         self._update_internal_state(log)
         self.game.reset_player_hp()
         self.game.reset_boss_hp(self.ENV_ID)
 
-    def _step_check(self, game_log: GameState):
+    def _step_check(self, game_log: GameState) -> bool:
         """Check if game and player state are within expected values.
 
+        Returns:
+            True if the check passed, else False.
+
         Raises:
-            LockOnFailure: Lock on was lost and could not be reestablished.
             InvalidPlayerStateError: Player state is outside of expected values.
         """
         # During grab attacks, the lock cannot be established
@@ -167,26 +174,25 @@ class SoulsEnv(gym.Env, ABC):
             logger.error(game_log)
             raise InvalidPlayerStateError("Player HP is 0")
         # Check if player is inside the borders of the arena
-        bounds = (low < pos < high for low, pos, high in zip(
-            self.env_args.space_coords_low, game_log.player_pose, self.env_args.space_coords_high))
+        bounds = (low < pos < high
+                  for low, pos, high in zip(self.env_args.space_coords_low, game_log.
+                                            player_pose[:2], self.env_args.space_coords_high))
         if not all(bounds):
             logger.error("_step_check: Player outside of arena bounds")
             logger.error(game_log)
             raise InvalidPlayerStateError("Player outside of arena bounds")
+        # Critical animations need special recovery routines
+        if game_log.player_animation in player_animations["critical"]:
+            return False
+        # Fall detection by lower state space bound on z coordinate
+        if self.env_args.space_coords_low[2] > game_log.player_pose[2]:
+            return False
         # Unknown player animation. Shouldn't happen, add animation to tables!
-        if (game_log.player_animation
-                not in player_animations["all"]) and (game_log.player_animation
-                                                      not in self.unknown_player_animations):
-            logger.error(f"_step: Unknown player animation {game_log.player_animation}")
-            self.unknown_player_animations.append(game_log.player_animation)
-            # raise InvalidPlayerStateError(f"Unknown player animation:
-            # {game_log.player_animation}")
-        if (game_log.boss_animation not in boss_animations[self.ENV_ID]["all"]) and (
-                game_log.boss_animation not in self.unknown_boss_animations):
-            self.unknown_boss_animations.append(game_log.boss_animation)
-            logger.error(f"_step: Unknown boss animation {game_log.boss_animation}")
-            # raise InvalidBossStateError(f"Unknown boss animation: {game_log.boss_animation}")
-        return
+        if game_log.player_animation not in player_animations["all"]:
+            logger.warning(f"_step: Unknown player animation {game_log.player_animation}")
+        if game_log.boss_animation not in boss_animations[self.ENV_ID]["all"]:
+            logger.warning(f"_step: Unknown boss animation {game_log.boss_animation}")
+        return True
 
     def _update_internal_state(self, game_log: GameState):
         """Update the internal game state.
@@ -204,11 +210,11 @@ class SoulsEnv(gym.Env, ABC):
         if self._internal_state.boss_animation == game_log.boss_animation:
             boss_animation_count = self._internal_state.boss_animation_count + 1
         else:
-            boss_animation_count = 0
+            boss_animation_count = 1
         if self._internal_state.player_animation == game_log.player_animation:
             player_animation_count = self._internal_state.player_animation_count + 1
         else:
-            player_animation_count = 0
+            player_animation_count = 1
         player_hp, boss_hp = self._internal_state.player_hp, self._internal_state.boss_hp
         # Update animation count and HP
         self._internal_state = game_log
@@ -222,15 +228,17 @@ class SoulsEnv(gym.Env, ABC):
             self._internal_state.boss_hp = 0
         self.done = self._internal_state.player_hp == 0 or self._internal_state.boss_hp == 0
 
-    def _handle_critical_animation(self, log: GameState):
-        if "Fall" in log.player_animation:
-            # Player is falling. Set 0 HP and rely on reset for teleport to prevent death
+    def _handle_critical_log(self, log: GameState):
+        # Player is falling. Set player log HP to 0 and eagerly reset to prevent reload
+        if log.player_pose[2] < self.env_args.space_coords_low[2]:
             log.player_hp = 0
             self._update_internal_state(log)
             self.game.reset_player_hp()
             self.game.reset_boss_hp(self.ENV_ID)
-            # Eagerly teleport player to safety so that the fall is guaranteed to be nonlethal
             self.game.player_pose = coordinates[self.ENV_ID]["player_init_pose"]
+        if log.player_animation in player_animations["critical"]:
+            log.player_hp = 0
+            self._update_internal_state(log)
 
     def close(self):
         """Unpause the game and kill the player to restore the original game state."""
@@ -239,6 +247,7 @@ class SoulsEnv(gym.Env, ABC):
         # Restore game parameter defaults
         self.game.lock_on_range = 15
         self.game.los_lock_on_deactivate_time = 2
+        self.gravity = True
         self.game.set_boss_attacks(self.ENV_ID, True)
         self.game.player_hp = 0  # Kill player to force game reload. Don't wait for completion
         logger.debug("SoulsEnv close successful")
@@ -251,16 +260,15 @@ class SoulsEnv(gym.Env, ABC):
         if self.game.player_animation not in ("ThrowAtk", "ThrowDef"):
             # Additional safeguard to make sure the player is currently not locked on
             if not self.game.lock_on:
-                for i in range(3):
-                    if target_pose is None:
-                        target_pose = self.game.get_boss_pose(self.ENV_ID)
+                if target_pose is None:
+                    target_pose = self.game.get_boss_pose(self.ENV_ID)
+                self.game.camera_pose = target_pose[:3] - self.game.player_pose[:3]
+                self._game_input.single_action("lockon")
+                time.sleep(0.01)
+                if not self.game.lock_on:
+                    logger.warning("_lock_on: Failed to reestablish lock on")
+                    # If the player is still oriented towards Iudex we essentially recover a lock on
+                    # behavior. Pressing lock on turns the camera towards the player orientation. We
+                    # therefore turn the camera towards Iudex again and continue without lock on
                     self.game.camera_pose = target_pose[:3] - self.game.player_pose[:3]
-                    self._game_input.single_action("lockon")
-                    time.sleep(0.01)
-                    if self.game.lock_on:
-                        break
-                    elif i == 2:  # Could not lock on after 3 retries
-                        self.img_cache.append(self._game_window.screenshot())
-                        logger.warning("_lock_on: Failed to reestablish lock on")
-                        # Player is still oriented towards Iudex, so we should be fine
         self.game.global_speed = game_speed

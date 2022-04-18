@@ -70,8 +70,8 @@ class Game:
             The player's current stamina points.
         """
         base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerSP"])
-        return self.mem.read_int(address, base=base)
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerSP"], base=base)
+        return self.mem.read_int(address)
 
     @player_sp.setter
     def player_sp(self, sp: int):
@@ -144,24 +144,18 @@ class Game:
         Args:
             coordinates: The tuple of coordinates (x, y, z, a).
         """
-        game_speed = self.global_speed
-        self.pause_game()
         base = self.mem.base_address + BASES["B"]
-        x_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerX"], base=base)
-        y_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerY"], base=base)
-        z_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerZ"], base=base)
-        a_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerA"], base=base)
-        grav_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["noGravity"], base=base)
-
-        self.mem.write_bit(grav_addr, 6,
-                           1)  # Switch off gravity to avoid weird fall damage calculations
-        self.mem.write_float(x_addr, coordinates[0])
-        self.mem.write_float(y_addr, coordinates[1])
-        self.mem.write_float(z_addr, coordinates[2])
-        self.mem.write_float(a_addr, coordinates[3])
-        self.mem.write_bit(grav_addr, 6, 0)  # Switch gravity back on
+        x_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerX"], base=base)
+        y_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerY"], base=base)
+        z_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerZ"], base=base)
+        a_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerA"], base=base)
+        self.gravity = False
+        self.mem.write_float(x_address, coordinates[0])
+        self.mem.write_float(y_address, coordinates[1])
+        self.mem.write_float(z_address, coordinates[2])
+        self.mem.write_float(a_address, coordinates[3])
         self.player_hp = self.player_max_hp
-        self.global_speed = game_speed
+        self.gravity = True
 
     @property
     def player_animation(self) -> str:
@@ -183,6 +177,10 @@ class Game:
             animation: The animation identifier string.
         """
         raise NotImplementedError("Setting the player animation is not supported at the moment")
+
+    def player_is_disabled(self):
+        is_disabled = self.mem.read_bytes(BASES["PlayerDisabled"], 1)
+        return is_disabled
 
     @property
     def player_stats(self) -> Tuple[int]:
@@ -668,6 +666,25 @@ class Game:
         """
         self.mem.write_float(self.mem.base_address + BASES["GlobalSpeed"], value)
         time.sleep(0.001)  # Sleep to guarantee the game engine has reacted to the changed value
+
+    @property
+    def gravity(self) -> bool:
+        """Read the current gravity activation status.
+
+        Returns:
+            True if gravity is active, else False.
+        """
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["noGravity"], base=base)
+        buff = self.mem.read_int(address)
+        return buff & 64 == 0  # Gravity disabled flag is saved at bit 6 (including 0)
+
+    @gravity.setter
+    def gravity(self, flag):
+        base = self.mem.base_address + BASES["B"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["noGravity"], base=base)
+        bit = 0 if flag else 1
+        self.mem.write_bit(address, 6, bit)
 
     def pause_game(self):
         """Pause the game by setting the global speed to 0."""

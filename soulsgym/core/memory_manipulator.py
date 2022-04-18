@@ -19,12 +19,13 @@ BASES = {
     "D": 0x4743A80,
     "GameFlagData": 0x473BE28,
     "GlobalSpeed": 0x999C28,
-    "Cam": 0x47809C8,
     "LockOn": 0x0474C2F8,
+    "Cam": 0x47809C8,
     "LockOnParam": 0x4766CA0,
     "WeaponDurability": 0x4775D58,
     "IudexA": 0x04743668,
     "IudexC": 0x04739958,
+    "PlayerDisabled": 0x7FF48EECCA79,
 }
 
 VALUE_ADDRESS_OFFSETS = {
@@ -67,9 +68,9 @@ VALUE_ADDRESS_OFFSETS = {
     "CamQ2": [0x10, 0x568, 0x110],
     "CamQ3": [0x10, 0x568, 0x114],
     "CamQ4": [0x10, 0x568, 0x118],
-    "CameraX": [0x18, 0xE8, 0x40],
-    "CameraY": [0x18, 0xE8, 0x48],
-    "CameraZ": [0x18, 0xE8, 0x44],
+    "CameraX": [0x18, 0x0568, 0x120],
+    "CameraY": [0x18, 0x0568, 0x128],
+    "CameraZ": [0x18, 0x0568, 0x124],
     "LoSLockOnTime": [0x2910],
     "LockOnBonusRange": [0x2914],
     "WeaponDurability": [0x368, 0x10],
