@@ -32,6 +32,7 @@ class Game:
         self.mem = MemoryManipulator()
         self._game_input = GameInput()  # Necessary for camera control etc
         self.iudex_max_hp = 1037
+        self._debug_flags = {}
 
     def clear_cache(self):
         """Clear the resolving cache of the memory manipulator.
@@ -591,7 +592,7 @@ class Game:
     @allow_attacks.setter
     def allow_attacks(self, flag: bool):
         address = self.mem.base_address + BASES["DebugFlags"] + 0xB
-        self.mem.write_int(address, int(not flag))
+        self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_hits(self) -> bool:
@@ -601,7 +602,7 @@ class Game:
     @allow_hits.setter
     def allow_hits(self, flag: bool):
         address = self.mem.base_address + BASES["DebugFlags"] + 0xA
-        self.mem.write_int(address, int(not flag))
+        self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_moves(self) -> bool:
@@ -611,7 +612,7 @@ class Game:
     @allow_moves.setter
     def allow_moves(self, flag: bool):
         address = self.mem.base_address + BASES["DebugFlags"] + 0xC
-        self.mem.write_int(address, int(not flag))
+        self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_deaths(self) -> bool:
@@ -621,7 +622,7 @@ class Game:
     @allow_deaths.setter
     def allow_deaths(self, flag: bool):
         address = self.mem.base_address + BASES["DebugFlags"] + 0x8
-        self.mem.write_int(address, int(not flag))
+        self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_weapon_durability_dmg(self) -> bool:
@@ -631,11 +632,12 @@ class Game:
     @allow_weapon_durability_dmg.setter
     def allow_weapon_durability_dmg(self, flag: bool):
         address = self.mem.base_address + BASES["DebugFlags"] + 0xE
-        self.mem.write_int(address, int(not flag))
+        self.mem.write_bytes(address, struct.pack('B', not flag))
 
     def reload(self):
         """Kill the player, clear the address cache and wait for the player to respawn."""
         self.player_hp = 0
+        self._save_debug_flags()
         self.resume_game()  # For safety, player might never change animation otherwise
         self.clear_cache()
         time.sleep(0.5)  # Give the game time to register player death and change animation
@@ -649,6 +651,23 @@ class Game:
             time.sleep(0.05)
         while self.player_animation != "Idle":  # Wait for the player to reach a safe "Idle" state
             time.sleep(0.05)
+        self._restore_debug_flags()
+
+    def _save_debug_flags(self):
+        self._debug_flags["allow_attacks"] = self.allow_attacks
+        self._debug_flags["allow_deaths"] = self.allow_deaths
+        self._debug_flags["allow_hits"] = self.allow_hits
+        self._debug_flags["allow_moves"] = self.allow_moves
+        self._debug_flags["allow_player_death"] = self.allow_player_death
+        self._debug_flags["allow_weapon_durability_dmg"] = self.allow_weapon_durability_dmg
+
+    def _restore_debug_flags(self):
+        self.allow_attacks = self._debug_flags["allow_attacks"]
+        self.allow_deaths = self._debug_flags["allow_deaths"]
+        self.allow_hits = self._debug_flags["allow_hits"]
+        self.allow_moves = self._debug_flags["allow_moves"]
+        self.allow_player_death = self._debug_flags["allow_player_death"]
+        self.allow_weapon_durability_dmg = self._debug_flags["allow_weapon_durability_dmg"]
 
     @property
     def lock_on(self) -> bool:
