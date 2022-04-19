@@ -5,7 +5,6 @@ from typing import Tuple, Optional
 from pathlib import Path
 from abc import ABC, abstractmethod
 from argparse import Namespace
-from collections import deque
 
 import gym
 import yaml
@@ -16,7 +15,7 @@ from soulsgym.core.game_input import GameInput
 from soulsgym.core.logger import Logger, GameState
 from soulsgym.core.game_interface import Game
 from soulsgym.core.static import coordinates, actions, player_animations, player_stats
-from soulsgym.core.static import boss_animations, bonfires
+from soulsgym.core.static import boss_animations
 from soulsgym.core.game_window import GameWindow
 from soulsgym.exception import GameStateError, ResetNeeded, InvalidPlayerStateError
 
@@ -53,13 +52,10 @@ class SoulsEnv(gym.Env, ABC):
         self.config_path = Path(__file__).parent / "config"
         self.env_args = self._load_env_args()
         self._set_game_properties()
-        self.game.resume_game()  # In case gym crashed while paused
-        logger.info(self.env_args.init_msg)
-        self._env_setup()
         self.game.pause_game()
+        self._is_init = False
+        logger.info(self.env_args.init_msg)
         logger.debug("Env init complete")
-        # TODO: REMOVE
-        self.img_cache = deque(maxlen=20)
 
     @abstractmethod
     def reset(self) -> GameState:
@@ -100,8 +96,13 @@ class SoulsEnv(gym.Env, ABC):
     def _set_game_properties(self):
         self.game.lock_on_range = 50  # Increase lock on range for bosses
         self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
-        self.game.last_bonfire = bonfires[self.env_args["bonfire"]]
+        self.game.last_bonfire = self.env_args.bonfire
         self.game.player_stats = player_stats[self.ENV_ID]
+        self.game.allow_moves = True
+        self.game.allow_attacks = True
+        self.game.allow_hits = True
+        self.game.allow_deaths = False
+        self.game.allow_weapon_durability_dmg = False
 
     def step(self, action: int) -> Tuple[GameState, float, bool, dict]:
         """Perform a step forward in the environment with a given action.
@@ -148,9 +149,6 @@ class SoulsEnv(gym.Env, ABC):
         self.game.resume_game()
         time.sleep(self._step_size)
         self.game.pause_game()
-        # TODO: REMOVE
-        # self.img_cache.append(self._game_window.screenshot())
-        # END TODO
         log = self._game_logger.log()
         if not self._step_check(log):
             self._handle_critical_log(log)
@@ -250,8 +248,11 @@ class SoulsEnv(gym.Env, ABC):
         # Restore game parameter defaults
         self.game.lock_on_range = 15
         self.game.los_lock_on_deactivate_time = 2
-        self.gravity = True
-        self.game.set_boss_attacks(self.ENV_ID, True)
+        self.game.allow_moves = True
+        self.game.allow_attacks = True
+        self.game.allow_hits = True
+        self.game.allow_deaths = True
+        self.game.allow_weapon_durability_dmg = True
         self.game.player_hp = 0  # Kill player to force game reload. Don't wait for completion
         logger.debug("SoulsEnv close successful")
 

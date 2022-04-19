@@ -22,10 +22,10 @@ BASES = {
     "LockOn": 0x0474C2F8,
     "Cam": 0x47809C8,
     "LockOnParam": 0x4766CA0,
-    "WeaponDurability": 0x4775D58,
     "IudexA": 0x04743668,
     "IudexC": 0x04739958,
     "PlayerDisabled": 0x7FF48EECCA79,
+    "DebugFlags": 0x4768F68,
 }
 
 VALUE_ADDRESS_OFFSETS = {
@@ -73,7 +73,6 @@ VALUE_ADDRESS_OFFSETS = {
     "CameraZ": [0x18, 0x0568, 0x124],
     "LoSLockOnTime": [0x2910],
     "LockOnBonusRange": [0x2914],
-    "WeaponDurability": [0x368, 0x10],
     "noGravity": [0x80, 0x1a08],  # Bit 6 saves the gravity flag!
     "IudexHP": [0x0, 0x320, 0x0, 0x1F90, 0x18, 0xD8],
     "IudexAnimation": [0x0, 0x320, 0x0, 0x1B00, 0x38, 0x898],
@@ -84,6 +83,7 @@ VALUE_ADDRESS_OFFSETS = {
     "IudexAttacks": [0x0, 0x320, 0x0, 0x1EE8],
     "LockOn": [0x24B0],
     "LastBonfire": [0xACC],
+    "PlayerNoDeath": [0x0],
 }
 
 # Iudex HP: 1F90 18 D8

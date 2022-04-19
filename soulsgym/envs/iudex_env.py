@@ -67,6 +67,7 @@ class IudexEnv(SoulsEnv):
             if self.game.player_hp == 0:
                 continue  # Player has died on teleport
             self._initial_key_sequence()
+        self._is_init = True
         self.game.pause_game()
 
     def reset(self) -> GameState:
@@ -75,13 +76,16 @@ class IudexEnv(SoulsEnv):
         Returns:
             The first observation after a reset.
         """
+        if not self._is_init:
+            self._env_setup()
         self.done = False
         self._game_input.reset()
         self.game.pause_game()
-        # self.game.clear_cache()  # Todo: remove
         player_init_pose = coordinates["iudex"]["player_init_pose"]
         iudex_init_pose = coordinates["iudex"]["boss_init_pose"]
-        self.game.iudex_attacks = False
+        self.game.allow_attacks = False
+        self.game.allow_hits = False
+        self.game.allow_moves = False
         # Wait for the teleport to take effect. This ensures lock on is possible in the next steps
         self.game.resume_game()
         player_distance = np.linalg.norm(self.game.player_pose[:3] - player_init_pose[:3])
@@ -97,8 +101,8 @@ class IudexEnv(SoulsEnv):
         self.game.reset_player_hp()
         self.game.reset_player_sp()
         self.game.reset_boss_hp("iudex")
-        self.game.weapon_durability = 70  # 70 is maximum durability
-        while "Walk" not in self.game.iudex_animation or self.game.player_animation != "Idle":
+        while (("Walk" not in self.game.iudex_animation and "Idle" not in self.game.iudex_animation)
+               or self.game.player_animation != "Idle"):
             if not self._reset_position():
                 self.game.reload()  # Guarantees player is in Idle mode at the bonfire
                 self._env_setup()
@@ -108,7 +112,9 @@ class IudexEnv(SoulsEnv):
         self.game.pause_game()
         if not self.game.lock_on:
             self._lock_on(self.game.iudex_pose[:3])
-        self.game.iudex_attacks = True
+        self.game.allow_attacks = True
+        self.game.allow_hits = True
+        self.game.allow_moves = True
         self._internal_state = self._game_logger.log()
         assert self._reset_check(self._internal_state), f"Fail in GameState {self._internal_state}"
         return self._internal_state
@@ -116,8 +122,6 @@ class IudexEnv(SoulsEnv):
     def _reset_position(self) -> bool:
         self.game.player_pose = coordinates["iudex"]["player_init_pose"]
         self.game.iudex_pose = coordinates["iudex"]["boss_init_pose"]
-        time.sleep(0.05)  # Allow teleport to take effect
-        self.game.reset_player_hp()
         game_log = self._game_logger.log()
         return self._reset_inner_check(game_log)  # Make sure the player and Iudex are alive
 

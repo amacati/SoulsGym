@@ -145,18 +145,22 @@ class Game:
         Args:
             coordinates: The tuple of coordinates (x, y, z, a).
         """
+        buff_death = self.allow_player_death
+        self.allow_player_death = False
+        buff_gravity = self.gravity
+        self.gravity = False
         base = self.mem.base_address + BASES["B"]
         x_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerX"], base=base)
         y_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerY"], base=base)
         z_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerZ"], base=base)
         a_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerA"], base=base)
-        self.gravity = False
         self.mem.write_float(x_address, coordinates[0])
         self.mem.write_float(y_address, coordinates[1])
         self.mem.write_float(z_address, coordinates[2])
         self.mem.write_float(a_address, coordinates[3])
+        self.gravity = buff_gravity
+        self.allow_player_death = buff_death
         self.player_hp = self.player_max_hp
-        self.gravity = True
 
     @property
     def player_animation(self) -> str:
@@ -179,9 +183,15 @@ class Game:
         """
         raise NotImplementedError("Setting the player animation is not supported at the moment")
 
-    def player_is_disabled(self):
-        is_disabled = self.mem.read_bytes(BASES["PlayerDisabled"], 1)
-        return is_disabled
+    @property
+    def allow_player_death(self) -> bool:
+        address = self.mem.base_address + BASES["DebugFlags"]
+        return self.mem.read_int(address) == 0
+
+    @allow_player_death.setter
+    def allow_player_death(self, flag: bool):
+        address = self.mem.base_address + BASES["DebugFlags"]
+        self.mem.write_int(address, int(not flag))
 
     @property
     def player_stats(self) -> Tuple[int]:
@@ -573,6 +583,56 @@ class Game:
         buff = (bonfires[name]).to_bytes(4, byteorder='little')
         self.mem.write_bytes(address, buff)
 
+    @property
+    def allow_attacks(self) -> bool:
+        address = self.mem.base_address + BASES["DebugFlags"] + 0xB
+        return self.mem.read_int(address) == 0
+
+    @allow_attacks.setter
+    def allow_attacks(self, flag: bool):
+        address = self.mem.base_address + BASES["DebugFlags"] + 0xB
+        self.mem.write_int(address, int(not flag))
+
+    @property
+    def allow_hits(self) -> bool:
+        address = self.mem.base_address + BASES["DebugFlags"] + 0xA
+        return self.mem.read_int(address) == 0
+
+    @allow_hits.setter
+    def allow_hits(self, flag: bool):
+        address = self.mem.base_address + BASES["DebugFlags"] + 0xA
+        self.mem.write_int(address, int(not flag))
+
+    @property
+    def allow_moves(self) -> bool:
+        address = self.mem.base_address + BASES["DebugFlags"] + 0xC
+        return self.mem.read_int(address) == 0
+
+    @allow_moves.setter
+    def allow_moves(self, flag: bool):
+        address = self.mem.base_address + BASES["DebugFlags"] + 0xC
+        self.mem.write_int(address, int(not flag))
+
+    @property
+    def allow_deaths(self) -> bool:
+        address = self.mem.base_address + BASES["DebugFlags"] + 0x8
+        return self.mem.read_int(address) == 0
+
+    @allow_deaths.setter
+    def allow_deaths(self, flag: bool):
+        address = self.mem.base_address + BASES["DebugFlags"] + 0x8
+        self.mem.write_int(address, int(not flag))
+
+    @property
+    def allow_weapon_durability_dmg(self) -> bool:
+        address = self.mem.base_address + BASES["DebugFlags"] + 0xE
+        return self.mem.read_int(address) == 0
+
+    @allow_weapon_durability_dmg.setter
+    def allow_weapon_durability_dmg(self, flag: bool):
+        address = self.mem.base_address + BASES["DebugFlags"] + 0xE
+        self.mem.write_int(address, int(not flag))
+
     def reload(self):
         """Kill the player, clear the address cache and wait for the player to respawn."""
         self.player_hp = 0
@@ -589,24 +649,6 @@ class Game:
             time.sleep(0.05)
         while self.player_animation != "Idle":  # Wait for the player to reach a safe "Idle" state
             time.sleep(0.05)
-
-    @property
-    def weapon_durability(self) -> int:
-        """Read the current weapon durability.
-
-        Returns:
-            The weapon durability value.
-        """
-        base = self.mem.base_address + BASES["WeaponDurability"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["WeaponDurability"], base=base)
-        return self.mem.read_int(address)
-
-    @weapon_durability.setter
-    def weapon_durability(self, val: int):
-        assert 0 <= val <= 70, "Weapon durability has to be in [0, 70]"
-        base = self.mem.base_address + BASES["WeaponDurability"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["WeaponDurability"], base=base)
-        self.mem.write_int(address, val)
 
     @property
     def lock_on(self) -> bool:
