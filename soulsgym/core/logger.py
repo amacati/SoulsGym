@@ -30,6 +30,7 @@ class Logger:
         self._boss_animation_task()  # Animations need special treatment
         self._log.player_animation = self.game.player_animation
         self._log.player_pose = self.game.player_pose
+        self._log.camera_pose = self.game.camera_pose
         self._log.player_hp = self.game.player_hp
         self._log.player_sp = self.game.player_sp
         return self._log.copy()
