@@ -91,6 +91,7 @@ class IudexEnv(SoulsEnv):
         player_distance = np.linalg.norm(self.game.player_pose[:3] - player_init_pose[:3])
         iudex_distance = np.linalg.norm(self.game.iudex_pose[:3] - iudex_init_pose[:3])
         while player_distance > 1 or iudex_distance > 1:
+            self.game.global_speed = 3  # Speed up recovery sequence
             if not self._reset_position():
                 self.game.reload()
                 self._env_setup()
@@ -101,14 +102,17 @@ class IudexEnv(SoulsEnv):
         self.game.reset_player_hp()
         self.game.reset_player_sp()
         self.game.reset_boss_hp("iudex")
-        while (("Walk" not in self.game.iudex_animation and "Idle" not in self.game.iudex_animation)
-               or self.game.player_animation != "Idle"):
+        while ((not any([a in self.game.iudex_animation for a in ("Walk", "Idle")]) and
+                self.game.iudex_animation != "") or self.game.player_animation != "Idle"):
+            self.game.global_speed = 3
             if not self._reset_position():
                 self.game.reload()  # Guarantees player is in Idle mode at the bonfire
                 self._env_setup()
                 return self.reset()
             if not self.game.lock_on:
                 self._lock_on(self.game.iudex_pose[:3])
+            time.sleep(0.5)
+            self.game.iudex_animation
         self.game.pause_game()
         if not self.game.lock_on:
             self._lock_on(self.game.iudex_pose[:3])
