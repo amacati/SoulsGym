@@ -1,0 +1,3 @@
+SoulsGym
+========
+.. automodule:: soulsgym
