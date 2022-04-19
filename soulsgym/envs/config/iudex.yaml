@@ -8,3 +8,4 @@ space_stats_low: [0, 0, 0]
 space_stats_high: [454, 95, 1037]
 space_coords_low:  [110., 540., -73.]
 space_coords_high: [190., 640., -55.]
+bonfire: "Cemetery of Ash"

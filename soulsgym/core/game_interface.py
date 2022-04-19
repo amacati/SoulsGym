@@ -11,6 +11,7 @@ from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.memory_manipulator import BASES, VALUE_ADDRESS_OFFSETS
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.utils import wrap_to_pi
+from soulsgym.core.static import bonfires
 
 logger = logging.getLogger(__name__)
 
@@ -548,6 +549,29 @@ class Game:
             cpose = self.camera_pose
             d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
             t += 1
+
+    @property
+    def last_bonfire(self) -> str:
+        """Reads the bonfire name the player has rested at last.
+
+        Returns:
+            The bonfire name.
+        """
+        base = self.mem.base_address + BASES["C"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LastBonfire"], base=base)
+        buff = self.mem.read_bytes(address, 4)
+        # Get the integer ID and look up the corresponding key to this value from the bonfires dict
+        int_id = int.from_bytes(buff, byteorder="little")
+        str_id = list(bonfires.keys())[list(bonfires.values()).index(int_id)]
+        return str_id
+
+    @last_bonfire.setter
+    def last_bonfire(self, name: str):
+        assert name in bonfires.keys(), f"Unknown bonfire {name} specified!"
+        base = self.mem.base_address + BASES["C"]
+        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LastBonfire"], base=base)
+        buff = (bonfires[name]).to_bytes(4, byteorder='little')
+        self.mem.write_bytes(address, buff)
 
     def reload(self):
         """Kill the player, clear the address cache and wait for the player to respawn."""

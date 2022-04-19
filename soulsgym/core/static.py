@@ -38,3 +38,7 @@ for boss_anim in boss_animations.values():
 # Stats
 with open(root / "player.yaml", "r") as f:
     player_stats = yaml.load(f, Loader=yaml.SafeLoader)
+
+# Bonfires
+with open(root / "bonfires.yaml", "r") as f:
+    bonfires = yaml.load(f, Loader=yaml.SafeLoader)

@@ -16,7 +16,7 @@ from soulsgym.core.game_input import GameInput
 from soulsgym.core.logger import Logger, GameState
 from soulsgym.core.game_interface import Game
 from soulsgym.core.static import coordinates, actions, player_animations, player_stats
-from soulsgym.core.static import boss_animations
+from soulsgym.core.static import boss_animations, bonfires
 from soulsgym.core.game_window import GameWindow
 from soulsgym.exception import GameStateError, ResetNeeded, InvalidPlayerStateError
 
@@ -50,13 +50,10 @@ class SoulsEnv(gym.Env, ABC):
         except MemoryReadError:
             logger.error("__init__: Player is not loaded into the game")
             raise GameStateError("Player is not loaded into the game")
-        self.game.lock_on_range = 50  # Increase lock on range for bosses
-        self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
-        self.gravity = True
-        self.game.resume_game()  # In case gym crashed while paused
         self.config_path = Path(__file__).parent / "config"
         self.env_args = self._load_env_args()
-        self.game.player_stats = player_stats[self.ENV_ID]
+        self._set_game_properties()
+        self.game.resume_game()  # In case gym crashed while paused
         logger.info(self.env_args.init_msg)
         self._env_setup()
         self.game.pause_game()
@@ -99,6 +96,12 @@ class SoulsEnv(gym.Env, ABC):
         """
         with open(self.config_path / (self.ENV_ID + ".yaml")) as f:
             return Namespace(**(yaml.load(f, Loader=yaml.SafeLoader)))
+
+    def _set_game_properties(self):
+        self.game.lock_on_range = 50  # Increase lock on range for bosses
+        self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
+        self.game.last_bonfire = bonfires[self.env_args["bonfire"]]
+        self.game.player_stats = player_stats[self.ENV_ID]
 
     def step(self, action: int) -> Tuple[GameState, float, bool, dict]:
         """Perform a step forward in the environment with a given action.
