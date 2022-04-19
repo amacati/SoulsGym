@@ -84,6 +84,7 @@ VALUE_ADDRESS_OFFSETS = {
     "LockOn": [0x24B0],
     "LastBonfire": [0xACC],
     "PlayerNoDeath": [0x0],
+    "PlayerDeathCount": [0x98],
 }
 
 # Iudex HP: 1F90 18 D8
@@ -121,7 +122,6 @@ class MemoryManipulator(Singleton):
                 name changes.
         """
         if not hasattr(self, "is_init"):
-            self.cache = {}
             self.process_name = process_name
             self.pid = self.get_pid(self.process_name)
             # Get the base address
@@ -131,7 +131,7 @@ class MemoryManipulator(Singleton):
             # Create Pymem object once, this has a relative long initialziation
             self.pymem = Pymem()
             self.pymem.open_process_from_id(self.pid)
-            self.target_ptr = self.pymem.allocate(8)
+            self.cache = {}
 
     def clear_cache(self):
         """Clear the reference look-up cache of the memory manipulator."""
@@ -315,43 +315,3 @@ class MemoryManipulator(Singleton):
             pym.exception.MemoryWriteError: An error with the memory write occured.
         """
         pym.memory.write_bytes(self.pymem.process_handle, address, buffer, len(buffer))
-
-    def activate_targeted_entity_info(self):
-        """Inject the target entity info code pointer into targeted entity info.
-
-        Writes the pointer into a JMP instruction at targeted entity info.
-        """
-        self.write_bytes(self.base_address + TARGETED_ENTITY_CODE_POS,
-                         self.targeted_entity_injection)
-
-    def deactivate_targeted_entity_info(self):
-        """Inject the default game code pointer into the JMP instruction at targeted entity info."""
-        self.write_bytes(self.target_ptr_volatile, bytes(8))  # reset volatile ptr
-        self.write_bytes(self.base_address + TARGETED_ENTITY_CODE_POS, TARGETED_ENTITY_OLD_CODE)
-
-    def _inject_targeted_entity_tracking(self):
-        """Inject the targeted entity tracking binary into the running game."""
-        # Make space for injection.
-        # TODO: We need to fix this later, like wtf. Currently allocates at an address within the
-        # process memory which we found to not cause the game to immediately crash and overwrites
-        # the memory with our code
-        inj_point = VIRTUAL_ALLOC(self.base_address + 0x10000, 80,
-                                  win32con.MEM_RESERVE | win32con.MEM_COMMIT,
-                                  win32con.PAGE_READWRITE)
-        # JMP has 1 + 4 offset bytes.
-        adr_offset = inj_point - (self.base_address + TARGETED_ENTITY_CODE_POS + 5)
-        # This byte series is assembler code which allows us to set up the targeted entity tracking
-        code = b'\x48\x8b\x48\x58\x48\x8b\x89\x20\x03\x00\x00\x48\x81\xc1\x20\x74\x00\x00\x51\x48\xb9'  # noqa: E501
-        code += self.target_event.to_bytes(8, byteorder="little", signed=False)
-        code += b'\x48\x8f\x01\x48\xa3'
-        code += self.target_ptr.to_bytes(8, byteorder="little", signed=False)
-        code += b'\x48\xa3'
-        code += self.target_ptr_volatile.to_bytes(8, byteorder="little", signed=False)
-        code += b'\x48\x8b\x80\x90\x1f\x00\x00\xe9'
-        # Offset Calculation: target: base_address + code + 7 (jmp and nop are one byte each)
-        # Current: allocated_address + all_bytes_written + 4 (jump offset)
-        jmp_adr = (self.base_address + TARGETED_ENTITY_CODE_POS + 7) - (inj_point + len(code) + 4)
-        code += jmp_adr.to_bytes(4, byteorder="little", signed=True)  # Add jump address
-        injection = b'\xe9' + adr_offset.to_bytes(4, byteorder="little", signed=True) + b'\x90\x90'
-        self.targeted_entity_injection = injection
-        pym.memory.write_bytes(self.pymem.process_handle, inj_point, code, len(code))
