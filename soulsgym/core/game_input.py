@@ -86,18 +86,6 @@ class GameInput:
         """Reset the game input keys."""
         self.update([])
 
-    def array_update(self, action_array: np.ndarray):
-        """Interface update with boolean array encoded action selection.
-
-        Args:
-            action_array: The actions given as an boolean array. The order is 'forward', 'backward',
-                'left', 'right', 'lightattack', 'roll', 'useitem', 'lockon'.
-        """
-        actions = [
-            "forward", "backward", "left", "right", "lightattack", "roll", "useitem", "lockon"
-        ]
-        self.update([actions[i] for i in range(len(actions)) if action_array[i]])
-
     def restart(self):
         """Release all keys and sets the press state to False."""
         for action in self.state:
