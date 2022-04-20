@@ -4,7 +4,7 @@ from soulsgym.core.game_state import GameState
 
 
 class Logger:
-    """Snapshot all relevant ingame states and provide them as a `GameState` log."""
+    """Snapshot all relevant ingame states and provide them as a :class:`~soulsgym.core.game_state.GameState` log."""
 
     def __init__(self, boss_id: str):
         """Initialize the game state with static attributes.

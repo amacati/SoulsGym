@@ -1,3 +1,5 @@
+.. _soulsenv:
+
 envs.soulsenv
 =============
 .. automodule:: soulsgym.envs.soulsenv
