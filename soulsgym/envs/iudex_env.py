@@ -170,7 +170,7 @@ class IudexEnv(SoulsEnv):
         dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["player_init_pose"][:3])  # noqa: E501, yapf: disable
         if dist > 1:
             return False
-        dist = np.linalg.norm(self.game.iudex_pose[:3], coordinates["iudex"]["boss_init_pose"][:3])
+        dist = np.linalg.norm(self.game.iudex_pose[:3] - coordinates["iudex"]["boss_init_pose"][:3])
         if dist > 1:
             return False
         boss_animation = self.game.iudex_animation
