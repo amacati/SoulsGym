@@ -233,8 +233,8 @@ class IudexEnv(SoulsEnv):
             raise InvalidPlayerStateError("Player is not idle")
 
     def _env_setup_check(self) -> bool:
-        if np.linalg.norm(self.game.player_pose[:3] -
-                          coordinates["iudex"]["post_fog_wall"][:3]) > 0.2:
+        dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"][:3])
+        if dist > 0.2:
             logger.error("_env_setup_check failed: Player pose out of tolerances")
             return False
         if self.game.player_hp == 0:
