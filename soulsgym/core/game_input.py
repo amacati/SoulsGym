@@ -4,8 +4,6 @@ from ctypes import wintypes
 from typing import Any, List
 import time
 
-import numpy as np
-
 from soulsgym.core.static import keybindings, keymap
 
 INPUT_KEYBOARD = 1
@@ -48,9 +46,6 @@ class _INPUT(ctypes.Structure):
     _fields_ = (("type", wintypes.DWORD), ("_input", __INPUT))
 
 
-LPINPUT = ctypes.POINTER(_INPUT)
-
-
 class GameInput:
     """Abstract in-game interaction by simulating keystrokes to the game."""
 
@@ -58,7 +53,7 @@ class GameInput:
         """Initialize the key state dictionary."""
         self.state = {key: False for key in keybindings.keys()}
 
-    def update(self, actions: List):
+    def update(self, actions: List[str]):
         """Update the pressed keys state and execute key presses/releases.
 
         Args:

@@ -1,4 +1,20 @@
-"""Gym registration and module setup."""
+"""The ``soulsgym`` package is a collection of OpenAI gym environments for Dark Souls III.
+
+It contains two main components. The first module :mod:`~soulsgym.envs` includes a core environment
+as well as an individual environment for each available boss fight.
+
+Note:
+    The environments only cover phase one of the boss fights so far. For further explanations see
+    :class:`~soulsgym.envs.soulsenv`.
+
+The second main module is the :mod:`~soulsgym.core` module. It contains all necessary
+functionalities for the environments to interact with the game. Unless you want to develop your own
+:class:`~soulsgym.envs.soulsenv` or are trying to contribute, this module can safely be ignored.
+
+``soulsgym`` registers its environments with OpenAI's ``gym`` module on import. In order to use the
+environments you follow the usual pattern of OpenAI's ``gym.make``. A list of all available
+environments is available at ``soulsgym.available_envs``.
+"""
 from pathlib import Path
 import logging
 
@@ -33,6 +49,8 @@ def set_log_level(level: int):
     """
     logger.setLevel(level)
 
+
+available_envs = ["SoulsGymIudex-v0"]
 
 # Register environments in OpenAI gym
 register(id="SoulsGymIudex-v0",

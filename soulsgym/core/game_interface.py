@@ -765,7 +765,7 @@ class Game:
         return buff & 64 == 0  # Gravity disabled flag is saved at bit 6 (including 0)
 
     @gravity.setter
-    def gravity(self, flag):
+    def gravity(self, flag: bool):
         base = self.mem.base_address + BASES["B"]
         address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["noGravity"], base=base)
         bit = 0 if flag else 1

@@ -18,8 +18,6 @@ player:  # Numbers indicate duration in 0.1s (gym sample rate)
     ThrowAtk: 32  # Parry attack
     ThrowDef: 63
     EStepDown: 6
-    GuardDamageSmall: 3
-    GuardBreak: 14
     # Movement
     DashStop: 1
     Idle: 1
@@ -49,12 +47,15 @@ player:  # Numbers indicate duration in 0.1s (gym sample rate)
     LandLow: 1  # TODO: Verify
     Land: 1
     LandFaceDown: 25
+    LandFaceUp: 25  # TODO: Verify
     FallStartFaceDown: 1
     FallStart: 1
     FallStartFaceUp: 1
     FallLoopFaceUp: 1
 
   unused:
+    GuardDamageSmall: 3
+    GuardBreak: 14
     GuardOn: 1
     GuardStart: 1
     GuardEnd: 1
@@ -102,18 +103,18 @@ boss:
       - ThrowDef
     movement:
       - WalkFrontBattle
-      - SABlend_Add_Front
       - WalkLeftBattle
-      - IdleBattle
-      - TurnBattle_Right90
       - WalkRightBattle
       - WalkBackBattle
       - SABlend_NoAdd
+      - SABlend_Add_Front
       - SABlend_Add_Right
+      - SABlend_Add_Left
+      - SABlend_Add_Back
+      - IdleBattle
+      - TurnBattle_Right90
       - TurnBattle_Right180
       - TurnBattle_Left90
-      - SABlend_Add_Left
       - TurnBattle_Left180
-      - SABlend_Add_Back
       - SABreak
       - DamageParryEnemy1

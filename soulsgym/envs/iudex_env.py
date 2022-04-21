@@ -54,18 +54,13 @@ class IudexEnv(SoulsEnv):
         Raises:
             RetriesExceededError: Setup failed more than `init_retries` times.
         """
-        self._env_setup_check()
-        while not self._reset_check(self._game_logger.log()) and init_retries >= 0:
+        self._env_setup_init_check()
+        while not self._env_setup_check() and init_retries >= 0:
             if not init_retries:
                 logger.error("Maximum number of teleport resets exceeded")
                 raise RetriesExceededError("Iudex environment setup failed")
             init_retries -= 1
             self._iudex_setup()
-            dist = np.linalg.norm(coordinates["iudex"]["fog_wall"][:3] - self.game.player_pose[:3])
-            if not dist < 1:
-                continue  # Teleport not successful, reset again
-            if self.game.player_hp == 0:
-                continue  # Player has died on teleport
             self._initial_key_sequence()
         self._is_init = True
         self.game.pause_game()
@@ -81,38 +76,22 @@ class IudexEnv(SoulsEnv):
         self.done = False
         self._game_input.reset()
         self.game.pause_game()
-        player_init_pose = coordinates["iudex"]["player_init_pose"]
-        iudex_init_pose = coordinates["iudex"]["boss_init_pose"]
         self.game.allow_attacks = False
         self.game.allow_hits = False
         self.game.allow_moves = False
-        # Wait for the teleport to take effect. This ensures lock on is possible in the next steps
-        self.game.resume_game()
-        player_distance = np.linalg.norm(self.game.player_pose[:3] - player_init_pose[:3])
-        iudex_distance = np.linalg.norm(self.game.iudex_pose[:3] - iudex_init_pose[:3])
-        while player_distance > 1 or iudex_distance > 1:
-            self.game.global_speed = 3  # Speed up recovery sequence
-            if not self._reset_position():
-                self.game.reload()
-                self._env_setup()
-                return self.reset()
-            time.sleep(0.1)  # Give animations time to finish if they block the teleport
-            player_distance = np.linalg.norm(self.game.player_pose[:3] - player_init_pose[:3])
-            iudex_distance = np.linalg.norm(self.game.iudex_pose[:3] - iudex_init_pose[:3])
         self.game.reset_player_hp()
         self.game.reset_player_sp()
         self.game.reset_boss_hp("iudex")
-        while ((not any([a in self.game.iudex_animation for a in ("Walk", "Idle")]) and
-                self.game.iudex_animation != "") or self.game.player_animation != "Idle"):
-            self.game.global_speed = 3
-            if not self._reset_position():
-                self.game.reload()  # Guarantees player is in Idle mode at the bonfire
+
+        self.game.global_speed = 3  # Speed up recovery
+        while not self._reset_check():
+            self.game.player_pose = coordinates["iudex"]["player_init_pose"]
+            self.game.iudex_pose = coordinates["iudex"]["boss_init_pose"]
+            if not self._reset_inner_check():
+                self.game.reload()
                 self._env_setup()
                 return self.reset()
-            if not self.game.lock_on:
-                self._lock_on(self.game.iudex_pose[:3])
-            time.sleep(0.5)
-            self.game.iudex_animation
+            time.sleep(0.3)  # Give animations time to finish if they block the teleport
         self.game.pause_game()
         if not self.game.lock_on:
             self._lock_on(self.game.iudex_pose[:3])
@@ -120,14 +99,8 @@ class IudexEnv(SoulsEnv):
         self.game.allow_hits = True
         self.game.allow_moves = True
         self._internal_state = self._game_logger.log()
-        assert self._reset_check(self._internal_state), f"Fail in GameState {self._internal_state}"
+        assert self._reset_check(), f"Fail in GameState {self._internal_state}"
         return self._internal_state
-
-    def _reset_position(self) -> bool:
-        self.game.player_pose = coordinates["iudex"]["player_init_pose"]
-        self.game.iudex_pose = coordinates["iudex"]["boss_init_pose"]
-        game_log = self._game_logger.log()
-        return self._reset_inner_check(game_log)  # Make sure the player and Iudex are alive
 
     def _iudex_setup(self) -> None:
         self.game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
@@ -153,7 +126,7 @@ class IudexEnv(SoulsEnv):
             self.game.reload()
             logger.debug("_iudex_setup: Player respawn success")
         self.game.player_pose = coordinates["iudex"]["fog_wall"]
-        time.sleep(1)
+        time.sleep(0.2)
         if np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["fog_wall"][:3]) > 0.1:
             logger.debug("_iudex_setup: Teleport failed. Retrying")
             self.game.reload()
@@ -167,12 +140,9 @@ class IudexEnv(SoulsEnv):
             if self.game.player_animation == "Idle":
                 break
             time.sleep(0.1)
-        self.game.camera_pose = self.env_args.cam_setup_orient
         dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"][:3])
         if dist > 0.1:
             return  # Player has not entered the fog wall, abort early
-        self._game_input.single_action("forward", press_time=4.0)  # Enter the arena
-        self._lock_on()
         logger.debug("_init_key_sequence: Done")
 
     def compute_reward(self, game_log: GameState) -> float:
@@ -184,47 +154,40 @@ class IudexEnv(SoulsEnv):
         Returns:
             The reward for the provided game observation.
         """
-        player_hp_penalty = 1 - game_log.player_hp / game_log.player_max_hp
-        player_sp_penalty = 1 - game_log.player_sp / game_log.player_max_sp
-        boss_hp_reward = 1 - game_log.boss_hp / game_log.boss_max_hp
-        return boss_hp_reward - player_hp_penalty - 0.05 * player_sp_penalty
+        player_hp_reward = game_log.player_hp / game_log.player_max_hp - 0.5
+        boss_hp_reward = 0.5 - game_log.boss_hp / game_log.boss_max_hp
+        if game_log.player_hp == 0:
+            final_reward = -200
+        elif game_log.boss_hp == 0:
+            final_reward = 200
+        else:
+            final_reward = 0
+        return boss_hp_reward + player_hp_reward + final_reward
 
-    def _reset_check(self, game_log: GameState, include_lock_on: bool = True) -> bool:
+    def _reset_check(self) -> bool:
         """Check if the environment reset was successful.
-
-        Args:
-            game_log: Current game log.
-            include_lock_on: Omit lock on checks if set to True.
 
         Returns:
             True if the reset was successful, else False.
         """
-        if not self.game.check_boss_flags("iudex"):
-            logger.debug("_reset_check failed: Iudex flags not set properly")
-            logger.debug(game_log)
+        dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["player_init_pose"][:3])  # noqa: E501, yapf: disable
+        if dist > 1:
             return False
-        dist = np.linalg.norm(game_log.player_pose[:3] - coordinates["iudex"]["player_init_pose"][:3])  # noqa: E501, yapf: disable
-        if dist > 2:
-            logger.debug("_reset_check failed: Player position out of tolerances")
-            logger.debug(game_log)
+        dist = np.linalg.norm(self.game.boss_pose[:3], coordinates["iudex"]["boss_init_pose"][:3])
+        if dist > 1:
             return False
-        if game_log.player_hp != game_log.player_max_hp:
-            logger.debug("_reset_check failed: Player HP is not at maximum")
-            logger.debug(game_log)
+        boss_animation = self.game.iudex_animation
+        if not any([a in boss_animation for a in ("Walk", "Idle")]) and boss_animation != "":
             return False
-        if game_log.boss_hp != game_log.boss_max_hp:
-            logger.debug("_reset_check failed: Boss HP is not at maximum")
-            logger.debug(game_log)
+        if self.game.player_animation != "Idle":
             return False
-        if include_lock_on and not game_log.lock_on:
-            logger.debug("_reset_check failed: No lock on")
-            logger.debug(game_log)
+        if self.game.player_hp != self.game.player_max_hp:
             return False
-        if include_lock_on:
-            logger.debug("_reset_check: Done")
+        if self.game.boss_hp != self.game.boss_max_hp:
+            return False
         return True
 
-    def _reset_inner_check(self, game_log: GameState) -> bool:
+    def _reset_inner_check(self) -> bool:
         """Check if a critical event has happened during the inner reset loop.
 
         Returns:
@@ -235,28 +198,28 @@ class IudexEnv(SoulsEnv):
             return False
         # Make sure the player and Iudex are still within arena bounds
         bounds = (low < pos < high for low, pos, high in zip(
-            self.env_args.space_coords_low, game_log.player_pose, self.env_args.space_coords_high))
+            self.env_args.space_coords_low, self.game.player_pose, self.env_args.space_coords_high))
         if not all(bounds):
             logger.debug("_reset_inner_check failed: Player position out of arena bounds")
-            logger.debug(game_log)
+            logger.debug(self._game_logger.log())
             return False
         bounds = (low < pos < high for low, pos, high in zip(
-            self.env_args.space_coords_low, game_log.boss_pose, self.env_args.space_coords_high))
+            self.env_args.space_coords_low, self.game.iudex_pose, self.env_args.space_coords_high))
         if not all(bounds):
             logger.debug("_reset_inner_check failed: Iudex position out of arena bounds")
-            logger.debug(game_log)
+            logger.debug(self._game_logger.log())
             return False
         # Player and Iudex have to be alive
-        if game_log.player_hp <= 0:
+        if self.game.player_hp <= 0:
             logger.debug("_reset_check failed: Player HP below 1")
             return False
-        if game_log.boss_hp <= 0:
+        if self.game.iudex_hp <= 0:
             logger.debug("_reset_check failed: Boss HP below 1")
             return False
         return True
 
-    def _env_setup_check(self):
-        """Check if the environment setup was successful.
+    def _env_setup_init_check(self):
+        """Check if all conditions for starting the environment setup are met.
 
         Raises:
             GameStateError: Game state is outside of expected values.
@@ -265,13 +228,23 @@ class IudexEnv(SoulsEnv):
         try:
             game_log = self._game_logger.log()
         except MemoryReadError:
-            logger.error("_env_setup_check failed. Player does not seem to be ingame")
+            logger.error("_env_setup_init_check failed: Player does not seem to be ingame")
             raise GameStateError("Player does not seem to be ingame")
         if game_log.player_animation != "Idle":
-            logger.error("_env_setup_check failed. Player is not idle")
+            logger.error("_env_setup_init_check failed: Player is not idle")
             logger.error(game_log)
             raise InvalidPlayerStateError("Player is not idle")
-        if np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["bonfire"][:3]) > 30:
-            logger.error("_env_setup_check failed. Player is not close to the bonfire")
-            logger.error(game_log)
-            raise InvalidPlayerStateError("Player is not close to the bonfire `Cemetry of Ash`")
+
+    def _env_setup_check(self) -> bool:
+        if np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"]) > 0.2:
+            logger.error("_env_setup_check failed: Player pose out of tolerances")
+            return False
+        if self.game.player_hp == 0:
+            logger.error("_env_setup_check failed: Player HP is 0")
+            return False
+        if not self.game.check_boss_flags("iudex"):
+            logger.error("_env_setup_check failed: Incorrect boss flags")
+            return False
+        if self.game.player_animation != "Idle":
+            logger.warning(f"_env_setup_check: Unexpected animation {self.game.player_animation}")
+        return True
