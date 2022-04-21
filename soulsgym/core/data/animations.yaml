@@ -52,6 +52,7 @@ player:  # Numbers indicate duration in 0.1s (gym sample rate)
     FallStart: 1
     FallStartFaceUp: 1
     FallLoopFaceUp: 1
+    FallAttackStart: 1  # This only occurs if the player is already falling, frame is not important
 
   unused:
     GuardDamageSmall: 3
