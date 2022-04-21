@@ -78,7 +78,6 @@ class IudexEnv(SoulsEnv):
         self.game.pause_game()
         self.game.allow_attacks = False
         self.game.allow_hits = False
-        self.game.allow_moves = False
         self.game.reset_player_hp()
         self.game.reset_player_sp()
         self.game.reset_boss_hp("iudex")
@@ -91,15 +90,13 @@ class IudexEnv(SoulsEnv):
                 self.game.reload()
                 self._env_setup()
                 return self.reset()
-            time.sleep(0.3)  # Give animations time to finish if they block the teleport
+            time.sleep(0.01)
         self.game.pause_game()
         if not self.game.lock_on:
             self._lock_on(self.game.iudex_pose[:3])
         self.game.allow_attacks = True
         self.game.allow_hits = True
-        self.game.allow_moves = True
         self._internal_state = self._game_logger.log()
-        assert self._reset_check(), f"Fail in GameState {self._internal_state}"
         return self._internal_state
 
     def _iudex_setup(self) -> None:
@@ -173,7 +170,7 @@ class IudexEnv(SoulsEnv):
         dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["player_init_pose"][:3])  # noqa: E501, yapf: disable
         if dist > 1:
             return False
-        dist = np.linalg.norm(self.game.boss_pose[:3], coordinates["iudex"]["boss_init_pose"][:3])
+        dist = np.linalg.norm(self.game.iudex_pose[:3], coordinates["iudex"]["boss_init_pose"][:3])
         if dist > 1:
             return False
         boss_animation = self.game.iudex_animation
@@ -183,7 +180,7 @@ class IudexEnv(SoulsEnv):
             return False
         if self.game.player_hp != self.game.player_max_hp:
             return False
-        if self.game.boss_hp != self.game.boss_max_hp:
+        if self.game.iudex_hp != self.game.iudex_max_hp:
             return False
         return True
 
@@ -236,7 +233,8 @@ class IudexEnv(SoulsEnv):
             raise InvalidPlayerStateError("Player is not idle")
 
     def _env_setup_check(self) -> bool:
-        if np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"]) > 0.2:
+        if np.linalg.norm(self.game.player_pose[:3] -
+                          coordinates["iudex"]["post_fog_wall"][:3]) > 0.2:
             logger.error("_env_setup_check failed: Player pose out of tolerances")
             return False
         if self.game.player_hp == 0:

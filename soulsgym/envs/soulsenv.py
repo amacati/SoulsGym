@@ -52,7 +52,6 @@ class SoulsEnv(gym.Env, ABC):
         self.config_path = Path(__file__).parent / "config"
         self.env_args = self._load_env_args()
         self._set_game_properties()
-        self.game.pause_game()
         self._is_init = False
         logger.info(self.env_args.init_msg)
         logger.debug("Env init complete")
