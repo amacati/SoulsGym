@@ -165,10 +165,6 @@ class SoulsEnv(gym.Env, ABC):
         Raises:
             InvalidPlayerStateError: Player state is outside of expected values.
         """
-        # During grab attacks, the lock cannot be established
-        if not game_log.lock_on and game_log.player_animation not in ("ThrowAtk", "ThrowDef"):
-            logger.debug("_step_check: Missing lock on detected")
-            self._lock_on()
         if game_log.player_hp == 0:
             logger.error("_step_check: Player HP is 0")
             logger.error(game_log)
@@ -187,6 +183,10 @@ class SoulsEnv(gym.Env, ABC):
         # Fall detection by lower state space bound on z coordinate
         if self.env_args.space_coords_low[2] > game_log.player_pose[2]:
             return False
+        # During grab attacks, the lock cannot be established
+        if not game_log.lock_on and game_log.player_animation not in ("ThrowAtk", "ThrowDef"):
+            logger.debug("_step_check: Missing lock on detected")
+            self._lock_on()
         # Unknown player animation. Shouldn't happen, add animation to tables!
         if game_log.player_animation not in player_animations["all"]:
             logger.warning(f"_step: Unknown player animation {game_log.player_animation}")
