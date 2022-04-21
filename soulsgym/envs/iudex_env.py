@@ -235,14 +235,14 @@ class IudexEnv(SoulsEnv):
     def _env_setup_check(self) -> bool:
         dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"][:3])
         if dist > 0.2:
-            logger.error("_env_setup_check failed: Player pose out of tolerances")
+            logger.debug("_env_setup_check failed: Player pose out of tolerances")
             return False
         if self.game.player_hp == 0:
-            logger.error("_env_setup_check failed: Player HP is 0")
+            logger.debug("_env_setup_check failed: Player HP is 0")
             return False
         if not self.game.check_boss_flags("iudex"):
-            logger.error("_env_setup_check failed: Incorrect boss flags")
+            logger.debug("_env_setup_check failed: Incorrect boss flags")
             return False
         if self.game.player_animation != "Idle":
-            logger.warning(f"_env_setup_check: Unexpected animation {self.game.player_animation}")
+            logger.debug(f"_env_setup_check: Unexpected animation {self.game.player_animation}")
         return True

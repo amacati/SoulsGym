@@ -269,7 +269,7 @@ class SoulsEnv(gym.Env, ABC):
                 self._game_input.single_action("lockon")
                 time.sleep(0.01)
                 if not self.game.lock_on:
-                    logger.warning("_lock_on: Failed to reestablish lock on")
+                    logger.debug("_lock_on: Failed to reestablish lock on")
                     # If the player is still oriented towards Iudex we essentially recover a lock on
                     # behavior. Pressing lock on turns the camera towards the player orientation. We
                     # therefore turn the camera towards Iudex again and continue without lock on
