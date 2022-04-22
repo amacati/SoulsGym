@@ -1,4 +1,14 @@
-"""SoulsGym environment for Iudex Gundyr."""
+"""The SoulsGym environment for Iudex Gundyr.
+
+The player and Iudex always start from their respective start poses at full HP/SP. A fall from
+the cliff is considered an instantaneous death and is eagerly reset to avoid falling out of the
+world. The player starts with the knight base stats and the default starting weapons without any
+upgrades. We do not allow shield blocking or two handing at this point, although this can easily
+be supported. Parrying is enabled.
+
+Note:
+    Only covers phase 1 of the boss fight. See :mod:`~.envs` for details.
+"""
 import logging
 import time
 
@@ -16,32 +26,40 @@ logger = logging.getLogger(__name__)
 
 
 class IudexEnv(SoulsEnv):
-    """SoulsEnv implementation for Iudex Gundyr."""
+    """``IudexEnv`` implements the environment of the Iudex Gundyr boss fight."""
 
     ENV_ID = "iudex"
 
     def __init__(self):
-        """Define the state/action spaces and initialize the game interface."""
+        """Define the state space."""
         super().__init__()  # DarkSoulsIII needs to be open at this point
         # The state space consists of multiple spaces. These represent:
         # 1) Boss phase. Either 1 or 2 for Iudex
         # 2) Player and boss stats. In order: Player HP, Player SP, Boss HP
-        # 3) Player and boss coordinates. In order: Player x, y, z, a, boss x, y, z, a, where a
-        #    represents the orientation
+        # 3) Player, boss and camera poses. In order: Player x, y, z, a, boss x, y, z, a,
+        #    camera x, y, z, nx, ny, nz where a represents the orientation and [nx ny nz] the camera
+        #    plane normal
         # 4) Player animation
-        # 5) Boss animation
-        # 6) Boss animation duration (in 0.1s ticks). We assume no animation takes longer than 10s
-        p_anim_len = len(player_animations["standard"]) + len(player_animations["critical"])
+        # 5) Player animation duration (in 0.1s ticks). We assume no animation takes longer than 10s
+        # 6) Boss animation
+        # 7) Boss animation duration (in 0.1s ticks). We assume no animation takes longer than 10s
+        player_anim_len = len(player_animations["standard"]) + len(player_animations["critical"])
         stats_space = spaces.Box(np.array(self.env_args.space_stats_low, dtype=np.float32),
                                  np.array(self.env_args.space_stats_high, dtype=np.float32))
-        coords_space = spaces.Box(np.array(self.env_args.space_coords_low, dtype=np.float32),
-                                  np.array(self.env_args.space_coords_high, dtype=np.float32))
+        pose_space = spaces.Box(np.array(self.env_args.space_coords_low, dtype=np.float32),
+                                np.array(self.env_args.space_coords_high, dtype=np.float32))
+        camera_pose_space = spaces.Box(
+            np.array(self.env_args.space_coords_low + [-1, -1, -1], dtype=np.float32),
+            np.array(self.env_args.space_coords_low + [1, 1, 1], dtype=np.float32))
         self.state_space = spaces.Dict({
             "phase": spaces.Discrete(2),
             "stats": stats_space,
-            "coords": coords_space,
-            "player_animation": spaces.Discrete(len(boss_animations["iudex"])),
-            "boss_animation": spaces.Discrete(p_anim_len),
+            "player_pose": pose_space,
+            "boss_pose": pose_space,
+            "camera_pose": camera_pose_space,
+            "player_animation": spaces.Discrete(player_anim_len),
+            "player_animation_counter": spaces.Discrete(100),
+            "boss_animation": spaces.Discrete(len(boss_animations["iudex"]["all"])),
             "boss_animation_counter": spaces.Discrete(100)
         })
 
@@ -52,7 +70,7 @@ class IudexEnv(SoulsEnv):
             init_retries: Maximum number of retries in case of initialization failure.
 
         Raises:
-            RetriesExceededError: Setup failed more than `init_retries` times.
+            RetriesExceededError: Setup failed more than ``init_retries`` times.
         """
         self._env_setup_init_check()
         while not self._env_setup_check() and init_retries >= 0:
@@ -61,7 +79,6 @@ class IudexEnv(SoulsEnv):
                 raise RetriesExceededError("Iudex environment setup failed")
             init_retries -= 1
             self._iudex_setup()
-            self._initial_key_sequence()
         self._is_init = True
         self.game.pause_game()
 
@@ -69,7 +86,7 @@ class IudexEnv(SoulsEnv):
         """Reset the environment to the beginning of an episode.
 
         Returns:
-            The first observation after a reset.
+            The first game state after a reset.
         """
         if not self._is_init:
             self._env_setup()
@@ -100,6 +117,7 @@ class IudexEnv(SoulsEnv):
         return self._internal_state
 
     def _iudex_setup(self) -> None:
+        """Set up Iudex flags, focus the application, teleport to the fog gate and enter."""
         self.game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
         if not self.game.check_boss_flags("iudex"):
             logger.debug("_iudex_setup: Reload due to incorrect boss flags")
@@ -128,9 +146,11 @@ class IudexEnv(SoulsEnv):
             logger.debug("_iudex_setup: Teleport failed. Retrying")
             self.game.reload()
             return self._iudex_setup()
+        self._enter_fog_gate()
         logger.debug("_iudex_setup: Done")
 
-    def _initial_key_sequence(self):
+    def _enter_fog_gate(self):
+        """Enter the fog gate """
         self.game.camera_pose = self.env_args.cam_setup_orient
         self._game_input.single_action("interact")
         while True:
@@ -140,22 +160,22 @@ class IudexEnv(SoulsEnv):
         dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"][:3])
         if dist > 0.1:
             return  # Player has not entered the fog wall, abort early
-        logger.debug("_init_key_sequence: Done")
+        logger.debug("_enter_fog_gate: Done")
 
-    def compute_reward(self, game_log: GameState) -> float:
-        """Compute the reward from a game observation.
+    def compute_reward(self, game_state: GameState) -> float:
+        """Compute the reward from a game game state.
 
         Args:
-            game_log: A game state.
+            game_state: A game state.
 
         Returns:
-            The reward for the provided game observation.
+            The reward for the provided game state.
         """
-        player_hp_reward = game_log.player_hp / game_log.player_max_hp - 0.5
-        boss_hp_reward = 0.5 - game_log.boss_hp / game_log.boss_max_hp
-        if game_log.player_hp == 0:
+        player_hp_reward = game_state.player_hp / game_state.player_max_hp - 0.5
+        boss_hp_reward = 0.5 - game_state.boss_hp / game_state.boss_max_hp
+        if game_state.player_hp == 0:
             final_reward = -200
-        elif game_log.boss_hp == 0:
+        elif game_state.boss_hp == 0:
             final_reward = 200
         else:
             final_reward = 0
@@ -219,20 +239,25 @@ class IudexEnv(SoulsEnv):
         """Check if all conditions for starting the environment setup are met.
 
         Raises:
-            GameStateError: Game state is outside of expected values.
+            GameStateError: Game does not seem to be open.
             InvalidPlayerStateError: Player state is outside of expected values.
         """
         try:
-            game_log = self._game_logger.log()
+            game_state = self._game_logger.log()
         except MemoryReadError:
             logger.error("_env_setup_init_check failed: Player does not seem to be ingame")
             raise GameStateError("Player does not seem to be ingame")
-        if game_log.player_animation != "Idle":
+        if game_state.player_animation != "Idle":
             logger.error("_env_setup_init_check failed: Player is not idle")
-            logger.error(game_log)
+            logger.error(game_state)
             raise InvalidPlayerStateError("Player is not idle")
 
     def _env_setup_check(self) -> bool:
+        """Check if the environment setup was successful.
+
+        Returns:
+            True if all conditions are met, else False.
+        """
         dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"][:3])
         if dist > 0.2:
             logger.debug("_env_setup_check failed: Player pose out of tolerances")

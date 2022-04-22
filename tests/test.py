@@ -30,10 +30,6 @@ if __name__ == "__main__":
             print(f"Current gym uptime: {str(datetime.timedelta(seconds=seconds))}")
             i += 1
     finally:
-        # game_input = GameInput()
-        # game_input._press_key(0x12)
-        # game_input._press_key(0x73)
-        # game_input.reset()
         t_end = time.time()
         print(f"Total gym run time: {str(datetime.timedelta(seconds=round(t_end-t_start)))}")
         print(f"Total sample count: {sample_count}")
