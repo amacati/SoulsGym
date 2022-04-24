@@ -8,7 +8,7 @@ capable if desired to provide a visual game observation.
 Note:
     ``mss`` refers to the `pypi package <https://pypi.org/project/mss/>`_, **not** the conda-forge
     package!
-    """
+"""
 import time
 from typing import Callable, Optional
 
