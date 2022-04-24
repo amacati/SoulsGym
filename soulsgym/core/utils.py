@@ -1,4 +1,4 @@
-"""Miscellaneous utils functions."""
+"""Utility module for ``soulsgym``."""
 from __future__ import annotations
 from typing import Union
 import numpy as np
@@ -17,7 +17,7 @@ def wrap_to_pi(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
 
 
 class Singleton(object):
-    """Implement a Singleton parent class for inheritance."""
+    """Singleton base class."""
 
     def __new__(cls) -> Singleton:
         """Create a new class only if singleton has no instance so far, else return instance."""

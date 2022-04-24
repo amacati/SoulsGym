@@ -7,7 +7,8 @@ development. The memory_manipulator module is essentially a Python reimplementat
 modification capabilities of CheatEngine. In particular we'd like to thank *Dark Byte* for his
 activity in the CE forum which helped us understand how games and CE work under the hood.
 
-We also want to thank everyone who worked on the official DarkSoulsIII cheat sheet for CE. Without
+We also want to thank everyone who worked on the `DarkSoulsIII cheat table for CE 
+<https://github.com/igromanru/Dark-Souls-III-Cheat-Engine-Guide>`_. Without
 all the previous work on address discovery and scripts our work would not have succeeded.
 
 We know that the use of CheatEngine is controversial at best in the gaming community. However this

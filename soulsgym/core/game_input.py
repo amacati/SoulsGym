@@ -1,4 +1,4 @@
-"""Game control interface for key strokes and mouse clicks."""
+"""The ``game_input`` module provides an interface to trigger keystrokes from within the gym."""
 import ctypes
 from ctypes import wintypes
 from typing import Any, List
@@ -47,7 +47,7 @@ class _INPUT(ctypes.Structure):
 
 
 class GameInput:
-    """Abstract in-game interaction by simulating keystrokes to the game."""
+    """Trigger keystrokes by calling the Windows user32 API."""
 
     def __init__(self):
         """Initialize the key state dictionary."""
@@ -56,14 +56,19 @@ class GameInput:
     def update(self, actions: List[str]):
         """Update the pressed keys state and execute key presses/releases.
 
+        Action strings have to be contained in :data:`.static.keybindings`. Some actions
+        (e.g. rolling) require an immediate release after pressing the key, or else the player would
+        perform a different action such as running. All other keystrokes remain pressed as long as
+        successive updates contain the corresponding action (e.g. running).
+
         Args:
             actions: A list of pressed actions.
         """
         for action in self.state:
             if action in ("roll", "lightattack", "heavyattack", "parry") and action in actions:
-                GameInput._press_key(keymap[keybindings[action]])
+                self._press_key(keymap[keybindings[action]])
                 time.sleep(0.02)
-                GameInput._release_key(keymap[keybindings[action]])
+                self._release_key(keymap[keybindings[action]])
                 continue
             # nothing new, continue
             if self.state[action] == (action in actions):
@@ -71,18 +76,14 @@ class GameInput:
             # key was not pressed before
             if not self.state[action]:
                 self.state[action] = True
-                GameInput._press_key(keymap[keybindings[action]])
+                self._press_key(keymap[keybindings[action]])
             # key was pressed before
             elif self.state[action]:
                 self.state[action] = False
-                GameInput._release_key(keymap[keybindings[action]])
+                self._release_key(keymap[keybindings[action]])
 
     def reset(self):
-        """Reset the game input keys."""
-        self.update([])
-
-    def restart(self):
-        """Release all keys and sets the press state to False."""
+        """Release all keys and set the press state to False."""
         for action in self.state:
             if self.state[action]:
                 self._release_key(keymap[keybindings[action]])
@@ -92,12 +93,12 @@ class GameInput:
         """Perform a single action for a given amount of time.
 
         Args:
-            action: The action that shall be performed (see the keybinding table)
-            press_time: The time how long the key should be pressed.
+            action: The action to trigger (see :data:`.static.keybindings`).
+            press_time: The duration of the key press.
         """
-        GameInput._press_key(keymap[keybindings[action]])
+        self._press_key(keymap[keybindings[action]])
         time.sleep(press_time)
-        GameInput._release_key(keymap[keybindings[action]])
+        self._release_key(keymap[keybindings[action]])
 
     @staticmethod
     def _press_key(key_hex_code: int):

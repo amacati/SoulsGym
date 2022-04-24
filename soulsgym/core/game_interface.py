@@ -1,4 +1,17 @@
-"""Game property interface to attributes such as position, health, game loop speed etc."""
+"""The ``game_interface`` provides an interface for the game properties.
+
+It abstracts the memory manipulation into properties and functions that write into the appropriate
+game memory addresses.
+
+Note:
+    The ``Game`` interface is essentially a wrapper around the :class:`.MemoryManipulator`. As such
+    it inherits the same cache restrictions. See :data:`.MemoryManipulator.cache`,
+    :meth:`.Game.clear_cache` and :meth:`.MemoryManipulator.clear_cache` for more information.
+
+Warning:
+    Writing into the process memory is not guaranteed to be "stable". Race conditions with the main
+    game loop *will* occur and overwrite values. Coordinates are most affected by this.
+"""
 import struct
 from typing import Tuple
 import logging
@@ -8,93 +21,76 @@ import numpy as np
 from pymem.exception import MemoryReadError
 
 from soulsgym.core.memory_manipulator import MemoryManipulator
-from soulsgym.core.memory_manipulator import BASES, VALUE_ADDRESS_OFFSETS
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.utils import wrap_to_pi
-from soulsgym.core.static import bonfires
+from soulsgym.core.static import bonfires, address_bases, address_offsets
 
 logger = logging.getLogger(__name__)
 
 
 class Game:
-    """Game interface class."""
+    """The Game interface exposes the game properties as class properties and methods.
+
+    Almost all properties and methods write directly into the game memory. The only exception is the
+    :attr:`~.Game.camera_pose`. We haven't found a method to directly manipulate the camera pose
+    and instead use a ``GameInput`` instance to manually control the camera with keystrokes.
+    """
 
     def __init__(self):
-        """Initialize the MemoryManipulator which acts as an abstraction for pymem and GameInput.
-
-        Initialization takes some time, we therefore reuse the manipulator instead of creating a new
-        one for each pymem call.
+        """Initialize the :class:`.MemoryManipulator` and the :class:`.GameInput`.
 
         Note:
-            The game has to run at this point, otherwise the initialization of MemoryManipulator
-            will fail.
+            The game has to run at initialization, otherwise the initialization of the
+            ``MemoryManipulator`` will fail.
         """
         self.mem = MemoryManipulator()
         self._game_input = GameInput()  # Necessary for camera control etc
         self.iudex_max_hp = 1037
-        self._debug_flags = {}
-
-    def clear_cache(self):
-        """Clear the resolving cache of the memory manipulator.
-
-        Note:
-            This needs to be called on every game reset and after dying.
-        """
-        self.mem.clear_cache()
+        self._game_flags = {}  # Cache game flags to restore them after a game reload
 
     @property
     def player_hp(self) -> int:
-        """Read the player's current hp.
+        """The player's current hit points.
 
         Returns:
             The player's current hit points.
         """
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerHP"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["PlayerHP"], base=base)
         return self.mem.read_int(address)
 
     @player_hp.setter
     def player_hp(self, hp: int):
-        """Set the current hit points of the player.
-
-        Args:
-            hp: The amount of hit points to set. Zeroing this value will kill the player.
-        """
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerHP"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["PlayerHP"], base=base)
         self.mem.write_int(address, hp)
 
     @property
     def player_sp(self) -> int:
-        """Read the player's current sp.
+        """The player's current stamina points.
 
         Returns:
             The player's current stamina points.
         """
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerSP"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["PlayerSP"], base=base)
         return self.mem.read_int(address)
 
     @player_sp.setter
     def player_sp(self, sp: int):
-        """Set the current stamina points of the player.
-
-        Args:
-            sp: The amount of stamina points to set.
-        """
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerSP"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["PlayerSP"], base=base)
         self.mem.write_int(address, sp)
 
     @property
     def player_max_hp(self) -> int:
-        """Read the maximum player hp.
+        """The player's maximum hit points.
 
         Returns:
-            The maximum hit points the player can currently have.
+            The player's maximum hit points.
         """
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerMaxHP"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["PlayerMaxHP"], base=base)
         return self.mem.read_int(address)
 
     @player_max_hp.setter
@@ -103,13 +99,13 @@ class Game:
 
     @property
     def player_max_sp(self) -> int:
-        """Read the maximum player sp.
+        """The player's maximum stamina points.
 
         Returns:
-            The maximum stamina points the player can currently have.
+            The player's maximum stamina points.
         """
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerMaxSP"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["PlayerMaxSP"], base=base)
         return self.mem.read_int(address)
 
     @player_max_sp.setter
@@ -126,35 +122,39 @@ class Game:
 
     @property
     def player_pose(self) -> np.ndarray:
-        """Read the player's current pose (position and orientation).
+        """The player's current pose.
 
-        The rotation is given as angle in radians as the player can only rotate around the z axis.
+        Poses are the combination of position and rotation. In the case of game entities (e.g. the
+        player or bosses) the rotation is given as a single angle in radians around the z axis.
+
+        Setting the player's pose is more complex than just overwriting the pose values. The player
+        might be killed if the teleported distance is interpreted as a fall. We save all game flags,
+        disable player deaths and gravity, set the coordinates and restore all flags to their
+        previous state.
+
+        Warning:
+            Pose modifications are particularly affected by race conditions!
 
         Returns:
             The current player pose as [x, y, z, a].
         """
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerA"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["PlayerA"], base=base)
         buff = self.mem.read_bytes(address, length=24)
         a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure.
         return np.array([x, y, z, a])
 
     @player_pose.setter
     def player_pose(self, coordinates: Tuple[float]):
-        """Teleport the player to given coordinates (x, y, z, a).
-
-        Args:
-            coordinates: The tuple of coordinates (x, y, z, a).
-        """
         buff_death = self.allow_player_death
         self.allow_player_death = False
         buff_gravity = self.gravity
         self.gravity = False
-        base = self.mem.base_address + BASES["B"]
-        x_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerX"], base=base)
-        y_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerY"], base=base)
-        z_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerZ"], base=base)
-        a_address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerA"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        x_address = self.mem.resolve_address(address_offsets["PlayerX"], base=base)
+        y_address = self.mem.resolve_address(address_offsets["PlayerY"], base=base)
+        z_address = self.mem.resolve_address(address_offsets["PlayerZ"], base=base)
+        a_address = self.mem.resolve_address(address_offsets["PlayerA"], base=base)
         self.mem.write_float(x_address, coordinates[0])
         self.mem.write_float(y_address, coordinates[1])
         self.mem.write_float(z_address, coordinates[2])
@@ -165,97 +165,103 @@ class Game:
 
     @property
     def player_animation(self) -> str:
-        """Read the player's current animation.
+        """The player's current animation name.
+
+        Note:
+            The player animation cannot be overwritten.
 
         Returns:
-            The current animation of the player as an identifier string.
+            The player's current animation name.
         """
         # animation string has maximum of 20 chars (utf-16)
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["PlayerAnimation"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["PlayerAnimation"], base=base)
         return self.mem.read_string(address, 40, codec="utf-16")
 
     @player_animation.setter
-    def player_animation(self, animation: str):
-        """Set the player's current animation.
-
-        Args:
-            animation: The animation identifier string.
-        """
+    def player_animation(self, _: str):
         raise NotImplementedError("Setting the player animation is not supported at the moment")
 
     @property
     def allow_player_death(self) -> bool:
-        address = self.mem.base_address + BASES["DebugFlags"]
+        """Disable/enable player deaths ingame."""
+        address = self.mem.base_address + address_bases["DebugFlags"]
         return self.mem.read_int(address) == 0
 
     @allow_player_death.setter
     def allow_player_death(self, flag: bool):
-        address = self.mem.base_address + BASES["DebugFlags"]
+        address = self.mem.base_address + address_bases["DebugFlags"]
         self.mem.write_int(address, int(not flag))
 
     @property
     def player_stats(self) -> Tuple[int]:
-        """Read the current player stats from the game.
+        """The current player stats from the game.
+
+        The stats can be overwritten by a tuple of matching dimension (10) and order.
 
         Returns:
             A Tuple with all player attributes in the same order as in the game.
         """
-        base = self.mem.base_address + BASES["A"]
-        sl = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["SoulLevel"], base=base))
-        vigor = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vigor"], base=base))
-        att = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Attunement"], base=base))
-        endurance = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Endurance"], base=base))
-        vit = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vitality"], base=base))
-        strength = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Strength"], base=base))
-        dex = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Dexterity"], base=base))
-        intelligence = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Intelligence"], base=base))
-        faith = self.mem.read_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Faith"], base=base))
-        luck = self.mem.read_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Luck"], base=base))
+        base = self.mem.base_address + address_bases["A"]
+        address_sl = self.mem.resolve_address(address_offsets["SoulLevel"], base=base)
+        address_vigor = self.mem.resolve_address(address_offsets["Vigor"], base=base)
+        address_att = self.mem.resolve_address(address_offsets["Attunement"], base=base)
+        address_endurance = self.mem.resolve_address(address_offsets["Endurance"], base=base)
+        address_vit = self.mem.resolve_address(address_offsets["Vitality"], base=base)
+        address_strength = self.mem.resolve_address(address_offsets["Strength"], base=base)
+        address_dex = self.mem.resolve_address(address_offsets["Dexterity"], base=base)
+        address_intell = self.mem.resolve_address(address_offsets["Intelligence"], base=base)
+        address_faith = self.mem.resolve_address(address_offsets["Faith"], base=base)
+        address_luck = self.mem.resolve_address(address_offsets["Luck"], base=base)
+        sl = self.mem.read_int(address_sl)
+        vigor = self.mem.read_int(address_vigor, base=base)
+        att = self.mem.read_int(address_att, base=base)
+        endurance = self.mem.read_int(address_endurance)
+        vit = self.mem.read_int(address_vit)
+        strength = self.mem.read_int(address_strength)
+        dex = self.mem.read_int(address_dex)
+        intelligence = self.mem.read_int(address_intell)
+        faith = self.mem.read_int(address_faith)
+        luck = self.mem.read_int(address_luck)
         return (sl, vigor, att, endurance, vit, strength, dex, intelligence, faith, luck)
 
     @player_stats.setter
     def player_stats(self, stats: Tuple[int]):
         assert len(stats) == 10, "Stats tuple dimension does not match requirements"
-        base = self.mem.base_address + BASES["A"]
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["SoulLevel"], base=base),
-                           stats[0])
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vigor"], base=base),
-                           stats[1])
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Attunement"], base=base),
-                           stats[2])
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Endurance"], base=base),
-                           stats[3])
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Vitality"], base=base),
-                           stats[4])
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Strength"], base=base),
-                           stats[5])
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Dexterity"], base=base),
-                           stats[6])
-        self.mem.write_int(
-            self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Intelligence"], base=base), stats[7])
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Faith"], base=base),
-                           stats[8])
-        self.mem.write_int(self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["Luck"], base=base),
-                           stats[9])
+        base = self.mem.base_address + address_bases["A"]
+        address_sl = self.mem.resolve_address(address_offsets["SoulLevel"], base=base)
+        address_vigor = self.mem.resolve_address(address_offsets["Vigor"], base=base)
+        address_att = self.mem.resolve_address(address_offsets["Attunement"], base=base)
+        address_endurance = self.mem.resolve_address(address_offsets["Endurance"], base=base)
+        address_vit = self.mem.resolve_address(address_offsets["Vitality"], base=base)
+        address_strength = self.mem.resolve_address(address_offsets["Strength"], base=base)
+        address_dex = self.mem.resolve_address(address_offsets["Dexterity"], base=base)
+        address_intell = self.mem.resolve_address(address_offsets["Intelligence"], base=base)
+        address_faith = self.mem.resolve_address(address_offsets["Faith"], base=base)
+        address_luck = self.mem.resolve_address(address_offsets["Luck"], base=base)
+
+        self.mem.write_int(address_sl, stats[0])
+        self.mem.write_int(address_vigor, stats[1])
+        self.mem.write_int(address_att, stats[2])
+        self.mem.write_int(address_endurance, stats[3])
+        self.mem.write_int(address_vit, stats[4])
+        self.mem.write_int(address_strength, stats[5])
+        self.mem.write_int(address_dex, stats[6])
+        self.mem.write_int(address_intell, stats[7])
+        self.mem.write_int(address_faith, stats[8])
+        self.mem.write_int(address_luck, stats[9])
 
     def check_boss_flags(self, boss_id: str) -> bool:
-        """Check if the boss flags are correct.
+        """Check if the boss flags are correct for starting the boss fight.
 
         Args:
-            boss_id: Name of the boss whose flags are checked for.
+            boss_id: The boss ID.
 
         Returns:
             True if all boss flags are correct else False.
+
+        Raises:
+            KeyError: ``boss_id`` does not match any known boss.
         """
         if boss_id == "iudex":
             return self.iudex_flags
@@ -263,14 +269,14 @@ class Game:
         raise KeyError(f"Boss name {boss_id} currently not supported")
 
     def set_boss_flags(self, boss_id: str, flag: bool):
-        """Set the boss flags of a boss.
+        """Set the boss flags of a boss to enable the boss fight.
 
         Args:
-            boss_id: Name of the boss whose flags are set.
+            boss_id: The boss ID.
             flag: Value of the boss flags.
 
-        Returns:
-            True if all boss flags are correct else False.
+        Raises:
+            KeyError: ``boss_id`` does not match any known boss.
         """
         if boss_id == "iudex":
             self.iudex_flags = flag
@@ -280,13 +286,17 @@ class Game:
 
     @property
     def iudex_flags(self) -> bool:
-        """Check whether Iudex boss flags are set correctly.
+        """Iudex boss fight flags.
+
+        True means the Iudex flags are set to "encountered", "sword pulled out" and "not defeated".
+        All other configurations are False. When the flag is set to False, the "encountered",
+        "sword pulled out" and "defeated" flags are set to False.
 
         Returns:
             True if all flags are correct, False otherwise.
         """
-        base = self.mem.base_address + BASES["GameFlagData"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base)
+        base = self.mem.base_address + address_bases["GameFlagData"]
+        address = self.mem.resolve_address(address_offsets["IudexDefeated"], base=base)
         buff = self.mem.read_int(address)
         # The leftmost 3 bits tell if iudex is defeated(7), encountered(6) and his sword is pulled
         # out (5). We need him encountered and his sword pulled out but not defeated, so shifting
@@ -296,15 +306,10 @@ class Game:
 
     @iudex_flags.setter
     def iudex_flags(self, val: bool):
-        """Set Iudex flags encoutered and sword pulled out flags to `val` and defeated to 0.
-
-        Args:
-            val: Whether to set the flags or not.
-        """
         flag = 1 if val else 0
-        base = self.mem.base_address + BASES["GameFlagData"]
+        base = self.mem.base_address + address_bases["GameFlagData"]
         # Encountered flag
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexDefeated"], base=base)
+        address = self.mem.resolve_address(address_offsets["IudexDefeated"], base=base)
         self.mem.write_bit(address, 5, flag)
         # Sword pulled out flag
         self.mem.write_bit(address, 6, flag)
@@ -321,7 +326,7 @@ class Game:
             The maximum health points of the specified boss.
 
         Raises:
-            KeyError: On unsupported `boss_id`.
+            KeyError: ``boss_id`` does not match any known boss.
         """
         if boss_id == "iudex":
             return self.iudex_max_hp
@@ -338,7 +343,7 @@ class Game:
             The health points of the specified boss.
 
         Raises:
-            KeyError: On unsupported `boss_id`
+            KeyError: ``boss_id`` does not match any known boss.
         """
         if boss_id == "iudex":
             return self.iudex_hp
@@ -353,7 +358,7 @@ class Game:
             hp: The health points assigned to the boss.
 
         Raises:
-            KeyError: On unsupported `boss_id`.
+            KeyError: ``boss_id`` does not match any known boss.
         """
         if boss_id == "iudex":
             self.iudex_hp = hp
@@ -363,35 +368,30 @@ class Game:
 
     @property
     def iudex_hp(self) -> int:
-        """Read Iudex's current hp.
+        """Iudex Gundyr's current hit points.
 
         Returns:
-            The current hit points of Iudex.
+            Iudex Gundyr's current hit points.
         """
-        base = self.mem.base_address + BASES["IudexA"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexHP"], base=base)
+        base = self.mem.base_address + address_bases["IudexA"]
+        address = self.mem.resolve_address(address_offsets["IudexHP"], base=base)
         return self.mem.read_int(address)
 
     @iudex_hp.setter
     def iudex_hp(self, hp: int):
-        """Set Iudex's current hit points.
-
-        Args:
-            hp: The amount of hit points to set. Zeroing this value will kill Iudex.
-        """
         assert 0 <= hp <= 1037  # Iudex HP has to lie in this range
-        base = self.mem.base_address + BASES["IudexA"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexHP"], base=base)
+        base = self.mem.base_address + address_bases["IudexA"]
+        address = self.mem.resolve_address(address_offsets["IudexHP"], base=base)
         self.mem.write_int(address, hp)
 
     def reset_boss_hp(self, boss_id: str):
-        """Reset the health points of a boss.
+        """Reset the current boss hit points.
 
         Args:
             boss_id: The boss ID.
 
         Raises:
-            KeyError: On unsupported `boss_id`.
+            KeyError: ``boss_id`` does not match any known boss.
         """
         if boss_id == "iudex":
             self.iudex_hp = self.iudex_max_hp
@@ -400,16 +400,16 @@ class Game:
             raise KeyError(f"Boss {boss_id} not supported!")
 
     def get_boss_pose(self, boss_id: str) -> np.ndarray:
-        """Get the pose of a boss.
+        """Get the current boss pose.
 
         Args:
             boss_id: The boss ID.
 
         Returns:
-            The pose of the specified boss.
+            The current boss pose.
 
         Raises:
-            KeyError: On unsupported `boss_id`.
+            KeyError: ``boss_id`` does not match any known boss.
         """
         if boss_id == "iudex":
             return self.iudex_pose
@@ -418,31 +418,26 @@ class Game:
 
     @property
     def iudex_pose(self) -> np.ndarray:
-        """Read Iudex pose.
+        """Iudex Gundyr's pose.
 
         Returns:
-            The pose [x, y, z, a] for Iudex.
+            Iudex Gundyr's pose.
         """
-        base = self.mem.base_address + BASES["IudexA"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseA"], base=base)
+        base = self.mem.base_address + address_bases["IudexA"]
+        address = self.mem.resolve_address(address_offsets["IudexPoseA"], base=base)
         buff = self.mem.read_bytes(address, length=24)
         a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure
         return np.array([x, y, z, a])
 
     @iudex_pose.setter
     def iudex_pose(self, coordinates: Tuple[float]):
-        """Teleport Iudex to given coordinates (x, y, z, a).
-
-        Args:
-            coordinates: A tuple of coordinates (x, y, z, a).
-        """
-        game_speed = self.global_speed
+        game_speed = self.global_speed  # TODO: Verify this is necessary
         self.pause_game()
-        base = self.mem.base_address + BASES["IudexA"]
-        x_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseX"], base=base)
-        y_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseY"], base=base)
-        z_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseZ"], base=base)
-        a_addr = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexPoseA"], base=base)
+        base = self.mem.base_address + address_bases["IudexA"]
+        x_addr = self.mem.resolve_address(address_offsets["IudexPoseX"], base=base)
+        y_addr = self.mem.resolve_address(address_offsets["IudexPoseY"], base=base)
+        z_addr = self.mem.resolve_address(address_offsets["IudexPoseZ"], base=base)
+        a_addr = self.mem.resolve_address(address_offsets["IudexPoseA"], base=base)
         self.mem.write_float(x_addr, coordinates[0])
         self.mem.write_float(y_addr, coordinates[1])
         self.mem.write_float(z_addr, coordinates[2])
@@ -450,16 +445,16 @@ class Game:
         self.global_speed = game_speed
 
     def get_boss_animation(self, boss_id: str) -> str:
-        """Get the current animation of a boss.
+        """Get the current boss animation.
 
         Args:
             boss_id: The boss ID.
 
         Returns:
-            The animation of the specified boss.
+            The current boss animation.
 
         Raises:
-            KeyError: On unsupported `boss_id`.
+            KeyError: ``boss_id`` does not match any known boss.
         """
         if boss_id == "iudex":
             return self.iudex_animation
@@ -469,24 +464,24 @@ class Game:
 
     @property
     def iudex_animation(self) -> str:
-        """Read Iudex's current animation.
+        """Iudex Gundyr's current animation.
 
         Returns:
-            Iudex's current animation as an identifier string.
+            Iudex Gundyr's current animation.
         """
         # animation string has maximum of 20 chars (utf-16)
-        base = self.mem.base_address + BASES["IudexA"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAnimation"], base=base)
+        base = self.mem.base_address + address_bases["IudexA"]
+        address = self.mem.resolve_address(address_offsets["IudexAnimation"], base=base)
         return self.mem.read_string(address, 40, codec="utf-16")
 
     def set_boss_attacks(self, boss_id: str, flag: bool):
-        """Set the `allow_attack` flag of a boss.
+        """Set the ``allow_attack`` flag of a boss.
 
         Args:
             boss_id: The boss ID.
 
         Raises:
-            KeyError: On unsupported `boss_id`.
+            KeyError: ``boss_id`` does not match any known boss.
         """
         if boss_id == "iudex":
             self.iudex_attacks = flag
@@ -496,21 +491,21 @@ class Game:
 
     @property
     def iudex_attacks(self) -> bool:
-        """Read Iudex's attack flag.
+        """Iudex Gundyr's ``allow_attack`` flag.
 
         Returns:
             True if Iudex is allowed to attack, else False.
         """
-        base = self.mem.base_address + BASES["IudexA"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"], base=base)
+        base = self.mem.base_address + address_bases["IudexA"]
+        address = self.mem.resolve_address(address_offsets["IudexAttacks"], base=base)
         no_atk = self.mem.read_bytes(address, 1)  # Checks if attacks are forbidden
         return (no_atk[0] & 64) == 0  # Flag is saved in bit 6 (including 0)
 
     @iudex_attacks.setter
     def iudex_attacks(self, val: bool):
         flag = not val
-        base = self.mem.base_address + BASES["IudexA"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["IudexAttacks"], base=base)
+        base = self.mem.base_address + address_bases["IudexA"]
+        address = self.mem.resolve_address(address_offsets["IudexAttacks"], base=base)
         # Flag is saved in bit 6 (including 0)
         self.mem.write_bit(address, 6, flag)
 
@@ -518,12 +513,15 @@ class Game:
     def camera_pose(self) -> np.ndarray:
         """Read the camera's current position and rotation.
 
+        The camera orientation is specified as the normal of the camera plane. Since the plane never
+        rotates around this normal the camera pose is fully specified by this 3D vector.
+
         Returns:
             The current camera rotation as normal vector and position as coordinates
             [x, y, z, nx, ny, nz].
         """
-        base = self.mem.base_address + BASES["Cam"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["CamQ1"], base=base)
+        base = self.mem.base_address + address_bases["Cam"]
+        address = self.mem.resolve_address(address_offsets["CamQ1"], base=base)
         buff = self.mem.read_bytes(address, length=36)
         # cam orientation seems to be given as a normal vector for the camera plane. As with the
         # position, the game switches y and z
@@ -532,13 +530,6 @@ class Game:
 
     @camera_pose.setter
     def camera_pose(self, normal: Tuple[float]):
-        """Set the camera's current orientation.
-
-        Args:
-            normal: Target vector normal to the camera plane. The reasoning behind this
-                representation of orientation is that the camera never rotates around the normal
-                vector.
-        """
         assert len(normal) == 3, "Normal vector must have 3 elements"
         normal = np.array(normal, dtype=np.float64)
         normal /= np.linalg.norm(normal)
@@ -563,13 +554,15 @@ class Game:
 
     @property
     def last_bonfire(self) -> str:
-        """Reads the bonfire name the player has rested at last.
+        """The bonfire name the player has rested at last.
+
+        The bonfire name has to be in the :data:`.bonfires` dictionary.
 
         Returns:
             The bonfire name.
         """
-        base = self.mem.base_address + BASES["C"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LastBonfire"], base=base)
+        base = self.mem.base_address + address_bases["C"]
+        address = self.mem.resolve_address(address_offsets["LastBonfire"], base=base)
         buff = self.mem.read_bytes(address, 4)
         # Get the integer ID and look up the corresponding key to this value from the bonfires dict
         int_id = int.from_bytes(buff, byteorder="little")
@@ -579,65 +572,74 @@ class Game:
     @last_bonfire.setter
     def last_bonfire(self, name: str):
         assert name in bonfires.keys(), f"Unknown bonfire {name} specified!"
-        base = self.mem.base_address + BASES["C"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LastBonfire"], base=base)
+        base = self.mem.base_address + address_bases["C"]
+        address = self.mem.resolve_address(address_offsets["LastBonfire"], base=base)
         buff = (bonfires[name]).to_bytes(4, byteorder='little')
         self.mem.write_bytes(address, buff)
 
     @property
     def allow_attacks(self) -> bool:
-        address = self.mem.base_address + BASES["DebugFlags"] + 0xB
+        """Globally enable/disable attacks for all entities."""
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0xB
         return self.mem.read_int(address) == 0
 
     @allow_attacks.setter
     def allow_attacks(self, flag: bool):
-        address = self.mem.base_address + BASES["DebugFlags"] + 0xB
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0xB
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_hits(self) -> bool:
-        address = self.mem.base_address + BASES["DebugFlags"] + 0xA
+        """Globally enable/disable hits for all entities.
+
+        No hits is equivalent to all entities having unlimited iframes, i.e. they are unaffected by
+        all attacks, staggers etc.
+        """
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0xA
         return self.mem.read_int(address) == 0
 
     @allow_hits.setter
     def allow_hits(self, flag: bool):
-        address = self.mem.base_address + BASES["DebugFlags"] + 0xA
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0xA
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_moves(self) -> bool:
-        address = self.mem.base_address + BASES["DebugFlags"] + 0xC
+        """Globally enable/disable movement for all entities."""
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0xC
         return self.mem.read_int(address) == 0
 
     @allow_moves.setter
     def allow_moves(self, flag: bool):
-        address = self.mem.base_address + BASES["DebugFlags"] + 0xC
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0xC
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_deaths(self) -> bool:
-        address = self.mem.base_address + BASES["DebugFlags"] + 0x8
+        """Globally enable/disable deaths for all entities."""
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0x8
         return self.mem.read_int(address) == 0
 
     @allow_deaths.setter
     def allow_deaths(self, flag: bool):
-        address = self.mem.base_address + BASES["DebugFlags"] + 0x8
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0x8
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_weapon_durability_dmg(self) -> bool:
-        address = self.mem.base_address + BASES["DebugFlags"] + 0xE
+        """Globally enable/disable weapon durability damage for all entities."""
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0xE
         return self.mem.read_int(address) == 0
 
     @allow_weapon_durability_dmg.setter
     def allow_weapon_durability_dmg(self, flag: bool):
-        address = self.mem.base_address + BASES["DebugFlags"] + 0xE
+        address = self.mem.base_address + address_bases["DebugFlags"] + 0xE
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     def reload(self):
         """Kill the player, clear the address cache and wait for the player to respawn."""
         self.player_hp = 0
-        self._save_debug_flags()
+        self._save_game_flags()
         self.resume_game()  # For safety, player might never change animation otherwise
         self.clear_cache()
         time.sleep(0.5)  # Give the game time to register player death and change animation
@@ -651,33 +653,20 @@ class Game:
             time.sleep(0.05)
         while self.player_animation != "Idle":  # Wait for the player to reach a safe "Idle" state
             time.sleep(0.05)
-        self._restore_debug_flags()
-
-    def _save_debug_flags(self):
-        self._debug_flags["allow_attacks"] = self.allow_attacks
-        self._debug_flags["allow_deaths"] = self.allow_deaths
-        self._debug_flags["allow_hits"] = self.allow_hits
-        self._debug_flags["allow_moves"] = self.allow_moves
-        self._debug_flags["allow_player_death"] = self.allow_player_death
-        self._debug_flags["allow_weapon_durability_dmg"] = self.allow_weapon_durability_dmg
-
-    def _restore_debug_flags(self):
-        self.allow_attacks = self._debug_flags["allow_attacks"]
-        self.allow_deaths = self._debug_flags["allow_deaths"]
-        self.allow_hits = self._debug_flags["allow_hits"]
-        self.allow_moves = self._debug_flags["allow_moves"]
-        self.allow_player_death = self._debug_flags["allow_player_death"]
-        self.allow_weapon_durability_dmg = self._debug_flags["allow_weapon_durability_dmg"]
+        self._restore_game_flags()
 
     @property
     def lock_on(self) -> bool:
-        """Read the player's current lock on status.
+        """The player's current lock on status.
+
+        Note:
+            Lock on cannot be set.
 
         Returns:
             True if the player is currently locked on a target, else False.
         """
-        base = self.mem.base_address + BASES["LockOn"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOn"], base=base)
+        base = self.mem.base_address + address_bases["LockOn"]
+        address = self.mem.resolve_address(address_offsets["LockOn"], base=base)
         buff = self.mem.read_bytes(address, 1)
         lock_on = struct.unpack("?", buff)[0]  # Interpret buff as boolean
         # We suspect the lock on flag actually signals the alignment of the target with the camera.
@@ -690,84 +679,80 @@ class Game:
         return lock_on
 
     @property
-    def lock_on_range(self) -> float:
-        """Read the current lock on range.
+    def lock_on_bonus_range(self) -> float:
+        """The current maximum bonus lock on range.
+
+        Default lock on range is 15. We only report any additional lock on range. Similarly, setting
+        this value to 0 will result in the default lock on range 15.
 
         Returns:
-            The lock on range.
+            The current maximum bonus lock on range.
         """
-        base = self.mem.base_address + BASES["LockOnParam"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOnBonusRange"], base=base)
+        base = self.mem.base_address + address_bases["LockOnParam"]
+        address = self.mem.resolve_address(address_offsets["LockOnBonusRange"], base=base)
         dist = self.mem.read_float(address)
-        return dist + 15  # Default lock on range is 15
+        return dist
 
-    @lock_on_range.setter
-    def lock_on_range(self, val: float):
-        """Set the current lock on range.
-
-        Args:
-            val: Lock on range (minimum range is 15).
-        """
-        assert val >= 15, "Bonus lock on range must be greater or equal default (15)"
-        base = self.mem.base_address + BASES["LockOnParam"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LockOnBonusRange"], base=base)
-        self.mem.write_float(address, val - 15)
+    @lock_on_bonus_range.setter
+    def lock_on_bonus_range(self, val: float):
+        assert val >= 0, "Bonus lock on range must be greater or equal to 0"
+        base = self.mem.base_address + address_bases["LockOnParam"]
+        address = self.mem.resolve_address(address_offsets["LockOnBonusRange"], base=base)
+        self.mem.write_float(address, val)
 
     @property
     def los_lock_on_deactivate_time(self) -> float:
-        """Read the current line of sight lock on deactivate time.
+        """The current line of sight lock on deactivate time.
+
+        If the player looses line of sight for longer than this time period, the game will remove
+        the camera lock. Default value is 2.
 
         Returns:
-            The los lock on deactivation time.
+            The current line of sight lock on deactivate time.
         """
-        base = self.mem.base_address + BASES["LockOnParam"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LoSLockOnTime"], base=base)
+        base = self.mem.base_address + address_bases["LockOnParam"]
+        address = self.mem.resolve_address(address_offsets["LoSLockOnTime"], base=base)
         return self.mem.read_float(address)
 
     @los_lock_on_deactivate_time.setter
     def los_lock_on_deactivate_time(self, val: float):
-        base = self.mem.base_address + BASES["LockOnParam"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["LoSLockOnTime"], base=base)
+        base = self.mem.base_address + address_bases["LockOnParam"]
+        address = self.mem.resolve_address(address_offsets["LoSLockOnTime"], base=base)
         self.mem.write_float(address, val)
 
     @property
     def global_speed(self) -> float:
-        """Read the game loop speed.
-
-        Returns:
-            The game speed.
-        """
-        return self.mem.read_float(self.mem.base_address + BASES["GlobalSpeed"])
-
-    @global_speed.setter
-    def global_speed(self, value: float):
-        """Set the game loop speed to a specific value.
+        """The game loop speed.
 
         Note:
             Setting this value to 0 will effectively pause the game. Default speed is 1.
 
-        Args:
-            value: The desired speed factor.
+        Returns:
+            The game loop speed.
         """
-        self.mem.write_float(self.mem.base_address + BASES["GlobalSpeed"], value)
+        return self.mem.read_float(self.mem.base_address + address_bases["GlobalSpeed"])
+
+    @global_speed.setter
+    def global_speed(self, value: float):
+        self.mem.write_float(self.mem.base_address + address_bases["GlobalSpeed"], value)
         time.sleep(0.001)  # Sleep to guarantee the game engine has reacted to the changed value
 
     @property
     def gravity(self) -> bool:
-        """Read the current gravity activation status.
+        """The current gravity activation status.
 
         Returns:
             True if gravity is active, else False.
         """
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["noGravity"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["noGravity"], base=base)
         buff = self.mem.read_int(address)
         return buff & 64 == 0  # Gravity disabled flag is saved at bit 6 (including 0)
 
     @gravity.setter
     def gravity(self, flag: bool):
-        base = self.mem.base_address + BASES["B"]
-        address = self.mem.resolve_address(VALUE_ADDRESS_OFFSETS["noGravity"], base=base)
+        base = self.mem.base_address + address_bases["B"]
+        address = self.mem.resolve_address(address_offsets["noGravity"], base=base)
         bit = 0 if flag else 1
         self.mem.write_bit(address, 6, bit)
 
@@ -778,3 +763,34 @@ class Game:
     def resume_game(self):
         """Resume the game by setting the global speed to 1."""
         self.global_speed = 1
+
+    def clear_cache(self):
+        """Clear the address cache of the memory manipulator.
+
+        Warning:
+            The cache is invalidated on a player death and needs to be manually cleared. See
+            :meth:`.MemoryManipulator.clear_cache` for detailed information.
+        """
+        self.mem.clear_cache()
+
+    def _save_game_flags(self):
+        """Save game flags to the game flags cache."""
+        self._game_flags["allow_attacks"] = self.allow_attacks
+        self._game_flags["allow_deaths"] = self.allow_deaths
+        self._game_flags["allow_hits"] = self.allow_hits
+        self._game_flags["allow_moves"] = self.allow_moves
+        self._game_flags["allow_player_death"] = self.allow_player_death
+        self._game_flags["allow_weapon_durability_dmg"] = self.allow_weapon_durability_dmg
+
+    def _restore_game_flags(self):
+        """Set the game flags to the values saved in the game flags cache.
+
+        Note:
+            :meth:`.Game._save_game_flags` has to be called at least once before this method.
+        """
+        self.allow_attacks = self._game_flags["allow_attacks"]
+        self.allow_deaths = self._game_flags["allow_deaths"]
+        self.allow_hits = self._game_flags["allow_hits"]
+        self.allow_moves = self._game_flags["allow_moves"]
+        self.allow_player_death = self._game_flags["allow_player_death"]
+        self.allow_weapon_durability_dmg = self._game_flags["allow_weapon_durability_dmg"]

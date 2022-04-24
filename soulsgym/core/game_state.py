@@ -1,4 +1,8 @@
-"""GameState data class for storing the internal game state."""
+"""The ``GameState`` is a ``dataclass`` that contains all information about the game state.
+
+It is also the observation type returned by soulsgym steps and resets and used as the internal state
+representation of the gym.
+"""
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
@@ -8,7 +12,7 @@ import numpy as np
 
 @dataclass
 class GameState:
-    """Represent a snapshot-state of the game."""
+    """Collect all game state information in a single data class."""
 
     phase: int = 1
     player_hp: int = 0
@@ -27,7 +31,7 @@ class GameState:
     lock_on: bool = False
 
     def copy(self) -> GameState:
-        """Copy the object.
+        """Create a copy of the ``GameState``.
 
         Returns:
             A copy of itself.

@@ -150,7 +150,7 @@ class IudexEnv(SoulsEnv):
         logger.debug("_iudex_setup: Done")
 
     def _enter_fog_gate(self):
-        """Enter the fog gate """
+        """Enter the fog gate."""
         self.game.camera_pose = self.env_args.cam_setup_orient
         self._game_input.single_action("interact")
         while True:

@@ -1,6 +1,16 @@
-"""Interface to the game window for future screen capturing etc."""
+"""The ``GameWindow`` is primarily a wrapper around the ``mss`` module which enables screen capture.
+
+It also allows us to focus the Dark Souls III application on gym start. We do not provide the images
+as observation output as we deem training on the images as too complex for now. Screen capturing
+also puts unnecessary additional load on the gym. We note however that the ``GameWindow`` is fully
+capable if desired to provide a visual game observation.
+
+Note:
+    ``mss`` refers to the `pypi package <https://pypi.org/project/mss/>`_, **not** the conda-forge
+    package!
+    """
 import time
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 import mss
@@ -12,10 +22,18 @@ import win32com.client
 
 
 class GameWindow:
-    """Manage interactions with the game window."""
+    """Provide an interface with the game window.
 
-    def __init__(self, processing: Callable = None):
+    The game resolution is particularly critical for the performance of the screen capture since a
+    larger game window directly corresponds to larger images and more required computational power
+    for processing.
+    """
+
+    def __init__(self, processing: Optional[Callable] = None):
         """Initialize the monitor and screen frame grab.
+
+        We offer an optional ``processing`` callable which can be used to transform images from the
+        screen capture.
 
         Args:
             processing: Optional function for raw image processing.
@@ -23,7 +41,7 @@ class GameWindow:
         self._app_id = self._get_ds_app_id()
         self._monitor = self._get_monitor()
         self._sct = mss.mss()
-        self._process_func = processing or self._default_processing
+        self._process_fn = processing or self._default_processing
 
     def screenshot(self, return_raw: bool = False) -> np.ndarray:
         """Fetch the current screen.
@@ -37,10 +55,10 @@ class GameWindow:
         raw = np.array(self._sct.grab(self._monitor))
         if return_raw:
             return raw
-        return self._process_func(raw)
+        return self._process_fn(raw)
 
     def focus_application(self):
-        """Shift the application focus of windows to the game application.
+        """Shift the application focus of Windows to the game application.
 
         Also sets the cursor within the game window.
         """
@@ -68,8 +86,8 @@ class GameWindow:
         """Handle the EnumWindows callback.
 
         Args:
-            hwnd: A handle to a top-level window
-            top_windows: The application-defined value given in EnumWindows
+            hwnd: A handle to a top-level window.
+            top_windows: The application-defined value given in EnumWindows.
         """
         top_windows.append((hwnd, win32gui.GetWindowText(hwnd)))
 
@@ -98,6 +116,6 @@ class GameWindow:
             raw: Raw input image.
 
         Returns:
-            The processed input image (same as raw in this case).
+            The unprocessed input image.
         """
         return raw

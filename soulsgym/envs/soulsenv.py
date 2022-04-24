@@ -131,7 +131,7 @@ class SoulsEnv(gym.Env, ABC):
         self.game.resume_game()
         self._game_input.reset()
         # Restore game parameter defaults
-        self.game.lock_on_range = 15
+        self.game.lock_on_bonus_range = 0
         self.game.los_lock_on_deactivate_time = 2
         self.game.allow_moves = True
         self.game.allow_attacks = True
@@ -156,7 +156,7 @@ class SoulsEnv(gym.Env, ABC):
 
     def _set_game_properties(self):
         """Set general game properties that help gym stability"""
-        self.game.lock_on_range = 50  # Increase lock on range for bosses
+        self.game.lock_on_bonus_range = 35  # Increase lock on range for bosses
         self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
         self.game.last_bonfire = self.env_args.bonfire
         self.game.player_stats = player_stats[self.ENV_ID]
@@ -257,7 +257,7 @@ class SoulsEnv(gym.Env, ABC):
             ResetNeeded: Tried to update before resetting the environment first.
         """
         if self._internal_state is None or self.done:
-            logger.error("_update_internal_state: SoulsEnv.step() called before reset")
+            logger.error("_update_internal_game_state: SoulsEnv.step() called before reset")
             raise ResetNeeded("SoulsEnv.step() called before reset")
         # Save animation counts and HP
         if self._internal_state.boss_animation == game_state.boss_animation:
@@ -290,13 +290,13 @@ class SoulsEnv(gym.Env, ABC):
         # Player is falling. Set player log HP to 0 and eagerly reset to prevent reload
         if game_state.player_pose[2] < self.env_args.space_coords_low[2]:
             game_state.player_hp = 0
-            self._update_internal_state(game_state)
+            self._update_internal_game_state(game_state)
             self.game.reset_player_hp()
             self.game.reset_boss_hp(self.ENV_ID)
             self.game.player_pose = coordinates[self.ENV_ID]["player_init_pose"]
         if game_state.player_animation in player_animations["critical"]:
             game_state.player_hp = 0
-            self._update_internal_state(game_state)
+            self._update_internal_game_state(game_state)
 
     def _lock_on(self, target_pose: Optional[np.ndarray] = None):
         """Reestablish lock on by orienting the camera towards the boss and pressing lock on.

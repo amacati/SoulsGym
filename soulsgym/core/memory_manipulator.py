@@ -1,4 +1,26 @@
-"""Low level memory manipulation interface."""
+"""The ``memory_manipulator`` module is a wrapper around ``pymem`` for memory read and write access.
+
+It implements some of the basic CheatEngine functionalities in Python. The game is controlled by
+changing the values of ingame properties in the process memory. We cannot write to static memory
+addresses since the process memory layout is dynamic and changes every time the game loads. Memory
+locations are given as chains of pointers instead which we have to resolve to get the current
+address for each attribute. These pointer chains were largely copied from available Dark Souls III
+cheat tables.
+
+Note:
+    Not all game properties of interest were included in the cheat tables. Some values and their
+    pointer chains were determined by us and are by no means guaranteed to be stable. Please report
+    any memory read or write error to help us identify unstable pointer chains!
+
+Warning:
+    We cache resolved pointer chains to increase read and write access times. This requires manual
+    cache clearing. For details see :meth:`MemoryManipulator.clear_cache`.
+
+The ``MemoryManipulator`` is writing from an external process to a memory region in use by the game
+process. You *will* see race conditions during writing, particularly for values with high frequency
+writes in the game loop (e.g. coordinates). Be sure to include checks if writes were successful and
+have taken effect in the game when you write to these memory locations.
+"""
 from __future__ import annotations
 import ctypes
 from typing import List
@@ -12,86 +34,6 @@ from pymem import Pymem
 
 from soulsgym.core.utils import Singleton
 
-BASES = {
-    "A": 0x4740178,
-    "B": 0x4768E78,
-    "C": 0x4743AB0,
-    "D": 0x4743A80,
-    "GameFlagData": 0x473BE28,
-    "GlobalSpeed": 0x999C28,
-    "LockOn": 0x0474C2F8,
-    "Cam": 0x47809C8,
-    "LockOnParam": 0x4766CA0,
-    "IudexA": 0x04743668,
-    "IudexC": 0x04739958,
-    "PlayerDisabled": 0x7FF48EECCA79,
-    "DebugFlags": 0x4768F68,
-}
-
-VALUE_ADDRESS_OFFSETS = {
-    "PlayerHP": [0x80, 0x1F90, 0x18, 0xD8],
-    "PlayerMaxHP": [0x80, 0x1F90, 0x18, 0xDC],
-    "PlayerSP": [0x80, 0x1F90, 0x18, 0xF0],
-    "PlayerMaxSP": [0x80, 0x1F90, 0x18, 0xF4],
-    "SoulLevel": [0x10, 0x70],
-    "Vigor": [0x10, 0x44],
-    "Attunement": [0x10, 0x48],
-    "Endurance": [0x10, 0x4C],
-    "Vitality": [0x10, 0x6C],
-    "Strength": [0x10, 0x50],
-    "Dexterity": [0x10, 0x54],
-    "Intelligence": [0x10, 0x58],
-    "Faith": [0x10, 0x5C],
-    "Luck": [0x10, 0x60],
-    "TargetAttack": [0x1EE8],
-    "TargetFreeze": [0x18, 0x20],
-    "IudexDefeated": [0x0, 0x5A67],  # Bit 7 saves the defeat flag!
-    "TargetedHP": [0x1F90, 0x18, 0xD8],
-    "TargetedMaxHP": [0x1F90, 0x18, 0xE0],
-    "PlayerX": [0x40, 0x28, 0x80],
-    "PlayerY": [0x40, 0x28, 0x88],
-    "PlayerZ": [0x40, 0x28, 0x84],
-    "PlayerA": [0x40, 0x28, 0x74],
-    "PlayerAnimation": [0x80, 0x1F90, 0x28, 0x898],
-    "TargetX": [0x1F90, 0x68, 0xa8, 0x40, 0x70],
-    "TargetY": [0x1F90, 0x68, 0xa8, 0x40, 0x78],
-    "TargetZ": [0x1F90, 0x68, 0xa8, 0x40, 0x74],
-    "TargetA": [0x1F90, 0x68, 0xa8, 0x40, 0x7C],
-    "TargetXUpdate": [0x1F90, 0x68, 0x80],
-    "TargetYUpdate": [0x1F90, 0x68, 0x88],
-    "TargetZUpdate": [0x1F90, 0x68, 0x84],
-    "TargetAUpdate": [0x1F90, 0x68, 0x8C],
-    "TargetedAnimation": [0x1F90, 0x28, 0x898],
-    "PlayerSpeedMod": [0x80, 0x1F90, 0x28, 0xA58],
-    "LockedOnFlag": [0x70],
-    "CamQ1": [0x10, 0x568, 0x108],
-    "CamQ2": [0x10, 0x568, 0x110],
-    "CamQ3": [0x10, 0x568, 0x114],
-    "CamQ4": [0x10, 0x568, 0x118],
-    "CameraX": [0x18, 0x0568, 0x120],
-    "CameraY": [0x18, 0x0568, 0x128],
-    "CameraZ": [0x18, 0x0568, 0x124],
-    "LoSLockOnTime": [0x2910],
-    "LockOnBonusRange": [0x2914],
-    "noGravity": [0x80, 0x1a08],  # Bit 6 saves the gravity flag!
-    "IudexHP": [0x0, 0x320, 0x0, 0x1F90, 0x18, 0xD8],
-    "IudexAnimation": [0x0, 0x320, 0x0, 0x1B00, 0x38, 0x898],
-    "IudexPoseX": [0x0, 0x320, 0x0, 0x1F90, 0x68, 0x80],
-    "IudexPoseY": [0x0, 0x320, 0x0, 0x1F90, 0x68, 0x88],
-    "IudexPoseZ": [0x0, 0x320, 0x0, 0x1F90, 0x68, 0x84],
-    "IudexPoseA": [0x0, 0x320, 0x0, 0x1F90, 0x68, 0x74],
-    "IudexAttacks": [0x0, 0x320, 0x0, 0x1EE8],
-    "LockOn": [0x24B0],
-    "LastBonfire": [0xACC],
-    "PlayerNoDeath": [0x0],
-    "PlayerDeathCount": [0x98],
-}
-
-# Iudex HP: 1F90 18 D8
-
-TARGETED_ENTITY_CODE_POS = 0x85a74a
-TARGETED_ENTITY_OLD_CODE = b"\x48\x8b\x80\x90\x1f\x00\x00"
-
 # Docs: https://docs.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-VIRTUAL_ALLOC
 VIRTUAL_ALLOC = ctypes.windll.kernel32.VirtualAlloc
 VIRTUAL_ALLOC.argtypes = [
@@ -99,17 +41,12 @@ VIRTUAL_ALLOC.argtypes = [
 ]
 VIRTUAL_ALLOC.restype = ctypes.c_ulonglong
 
-# currently not needed
-# VirtualFree = ctypes.windll.kernel32.VirtualFree
-# VirtualFree.restype = ctypes.wintypes.BOOL
-# VirtualFree.argtypes = [ ctypes.wintypes.LPVOID, ctypes.c_ulonglong, ctypes.wintypes.DWORD ]
-
 
 class MemoryManipulator(Singleton):
-    """Handle the memory manipulation of the game.
+    """Handle reads and writes to the game process memory.
 
-    At heart this class wraps pymem functions for memory read and writes. For better useability it
-    manages the game memory pointers, address resolving and decoding.
+    The ``MemoryManipulator`` wraps ``pymem`` functions for memory read and writes. It manages the
+    game memory pointers, address resolving and decoding.
     """
 
     def __init__(self, process_name: str = "DarkSoulsIII.exe"):
@@ -131,11 +68,22 @@ class MemoryManipulator(Singleton):
             # Create Pymem object once, this has a relative long initialziation
             self.pymem = Pymem()
             self.pymem.open_process_from_id(self.pid)
-            self.cache = {}
+            self.address_cache = {}
 
     def clear_cache(self):
-        """Clear the reference look-up cache of the memory manipulator."""
-        self.cache = {}
+        """Clear the reference look-up cache of the memory manipulator.
+
+        The ``MemoryManipulator`` caches all pointer chains it resolves to speed up the reads and
+        writes. If the game reloads, these addresses are no longer guaranteed to be valid and the
+        address cache has to be cleared in order to resolve the new addresses of all values. Cache
+        validation by reading the player death count is omitted since it incurs additional overhead
+        for read operations and offsets any performance gains made by using an address cache.
+
+        Warning:
+            We do not validate the cache before reading from a cached address! It is the users's
+            responsibility to clear the cache on reload!
+        """
+        self.address_cache = {}
 
     @staticmethod
     def get_pid(process_name: str) -> int:
@@ -148,7 +96,7 @@ class MemoryManipulator(Singleton):
             The process PID.
 
         Raises:
-            RuntimeError: No process with name `process_name` currently open.
+            RuntimeError: No process with name ``process_name`` currently open.
         """
         for proc in psutil.process_iter():
             if proc.name() == process_name:
@@ -158,14 +106,14 @@ class MemoryManipulator(Singleton):
     def resolve_address(self, addr_offsets: List[int], base: int) -> int:
         """Resolve an address by its offsets and a base.
 
-        Looks up the cache first.
+        Looks up the address cache first.
 
         Warning:
             Can't detect an invalid cache, this is the user's responsibility!
 
         Args:
             addr_offsets: The offsets which will be resolved iteratively. The first offset is the
-            offset to the base itself.
+                offset to the base itself.
             base: The base offset from the start of the program's memory.
 
         Returns:
@@ -176,22 +124,22 @@ class MemoryManipulator(Singleton):
         """
         u_id = str((addr_offsets, base))
         # Look up the cache
-        if u_id in self.cache:
-            return self.cache[u_id]
+        if u_id in self.address_cache:
+            return self.address_cache[u_id]
         # When no cache hit: resolve by following the pointer chain until its last link
         helper = self.pymem.read_longlong(base)
         for o in addr_offsets[:-1]:
             helper = self.pymem.read_longlong(helper + o)
         helper += addr_offsets[-1]
         # Add to cache
-        self.cache[u_id] = helper
+        self.address_cache[u_id] = helper
         return helper
 
     def read_int(self, address: int) -> int:
         """Read an integer from memory.
 
         Args:
-            address: The address to be looked into.
+            address: The read address.
 
         Returns:
             The integer value.
@@ -205,7 +153,7 @@ class MemoryManipulator(Singleton):
         """Read a float from memory.
 
         Args:
-            address: The address to be looked into.
+            address: The read address.
 
         Returns:
             The float value.
@@ -223,9 +171,9 @@ class MemoryManipulator(Singleton):
         """Read a string from memory.
 
         Args:
-            address: The address to be looked into.
+            address: The read address.
             length: The expected (maximum) string length.
-            null_term: Whether the string shall be cut after double 0x00.
+            null_term: String should be cut after double 0x00.
             codec: The codec used to decode the bytes.
 
         Returns:
@@ -251,8 +199,8 @@ class MemoryManipulator(Singleton):
         """Read raw bytes from memory.
 
         Args:
-            address: The address to be looked into.
-            length: The amount of bytes that should be read.
+            address: The read address.
+            length: The bytes length.
 
         Returns:
             The raw bytes.
@@ -266,7 +214,7 @@ class MemoryManipulator(Singleton):
         """Write a single bit.
 
         Args:
-            address: The address to be written into.
+            address: The write address.
             index: The index of the bit (0 ... 7).
             value: The value of the bit (0/1).
 
@@ -284,7 +232,7 @@ class MemoryManipulator(Singleton):
         """Write an integer to memory.
 
         Args:
-            address: The address to be written into.
+            address: The write address.
             value: The value of the integer.
 
         Raises:
@@ -296,7 +244,7 @@ class MemoryManipulator(Singleton):
         """Write a float to memory.
 
         Args:
-            address: The address to be written into.
+            address: The write address.
             value: The value of the float.
 
         Raises:
@@ -308,8 +256,8 @@ class MemoryManipulator(Singleton):
         """Write a series of bytes to memory.
 
         Args:
-            address: The first address to be written into.
-            buffer: The bytes to write.
+            address: The write address for the first byte.
+            buffer: The bytes.
 
         Raises:
             pym.exception.MemoryWriteError: An error with the memory write occured.
