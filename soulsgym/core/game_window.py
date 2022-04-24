@@ -6,7 +6,7 @@ also puts unnecessary additional load on the gym. We note however that the ``Gam
 capable if desired to provide a visual game observation.
 
 Note:
-    ``mss`` refers to the `pypi package <https://pypi.org/project/mss/>`_, **not** the conda-forge
+    ``mss`` refers to the `PyPI package <https://pypi.org/project/mss/>`_, **not** the conda-forge
     package!
 """
 import time
