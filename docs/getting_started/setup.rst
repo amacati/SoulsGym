@@ -33,6 +33,8 @@ and set the launch setting to **Play Offline**. Reload the game if necessary. Th
 save game. Exclusively use this save game with SoulsGym! Before you go back online, make sure to
 delete this game save!
 
+.. _game_settings:
+
 Game settings
 ^^^^^^^^^^^^^
 You have to start your new ``soulsgym`` gamesave as the knight class. Please do not alter the character in any way after loading into the game.

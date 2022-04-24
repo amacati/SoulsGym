@@ -29,8 +29,8 @@ It is important to import soulsgym because it can only register the environments
 during runtime.
 
 .. note::
-    Dark Souls III has to be open before launching the script! Make sure your game fulfills the
-    requirements of the environment you are starting (see :ref:`environments <soulsenv>`)!
+    Dark Souls III has to be open before launching the script! Make sure your game save fulfills the
+    requirements (see :ref:`game settings <game_settings>`)!
 
 If we want to get more info about the internal state of the environments we can alter the logging
 level:

@@ -1,7 +1,9 @@
 """The ``soulsgym`` package is a collection of OpenAI gym environments for Dark Souls III.
 
 It contains two main components. The first module :mod:`soulsgym.envs` includes a core environment
-as well as an individual environment for each available boss fight.
+as well as an individual environment for each available boss fight. SoulsGym uses Dark Souls III as
+the underlying engine that is modified at runtime by reading and writing into the game memory to
+create the environments.
 
 Note:
     The environments only cover phase one of the boss fights so far. For further explanations see

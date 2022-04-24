@@ -1,8 +1,8 @@
 ![soulsgym_banner](docs/img/soulsgym_banner.png)
 [![PEP8 Check](https://github.com/amacati/SoulsGym/actions/workflows/github-actions.yaml/badge.svg)](https://github.com/amacati/SoulsGym/actions/workflows/github-actions.yaml)
 
-SoulsGym is an extension for OpenAI's [gym](https://github.com/openai/gym) toolkit for reinforcement learning environments. It enables training and testing of reinforcement learning algorithms on boss fights from Dark Souls III.
-SoulsGym uses Dark Souls III as a simulation that is modified at runtime by reading and writing into the game memory to create gym environments from the game's boss fights.
+SoulsGym is an extension for OpenAI's [gym](https://github.com/openai/gym) toolkit for reinforcement learning environments. It enables training and testing of reinforcement learning algorithms on Dark Souls III bosses.
+SoulsGym uses the game as a simulation that is modified at runtime by reading and writing into the game memory to create gym environments from the game's boss fights.
 
 - [Requirements](#requirements)
 - [Installation](#installation)
@@ -11,7 +11,7 @@ SoulsGym uses Dark Souls III as a simulation that is modified at runtime by read
 - [Documentation](#documentation)
 
 ## Requirements
-SoulsGym uses Dark Souls III as engine for its environments. You need to have the latest version of the game installed. Dark Souls III is **not** available for free and has to be purchased (e.g. at the [Steam store](https://store.steampowered.com/app/374320/DARK_SOULS_III/)). SoulsGym requires the player to load into the game before any environments are created. In addition we require custom key bindings and graphic settings. It is also highly recommended to start the game in offline mode and delete your new save game after gym use to protect you from multiplayer bans.
+You need to have the latest version of Dark Souls III installed since SoulsGym uses the game as engine for its environments. Dark Souls III is **not** available for free and has to be purchased (e.g. at the [Steam store](https://store.steampowered.com/app/374320/DARK_SOULS_III/)). SoulsGym requires the player to load into the game before any environments are created. In addition we require custom key bindings and graphic settings. It is also highly recommended to start the game in offline mode and delete your new save game after gym use to protect you from multiplayer bans.
 
 > **Warning:** Please follow the setup description in our [official docs](TODO:INSERT_DOC_LINK) for the correct key settings, ban prevention, loss of game saves etc.
 
