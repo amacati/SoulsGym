@@ -13,7 +13,7 @@ SoulsGym uses the game as a simulation that is modified at runtime by reading an
 ## Requirements
 You need to have the latest version of Dark Souls III installed since SoulsGym uses the game as engine for its environments. Dark Souls III is **not** available for free and has to be purchased (e.g. at the [Steam store](https://store.steampowered.com/app/374320/DARK_SOULS_III/)). SoulsGym requires the player to load into the game before any environments are created. In addition we require custom key bindings and graphic settings. It is also highly recommended to start the game in offline mode and delete your new save game after gym use to protect you from multiplayer bans.
 
-> **Warning:** Please follow the setup description in our [official docs](TODO:INSERT_DOC_LINK) for the correct key settings, ban prevention, loss of game saves etc.
+> **Warning:** Please follow the setup description in our [official docs](https://soulsgym.readthedocs.io/en/latest/index.html) for the correct key settings, ban prevention, loss of game saves etc.
 
 ## Installation
 To install soulsgym, use `pip install soulsgym`. We support Python 3.9 and higher on Windows only. SoulsGym requires a running instance of Dark Souls III (see [requirements](#requirements)). It is therefore not available on other operating systems.
@@ -23,7 +23,7 @@ SoulsGym's environments follow the `gym` API as closely as possible. Since our e
 
 Our internal API for interacting with the game and creating the boss fight environments is located in the [`core`](soulsgym/core/) module. 
 
-A detailed API documentation of our environments and the core library can be found in the [official docs](TODO:INSERT_DOCS_LINK).
+A detailed API documentation of our environments and the core library can be found in the [official docs](https://soulsgym.readthedocs.io/en/latest/index.html).
 
 ## Getting Started
 You can use SoulsGym like any other `gym` environment. Below is an example of a random agent fighting against Iudex Gundyr:
@@ -44,4 +44,4 @@ env.close()
 ```
 > **Note:** Dark Souls III has to be running with the correct settings when executing the script. See [requirements](#requirements).
 ## Documentation
-For details on the `soulsgym` package see our [official docs](TODO:INSERT_DOCS_LINK).
+For details on the `soulsgym` package see our [official docs](https://soulsgym.readthedocs.io/en/latest/index.html).
