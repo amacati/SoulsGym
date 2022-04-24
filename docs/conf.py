@@ -11,7 +11,6 @@ import sys
 
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
 if on_rtd:
-    sys.path.insert(0, os.path.abspath("../soulsgym/"))
     sys.path.insert(0, os.path.abspath("../."))
 
 # -- Project information -----------------------------------------------------
@@ -32,10 +31,12 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.todo']
 
 # Autodoc config
 autodoc_member_order = 'bysource'
-autodoc_mock_imports = [
-    "gym", "win32api", "numpy", "pymem", "mss", "win32gui", "win32con", "win32com", "win32process",
-    "psutil"
-]
+if on_rtd:
+    # We have to include ctypes since RTD can't import windows ctypes
+    autodoc_mock_imports = [
+        "gym", "win32api", "numpy", "pymem", "mss", "win32gui", "win32con", "win32com",
+        "win32process", "psutil", "ctypes"
+    ]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

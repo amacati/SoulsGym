@@ -22,7 +22,6 @@ writes in the game loop (e.g. coordinates). Be sure to include checks if writes 
 have taken effect in the game when you write to these memory locations.
 """
 from __future__ import annotations
-import ctypes
 from typing import List
 
 import psutil
@@ -33,13 +32,6 @@ import pymem as pym
 from pymem import Pymem
 
 from soulsgym.core.utils import Singleton
-
-# Docs: https://docs.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-VIRTUAL_ALLOC
-VIRTUAL_ALLOC = ctypes.windll.kernel32.VirtualAlloc
-VIRTUAL_ALLOC.argtypes = [
-    ctypes.wintypes.LPVOID, ctypes.c_ulonglong, ctypes.wintypes.DWORD, ctypes.wintypes.DWORD
-]
-VIRTUAL_ALLOC.restype = ctypes.c_ulonglong
 
 
 class MemoryManipulator(Singleton):
