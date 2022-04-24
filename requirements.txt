@@ -1,0 +1,9 @@
+gym==0.21.0
+mss==6.1.0
+numpy==1.21.5
+psutil==5.9.0
+Pymem==1.8.5
+pywin32==302
+PyYAML==6.0
+setuptools==58.0.4
+win32gui==221.6
