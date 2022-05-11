@@ -40,9 +40,9 @@ class IudexEnv(SoulsEnv):
         #    camera x, y, z, nx, ny, nz where a represents the orientation and [nx ny nz] the camera
         #    plane normal
         # 4) Player animation
-        # 5) Player animation duration (in 0.1s ticks). We assume no animation takes longer than 10s
+        # 5) Player animation duration. We assume no animation takes longer than 10s
         # 6) Boss animation
-        # 7) Boss animation duration (in 0.1s ticks). We assume no animation takes longer than 10s
+        # 7) Boss animation duration. We assume no animation takes longer than 10s.
         player_anim_len = len(player_animations["standard"]) + len(player_animations["critical"])
         stats_space = spaces.Box(np.array(self.env_args.space_stats_low, dtype=np.float32),
                                  np.array(self.env_args.space_stats_high, dtype=np.float32))
@@ -58,9 +58,9 @@ class IudexEnv(SoulsEnv):
             "boss_pose": pose_space,
             "camera_pose": camera_pose_space,
             "player_animation": spaces.Discrete(player_anim_len),
-            "player_animation_counter": spaces.Discrete(100),
+            "player_animation_duration": spaces.Box(0., 10., (1,)),
             "boss_animation": spaces.Discrete(len(boss_animations["iudex"]["all"])),
-            "boss_animation_counter": spaces.Discrete(100)
+            "boss_animation_duration": spaces.Box(0., 10., (1,))
         })
 
     def _env_setup(self, init_retries: int = 3):
@@ -162,7 +162,8 @@ class IudexEnv(SoulsEnv):
             return  # Player has not entered the fog wall, abort early
         logger.debug("_enter_fog_gate: Done")
 
-    def compute_reward(self, game_state: GameState) -> float:
+    @staticmethod
+    def compute_reward(game_state: GameState) -> float:
         """Compute the reward from a game game state.
 
         Args:

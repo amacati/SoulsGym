@@ -469,10 +469,23 @@ class Game:
         Returns:
             Iudex Gundyr's current animation.
         """
-        # animation string has maximum of 20 chars (utf-16)
+        # Animation string has maximum of 20 chars (utf-16)
         base = self.mem.base_address + address_bases["IudexA"]
         address = self.mem.resolve_address(address_offsets["IudexAnimation"], base=base)
-        return self.mem.read_string(address, 40, codec="utf-16")
+        animation = self.mem.read_string(address, 40, codec="utf-16")
+        # Damage animations 'SABlend_xxx' overwrite the current animation for ~0.4s. This leads to
+        # bad info since the boss' true animation cannot infered. We recover the true animation by
+        # reading the register that contains the current attack integer. This integer is -1 if no
+        # attack is currently performed. We then default to a neutral `IdleBattle` animation, but
+        # this could really be any non-attacking animation.
+        if "SABlend" in animation:
+            base = self.mem.base_address + address_bases["IudexB"]
+            address = self.mem.resolve_address(address_offsets["IudexAttackID"], base=base)
+            attack_id = self.mem.read_int(address)
+            if attack_id == -1:  # No active attack, so default to best guess
+                return "IdleBattle"
+            return "Attack" + str(attack_id)
+        return animation
 
     def set_boss_attacks(self, boss_id: str, flag: bool):
         """Set the ``allow_attack`` flag of a boss.

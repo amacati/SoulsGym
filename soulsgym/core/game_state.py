@@ -25,9 +25,9 @@ class GameState:
     boss_pose: np.ndarray = np.zeros(4, dtype=np.float32)
     camera_pose: np.ndarray = np.zeros(6, dtype=np.float32)
     player_animation: str = "NoAnimation"
-    player_animation_count: int = 0
+    player_animation_duration: float = 0.
     boss_animation: str = "NoAnimation"
-    boss_animation_count: int = 0
+    boss_animation_duration: float = 0.
     lock_on: bool = False
 
     def copy(self) -> GameState:
