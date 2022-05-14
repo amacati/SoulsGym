@@ -16,7 +16,8 @@ import numpy as np
 from pymem.exception import MemoryReadError
 
 from soulsgym.core.game_input import GameInput
-from soulsgym.core.logger import Logger, GameState
+from soulsgym.core.logger import Logger
+from soulsgym.core.game_state import GameState
 from soulsgym.core.game_interface import Game
 from soulsgym.core.static import coordinates, actions, player_animations, player_stats
 from soulsgym.core.static import boss_animations
@@ -33,8 +34,9 @@ class SoulsEnv(gym.Env, ABC):
     interface and a :class:`.Logger` to read from and to the game. During an episode the game is
     paused per default. At each :meth:`.SoulsEnv.step` call the environment applies the current
     input if valid (see :meth:`.SoulsEnv._apply_action` for details). It then unpauses the game,
-    waits for 0.1 seconds and pauses again. The new game state is logged and processed to update the
-    internal game state. The environment tries to detect and recover from any unexpected deviations.
+    waits for ``step_size`` seconds and pauses again. The new game state is logged and processed to
+    update the internal game state. The environment tries to detect and recover from any unexpected
+    errors.
 
     To solve any camera control issues we lock on to the boss at all times. For exceptions see
     :meth:`.SoulsEnv._lock_on`.
@@ -102,7 +104,8 @@ class SoulsEnv(gym.Env, ABC):
     def step(self, action: int) -> Tuple[GameState, float, bool, dict]:
         """Perform a step forward in the environment with a given action.
 
-        Each step advances the ingame time by 0.1s. The game is halted before and after the step.
+        Each step advances the ingame time by `step_size` seconds. The game is paused before and
+        after the step.
 
         Args:
             action: The action that is applied during this step.
@@ -201,33 +204,49 @@ class SoulsEnv(gym.Env, ABC):
     def _step(self):
         """Perform the actual step ingame.
 
-        Takes 0.01s substeps ingame, checks if the step size is already reached, times animations,
-        handles critical events, updates the internal state and resets the player and boss HP.
+        Unpauses the game, takes 0.01s substeps ingame, checks if the step size is already reached,
+        times animations, handles critical events, updates the internal state and resets the player
+        and boss HP. Once the ``step_size`` length has been reached the game gets paused again and
+        step postprocessing begins.
         """
         self.game.resume_game()
-        tstart = time.perf_counter()
+        t_start = time.perf_counter()
         previous_player_animation = self._internal_state.player_animation
         previous_boss_animation = self._internal_state.boss_animation
-        boss_animation_start = tstart
-        player_animation_start = tstart
+        boss_animation_start = t_start
+        player_animation_start = t_start
         # Offset of 0.005s to account for processing time of the loop
-        while (time.perf_counter() - tstart) / self.game_speed < (self.step_size - 0.005):
+        while (time.perf_counter() - t_start) / self.game_speed < (self.step_size - 0.005):
             boss_animation = self.game.get_boss_animation(self.ENV_ID)
             if boss_animation != previous_boss_animation:
-                previous_boss_animation = boss_animation
+                if "Attack" in boss_animation:
+                    self._internal_state.combo_length += 1
+                else:
+                    self._internal_state.combo_length = 0
                 boss_animation_start = time.perf_counter()
+                previous_boss_animation = boss_animation
             player_animation = self.game.player_animation
             if player_animation != previous_player_animation:
-                previous_player_animation = player_animation
                 player_animation_start = time.perf_counter()
-            time.sleep(0.01)
-        tend = time.perf_counter()
+                previous_player_animation = player_animation
+            t_loop = time.perf_counter()
         self.game.pause_game()
+        t_end = time.perf_counter()
         game_state = self._game_logger.log()
-        player_animation_td = tend - player_animation_start
-        boss_animation_td = tend - boss_animation_start
+        # The animations might change between the last loop iteration and the game_state snapshot.
+        # We therefore have to check one last time and update the animation durations accordingly
+        if game_state.boss_animation != previous_boss_animation:
+            boss_animation_start = t_end - t_loop  # Approximate time to break loop and pause
+            if "Attack" in game_state.boss_animation:
+                self._internal_state.combo_length += 1
+            else:
+                self._internal_state.combo_length = 0
+        if game_state.player_animation != previous_player_animation:
+            player_animation_start = t_end - t_loop
+        player_animation_td = t_end - player_animation_start
+        boss_animation_td = t_end - boss_animation_start
         if not self._step_check(game_state):
-            self._handle_critical_game_state(game_state, player_animation_td, boss_animation_td)
+            self._handle_critical_game_state(game_state)
             return
         self._update_internal_game_state(game_state, player_animation_td, boss_animation_td)
         self.game.reset_player_hp()
@@ -300,12 +319,13 @@ class SoulsEnv(gym.Env, ABC):
             boss_animation_duration += boss_animation_td
         else:
             boss_animation_duration = boss_animation_td
-        print("boss_animation_duration ", boss_animation_duration)
         player_hp, boss_hp = self._internal_state.player_hp, self._internal_state.boss_hp
+        combo_length = self._internal_state.combo_length
         # Update animation count and HP
         self._internal_state = game_state
         self._internal_state.player_animation_duration = player_animation_duration
         self._internal_state.boss_animation_duration = boss_animation_duration
+        self._internal_state.combo_length = combo_length
         self._internal_state.player_hp -= game_state.player_max_hp - player_hp
         self._internal_state.boss_hp -= game_state.boss_max_hp - boss_hp
         if self._internal_state.player_hp < 0:

@@ -444,6 +444,27 @@ class Game:
         self.mem.write_float(a_addr, coordinates[3])
         self.global_speed = game_speed
 
+    def get_boss_phase(self, boss_id: str) -> int:
+        """Get the current boss phase.
+
+        boss_id: The boss ID.
+
+        Returns:
+            The current boss phase.
+
+        Raises:
+            KeyError: ``boss_id`` does not match any known boss.
+        """
+        if boss_id == "iudex":
+            return self.iudex_phase
+        else:
+            logger.error(f"Boss name {boss_id} currently not supported")
+            raise KeyError(f"Boss name {boss_id} currently not supported")
+
+    @property
+    def iudex_phase(self) -> int:
+        raise NotImplementedError
+
     def get_boss_animation(self, boss_id: str) -> str:
         """Get the current boss animation.
 
@@ -475,15 +496,22 @@ class Game:
         animation = self.mem.read_string(address, 40, codec="utf-16")
         # Damage animations 'SABlend_xxx' overwrite the current animation for ~0.4s. This leads to
         # bad info since the boss' true animation cannot infered. We recover the true animation by
-        # reading the register that contains the current attack integer. This integer is -1 if no
-        # attack is currently performed. We then default to a neutral `IdleBattle` animation, but
-        # this could really be any non-attacking animation.
-        if "SABlend" in animation:
-            base = self.mem.base_address + address_bases["IudexB"]
+        # reading two registers that contain the current attack integer. This integer is -1 if no
+        # attack is currently performed. In the split second between attack decisions, register 1 is
+        # empty. We then read register 2. If that one is -1 as well, we default to a neutral
+        # `IdleBattle` animation, but this could really be any non-attacking animation.
+        # If the attack has ended, SABlend has finished and animation is a valid attack read we
+        # still need to confirm via the attack registers to not catch the tail of an animation that
+        # is already finished but still lingers in animation.
+        if "SABlend" in animation or "Attack" in animation:
+            base = self.mem.base_address + address_bases["IudexA"]
             address = self.mem.resolve_address(address_offsets["IudexAttackID"], base=base)
             attack_id = self.mem.read_int(address)
-            if attack_id == -1:  # No active attack, so default to best guess
-                return "IdleBattle"
+            if attack_id == -1:  # Read fallback register
+                address += 0x10
+                attack_id = self.mem.read_int(address)
+                if attack_id == -1:  # No active attack, so default to best guess
+                    return "IdleBattle"
             return "Attack" + str(attack_id)
         return animation
 

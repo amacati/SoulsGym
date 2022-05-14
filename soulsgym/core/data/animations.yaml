@@ -85,24 +85,24 @@ player:
 boss:
   iudex:
     attacks:
-      - Attack3000_P1
-      - Attack3001_P1
-      - Attack3002_P1
-      - Attack3003_P1
-      - Attack3004_P1
-      - Attack3005_P1
-      - Attack3006_P1
-      - Attack3007_P1
-      - Attack3008_P1
-      - Attack3009_P1
-      - Attack3010_P1
-      - Attack3011_P1
-      - Attack3012_P1
-      - Attack3013_P1
-      - Attack3014_P1
-      - Attack3015_P1
-      - Attack3029_P1
-      - ThrowAtk_P1
+      - Attack3000
+      - Attack3001
+      - Attack3002
+      - Attack3003
+      - Attack3004
+      - Attack3005
+      - Attack3006
+      - Attack3007
+      - Attack3008
+      - Attack3009
+      - Attack3010
+      - Attack3011
+      - Attack3012
+      - Attack3013
+      - Attack3014
+      - Attack3015
+      - Attack3029
+      - ThrowAtk
       - ThrowDef
     movement:
       - WalkFrontBattle

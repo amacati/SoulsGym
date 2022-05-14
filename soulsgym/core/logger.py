@@ -36,22 +36,10 @@ class Logger:
         self._game_state.lock_on = self.game.lock_on
         self._game_state.boss_pose = self.game.get_boss_pose(self.boss_id)
         self._game_state.boss_hp = self.game.get_boss_hp(self.boss_id)
-        self._boss_animation_task()  # Animations need special treatment
+        self._game_state.boss_animation = self.game.get_boss_animation(self.boss_id)
         self._game_state.player_animation = self.game.player_animation
         self._game_state.player_pose = self.game.player_pose
         self._game_state.camera_pose = self.game.camera_pose
         self._game_state.player_hp = self.game.player_hp
         self._game_state.player_sp = self.game.player_sp
         return self._game_state.copy()
-
-    def _boss_animation_task(self):
-        animation_name = self.game.get_boss_animation(self.boss_id)
-        if self._game_state.phase == 1 and animation_name != "Attack1500":
-            self._game_state.phase = 1
-        else:
-            self._game_state.phase = 2
-        # We need to differentiate between attacks in phase 1 and 2. Animations with the same name
-        # correspond to different attacks depending on the phase.
-        if "Attack" in animation_name or "Atk" in animation_name:
-            animation_name += "_P2" if self._game_state.phase == 2 else "_P1"
-        self._game_state.boss_animation = animation_name
