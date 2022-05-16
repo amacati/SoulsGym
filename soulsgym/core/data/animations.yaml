@@ -116,6 +116,7 @@ boss:
       - TurnBattle_Left180
       - SABreak
       - DamageParryEnemy1
+      - FallingDefault
     unused:
       - SABlend_NoAdd
       - SABlend_Add_Front
