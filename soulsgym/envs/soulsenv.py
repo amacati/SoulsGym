@@ -286,6 +286,14 @@ class SoulsEnv(gym.Env, ABC):
         if not game_state.lock_on and game_state.player_animation not in ("ThrowAtk", "ThrowDef"):
             logger.debug("_step_check: Missing lock on detected")
             self._lock_on()
+            # The player might have begun falling, but still barely passed the earlier lower bounds
+            # check. In that case he's falling during lock-on and continues to fall after the step
+            # returns. If ``step`` is not called again sufficiently fast the player will die. To
+            # prevent this we double check the lower z bound after lock on.
+            player_z = self.game.player_pose[2]
+            if self.env_args.space_coords_low[2] > player_z:
+                self._internal_state.player_pose[2] = player_z
+                return False
         # Unknown player animation. Shouldn't happen, add animation to tables!
         if game_state.player_animation not in player_animations["all"]:
             logger.warning(f"_step: Unknown player animation {game_state.player_animation}")
