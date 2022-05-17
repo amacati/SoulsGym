@@ -161,7 +161,7 @@ class SoulsEnv(gym.Env, ABC):
 
     def _set_game_properties(self):
         """Set general game properties that help gym stability."""
-        self.game.lock_on_bonus_range = 35  # Increase lock on range for bosses
+        self.game.lock_on_bonus_range = 45  # Increase lock on range for bosses
         self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
         self.game.last_bonfire = self.env_args.bonfire
         self.game.player_stats = player_stats[self.ENV_ID]
