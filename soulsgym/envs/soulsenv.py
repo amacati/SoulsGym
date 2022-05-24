@@ -165,6 +165,7 @@ class SoulsEnv(gym.Env, ABC):
         self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
         self.game.last_bonfire = self.env_args.bonfire
         self.game.player_stats = player_stats[self.ENV_ID]
+        self.game.resume_game()
         self.game.allow_moves = True
         self.game.allow_attacks = True
         self.game.allow_hits = True
@@ -236,13 +237,13 @@ class SoulsEnv(gym.Env, ABC):
         # The animations might change between the last loop iteration and the game_state snapshot.
         # We therefore have to check one last time and update the animation durations accordingly
         if game_state.boss_animation != previous_boss_animation:
-            boss_animation_start = t_end - t_loop  # Approximate time to break loop and pause
+            boss_animation_start = t_loop
             if "Attack" in game_state.boss_animation:
                 self._internal_state.combo_length += 1
             else:
                 self._internal_state.combo_length = 0
         if game_state.player_animation != previous_player_animation:
-            player_animation_start = t_end - t_loop
+            player_animation_start = t_loop
         player_animation_td = t_end - player_animation_start
         boss_animation_td = t_end - boss_animation_start
         if not self._step_check(game_state):
