@@ -46,12 +46,13 @@ player:
     ParryLeftStart: [0.79, 0.89]
     LandLow: [0., 0.]  # TODO: Verify
     Land: [0., 0.]
-    LandFaceDown: [25., 25.]
     LandFaceUp: [25., 25.]  # TODO: Verify
-    FallStartFaceDown: [0., 0.]
+    LandFaceDown: [25., 25.]
     FallStart: [0., 0.]
     FallStartFaceUp: [0., 0.]
+    FallStartFaceDown: [0., 0.]
     FallLoopFaceUp: [0., 0.]
+    FallLoopFaceDown: [0., 0.]
     FallAttackStart: [0., 0.]  # This only occurs if the player is already falling, frame is not important
 
   unused:
