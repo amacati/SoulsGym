@@ -19,9 +19,14 @@ environments is available at ``soulsgym.available_envs``.
 """
 from pathlib import Path
 import logging
+import sys
 
 from gym.envs.registration import register
-import win32api
+if sys.platform == "win32":
+    on_windows = True
+    import win32api
+else:
+    on_windows = False
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +44,11 @@ def _check_ds3_path() -> bool:
     return False
 
 
-if not _check_ds3_path():
-    logger.warning("Could not find Dark Souls III executable. Continuing for now...")
+if on_windows:
+    if not _check_ds3_path():
+        logger.warning("Could not find Dark Souls III executable. Continuing for now...")
+else:
+    logger.info("Running SoulsGym on a non-Windows platform. Most features are not available.")
 
 
 def set_log_level(level: int):

@@ -58,3 +58,15 @@ class GameState:
             value: Attribute value.
         """
         setattr(self, name, value)
+
+    def as_json(self):
+        """JSON encode the ``GameState`` class.
+
+        Returns:
+            The current ``GameState`` as dictionary for JSON serialization.
+        """
+        json_dict = self.__dict__
+        for key, value in json_dict.items():
+            if isinstance(value, np.ndarray):
+                json_dict[key] = list(value)
+        return json_dict
