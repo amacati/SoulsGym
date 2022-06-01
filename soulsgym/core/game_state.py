@@ -70,3 +70,10 @@ class GameState:
             if isinstance(value, np.ndarray):
                 json_dict[key] = list(value)
         return json_dict
+
+    @staticmethod
+    def from_dict(data_dict):
+        for key, value in data_dict.items():
+            if isinstance(value, list):
+                data_dict[key] = np.array(value)
+        return GameState(**data_dict)
