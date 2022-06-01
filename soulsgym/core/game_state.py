@@ -65,7 +65,7 @@ class GameState:
         Returns:
             The current ``GameState`` as dictionary for JSON serialization.
         """
-        json_dict = self.__dict__
+        json_dict = self.__dict__.copy()
         for key, value in json_dict.items():
             if isinstance(value, np.ndarray):
                 json_dict[key] = list(value)
