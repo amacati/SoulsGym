@@ -444,6 +444,27 @@ class Game:
         self.mem.write_float(a_addr, coordinates[3])
         self.global_speed = game_speed
 
+    def get_boss_phase(self, boss_id: str) -> int:
+        """Get the current boss phase.
+
+        boss_id: The boss ID.
+
+        Returns:
+            The current boss phase.
+
+        Raises:
+            KeyError: ``boss_id`` does not match any known boss.
+        """
+        if boss_id == "iudex":
+            return self.iudex_phase
+        else:
+            logger.error(f"Boss name {boss_id} currently not supported")
+            raise KeyError(f"Boss name {boss_id} currently not supported")
+
+    @property
+    def iudex_phase(self) -> int:
+        raise NotImplementedError
+
     def get_boss_animation(self, boss_id: str) -> str:
         """Get the current boss animation.
 
@@ -469,10 +490,30 @@ class Game:
         Returns:
             Iudex Gundyr's current animation.
         """
-        # animation string has maximum of 20 chars (utf-16)
+        # Animation string has maximum of 20 chars (utf-16)
         base = self.mem.base_address + address_bases["IudexA"]
         address = self.mem.resolve_address(address_offsets["IudexAnimation"], base=base)
-        return self.mem.read_string(address, 40, codec="utf-16")
+        animation = self.mem.read_string(address, 40, codec="utf-16")
+        # Damage animations 'SABlend_xxx' overwrite the current animation for ~0.4s. This leads to
+        # bad info since the boss' true animation cannot infered. We recover the true animation by
+        # reading two registers that contain the current attack integer. This integer is -1 if no
+        # attack is currently performed. In the split second between attack decisions, register 1 is
+        # empty. We then read register 2. If that one is -1 as well, we default to a neutral
+        # `IdleBattle` animation, but this could really be any non-attacking animation.
+        # If the attack has ended, SABlend has finished and animation is a valid attack read we
+        # still need to confirm via the attack registers to not catch the tail of an animation that
+        # is already finished but still lingers in animation.
+        if "SABlend" in animation or "Attack" in animation:
+            base = self.mem.base_address + address_bases["IudexA"]
+            address = self.mem.resolve_address(address_offsets["IudexAttackID"], base=base)
+            attack_id = self.mem.read_int(address)
+            if attack_id == -1:  # Read fallback register
+                address += 0x10
+                attack_id = self.mem.read_int(address)
+                if attack_id == -1:  # No active attack, so default to best guess
+                    return "IdleBattle"
+            return "Attack" + str(attack_id)
+        return animation
 
     def set_boss_attacks(self, boss_id: str, flag: bool):
         """Set the ``allow_attack`` flag of a boss.
@@ -642,7 +683,7 @@ class Game:
         self._save_game_flags()
         self.resume_game()  # For safety, player might never change animation otherwise
         self.clear_cache()
-        time.sleep(0.5)  # Give the game time to register player death and change animation
+        self.game.sleep(0.5)  # Give the game time to register player death and change animation
         while True:
             try:
                 if self.player_animation == "Event63000":  # Player resurrection animation
@@ -650,9 +691,9 @@ class Game:
             except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
                 pass
             self.clear_cache()
-            time.sleep(0.05)
+            self.game.sleep(0.05)
         while self.player_animation != "Idle":  # Wait for the player to reach a safe "Idle" state
-            time.sleep(0.05)
+            self.game.sleep(0.05)
         self._restore_game_flags()
 
     @property
@@ -721,6 +762,60 @@ class Game:
         self.mem.write_float(address, val)
 
     @property
+    def time(self) -> int:
+        """Ingame time.
+
+        Measured as the current game save play time in milliseconds.
+
+        Note:
+            Also increases when global game speed is set to 0, but should not increase during lags.
+
+        Warning:
+            Possibly overflows after 1193h of play time.
+
+        Returns:
+            The current game time.
+        """
+        base = self.mem.base_address + address_bases["A"]
+        address = self.mem.resolve_address(address_offsets["Time"], base=base)
+        return self.mem.read_int(address)
+
+    @staticmethod
+    def timed(tend: int, tstart: int):
+        """Safe game time difference function.
+
+        If time has overflowed, uses 0 as best guess for tstart. Divides by 1000 to get the time
+        difference in seconds.
+
+        Args:
+            tend: End time.
+            tstart: Start time.
+        """
+        td = (tend - tstart) / 1000
+        if td < 0:
+            td = tend / 1000
+        return td
+
+    def sleep(self, t: float):
+        """Custom sleep function.
+
+        Guarantees the specified time has passed in ingame time.
+
+        Args:
+            t: Time interval in seconds.
+        """
+        assert t > 0
+        # We save the start time and use nonbusy python sleeps while t has not been reached
+        tstart, td = self.time, t
+        while True:
+            time.sleep(td)
+            tcurr = self.time
+            if self.timed(tcurr, tstart) > t:
+                break
+            # 1e-3 is the min waiting interval
+            td = max(t - self.timed(tcurr, tstart), 1e-3)
+
+    @property
     def global_speed(self) -> float:
         """The game loop speed.
 
@@ -735,7 +830,7 @@ class Game:
     @global_speed.setter
     def global_speed(self, value: float):
         self.mem.write_float(self.mem.base_address + address_bases["GlobalSpeed"], value)
-        time.sleep(0.001)  # Sleep to guarantee the game engine has reacted to the changed value
+        time.sleep(0.001)  # Increase robustness by giving the game time to write the value
 
     @property
     def gravity(self) -> bool:

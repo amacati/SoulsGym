@@ -25,9 +25,10 @@ class GameState:
     boss_pose: np.ndarray = np.zeros(4, dtype=np.float32)
     camera_pose: np.ndarray = np.zeros(6, dtype=np.float32)
     player_animation: str = "NoAnimation"
-    player_animation_count: int = 0
+    player_animation_duration: float = 0.
     boss_animation: str = "NoAnimation"
-    boss_animation_count: int = 0
+    boss_animation_duration: float = 0.
+    combo_length: int = 0
     lock_on: bool = False
 
     def copy(self) -> GameState:
@@ -57,3 +58,22 @@ class GameState:
             value: Attribute value.
         """
         setattr(self, name, value)
+
+    def as_json(self):
+        """JSON encode the ``GameState`` class.
+
+        Returns:
+            The current ``GameState`` as dictionary for JSON serialization.
+        """
+        json_dict = self.__dict__.copy()
+        for key, value in json_dict.items():
+            if isinstance(value, np.ndarray):
+                json_dict[key] = list(value)
+        return json_dict
+
+    @staticmethod
+    def from_dict(data_dict):
+        for key, value in data_dict.items():
+            if isinstance(value, list):
+                data_dict[key] = np.array(value)
+        return GameState(**data_dict)

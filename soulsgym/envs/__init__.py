@@ -25,8 +25,8 @@ Note:
 
 Warning:
     Do not attempt to launch more than one environment at once! There can only be one instance of
-    Dark Souls III. Multiple `soulsgym` environments would conflict with each other by manipulating
-    the same game instance!
+    Dark Souls III. Multiple ``soulsgym`` environments would conflict with each other by
+    reading and writing to the same game instance!
 
 During training ``soulsgym`` uses the Windows API for Python to control the player with keystrokes.
 This has two consequences: First, the user should refrain from pressing any buttons during
