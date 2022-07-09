@@ -70,3 +70,4 @@ address_offsets:
   LastBonfire: [0xACC]
   PlayerNoDeath: [0x0]
   PlayerDeathCount: [0x98]
+  Time: [0xA4]

@@ -10,7 +10,6 @@ Note:
     Only covers phase 1 of the boss fight. See :mod:`~.envs` for details.
 """
 import logging
-import time
 
 from pymem.exception import MemoryReadError
 import numpy as np
@@ -107,7 +106,7 @@ class IudexEnv(SoulsEnv):
                 self.game.reload()
                 self._env_setup()
                 return self.reset()
-            time.sleep(0.01)
+            self.game.sleep(0.01)
         self.game.pause_game()
         if not self.game.lock_on:
             self._lock_on(self.game.iudex_pose[:3])
@@ -141,7 +140,7 @@ class IudexEnv(SoulsEnv):
             self.game.reload()
             logger.debug("_iudex_setup: Player respawn success")
         self.game.player_pose = coordinates["iudex"]["fog_wall"]
-        time.sleep(0.2)
+        self.game.sleep(0.2)
         if np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["fog_wall"][:3]) > 0.1:
             logger.debug("_iudex_setup: Teleport failed. Retrying")
             self.game.reload()
@@ -156,7 +155,7 @@ class IudexEnv(SoulsEnv):
         while True:
             if self.game.player_animation == "Idle":
                 break
-            time.sleep(0.1)
+            self.game.sleep(0.1)
         dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"][:3])
         if dist > 0.1:
             return  # Player has not entered the fog wall, abort early

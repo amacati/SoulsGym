@@ -683,7 +683,7 @@ class Game:
         self._save_game_flags()
         self.resume_game()  # For safety, player might never change animation otherwise
         self.clear_cache()
-        time.sleep(0.5)  # Give the game time to register player death and change animation
+        self.game.sleep(0.5)  # Give the game time to register player death and change animation
         while True:
             try:
                 if self.player_animation == "Event63000":  # Player resurrection animation
@@ -691,9 +691,9 @@ class Game:
             except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
                 pass
             self.clear_cache()
-            time.sleep(0.05)
+            self.game.sleep(0.05)
         while self.player_animation != "Idle":  # Wait for the player to reach a safe "Idle" state
-            time.sleep(0.05)
+            self.game.sleep(0.05)
         self._restore_game_flags()
 
     @property
@@ -762,6 +762,60 @@ class Game:
         self.mem.write_float(address, val)
 
     @property
+    def time(self) -> int:
+        """Ingame time.
+
+        Measured as the current game save play time in milliseconds.
+
+        Note:
+            Also increases when global game speed is set to 0, but should not increase during lags.
+
+        Warning:
+            Possibly overflows after 1193h of play time.
+
+        Returns:
+            The current game time.
+        """
+        base = self.mem.base_address + address_bases["A"]
+        address = self.mem.resolve_address(address_offsets["Time"], base=base)
+        return self.mem.read_int(address)
+
+    @staticmethod
+    def timed(tend: int, tstart: int):
+        """Safe game time difference function.
+
+        If time has overflowed, uses 0 as best guess for tstart. Divides by 1000 to get the time
+        difference in seconds.
+
+        Args:
+            tend: End time.
+            tstart: Start time.
+        """
+        td = (tend - tstart) / 1000
+        if td < 0:
+            td = tend / 1000
+        return td
+
+    def sleep(self, t: float):
+        """Custom sleep function.
+
+        Guarantees the specified time has passed in ingame time.
+
+        Args:
+            t: Time interval in seconds.
+        """
+        assert t > 0
+        # We save the start time and use nonbusy python sleeps while t has not been reached
+        tstart, td = self.time, t
+        while True:
+            time.sleep(td)
+            tcurr = self.time
+            if self.timed(tcurr, tstart) > t:
+                break
+            # 1e-3 is the min waiting interval
+            td = max(t - self.timed(tcurr, tstart), 1e-3)
+
+    @property
     def global_speed(self) -> float:
         """The game loop speed.
 
@@ -776,7 +830,7 @@ class Game:
     @global_speed.setter
     def global_speed(self, value: float):
         self.mem.write_float(self.mem.base_address + address_bases["GlobalSpeed"], value)
-        time.sleep(0.001)  # Sleep to guarantee the game engine has reacted to the changed value
+        time.sleep(0.001)  # Increase robustness by giving the game time to write the value
 
     @property
     def gravity(self) -> bool:

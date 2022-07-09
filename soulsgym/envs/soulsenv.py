@@ -3,7 +3,6 @@
 It includes the general gym logic and defines abstract methods that all environments have to
 implement.
 """
-import time
 import logging
 from typing import Tuple, Optional
 from pathlib import Path
@@ -211,28 +210,28 @@ class SoulsEnv(gym.Env, ABC):
         step postprocessing begins.
         """
         self.game.resume_game()
-        t_start = time.perf_counter()
+        t_start = self.game.time
         previous_player_animation = self._internal_state.player_animation
         previous_boss_animation = self._internal_state.boss_animation
         boss_animation_start = t_start
         player_animation_start = t_start
         # Offset of 0.005s to account for processing time of the loop
-        while (time.perf_counter() - t_start) / self.game_speed < (self.step_size - 0.005):
+        while self.game.timed(self.game.time, t_start) / self.game_speed < (self.step_size - 0.005):
             boss_animation = self.game.get_boss_animation(self.ENV_ID)
             if boss_animation != previous_boss_animation:
                 if "Attack" in boss_animation:
                     self._internal_state.combo_length += 1
                 else:
                     self._internal_state.combo_length = 0
-                boss_animation_start = time.perf_counter()
+                boss_animation_start = self.game.time
                 previous_boss_animation = boss_animation
             player_animation = self.game.player_animation
             if player_animation != previous_player_animation:
-                player_animation_start = time.perf_counter()
+                player_animation_start = self.game.time
                 previous_player_animation = player_animation
-            t_loop = time.perf_counter()
+            t_loop = self.game.time
         self.game.pause_game()
-        t_end = time.perf_counter()
+        t_end = self.game.time
         game_state = self._game_logger.log()
         # The animations might change between the last loop iteration and the game_state snapshot.
         # We therefore have to check one last time and update the animation durations accordingly
@@ -244,8 +243,8 @@ class SoulsEnv(gym.Env, ABC):
                 self._internal_state.combo_length = 0
         if game_state.player_animation != previous_player_animation:
             player_animation_start = t_loop
-        player_animation_td = t_end - player_animation_start
-        boss_animation_td = t_end - boss_animation_start
+        player_animation_td = self.game.timed(t_end, player_animation_start)
+        boss_animation_td = self.game.timed(t_end, boss_animation_start)
         if not self._step_check(game_state):
             self._handle_critical_game_state(game_state)
             return
@@ -385,7 +384,7 @@ class SoulsEnv(gym.Env, ABC):
                     target_pose = self.game.get_boss_pose(self.ENV_ID)
                 self.game.camera_pose = target_pose[:3] - self.game.player_pose[:3]
                 self._game_input.single_action("lockon")
-                time.sleep(0.01)
+                self.game.sleep(0.01)
                 if not self.game.lock_on:
                     logger.debug("_lock_on: Failed to reestablish lock on")
                     # If the player is still oriented towards Iudex we essentially recover a lock on
