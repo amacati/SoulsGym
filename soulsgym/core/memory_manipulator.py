@@ -75,7 +75,6 @@ class MemoryManipulator(Singleton):
                     addr += address_base_patterns[base]["offset"]
                 addr = addr + self.pymem.read_long(addr + 3) + 7
                 self.bases[base] = addr - self.base_address
-                print(base,hex(addr))
 
     def clear_cache(self):
         """Clear the reference look-up cache of the memory manipulator.

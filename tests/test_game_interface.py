@@ -10,10 +10,10 @@ logger = logging.getLogger(__name__)
 
 PositiveNumber = NewType("PositiveNumber", int)
 
-attr_list = [("player_hp", 454), ("player_sp", 93), ("player_max_hp", 454), ("player_max_sp", 93),
+attr_list = [("player_hp", 454), ("player_sp", 95), ("player_max_hp", 454), ("player_max_sp", 95),
              ("player_pose", None), ("player_animation", "Idle"), ("allow_player_death", True),
              ("player_stats", None), ("iudex_flags", True), ("iudex_hp", 1037),
-             ("iudex_pose", None), ("iudex_animation", "Idle"), ("iudex_attacks", True),
+             ("iudex_pose", None), ("iudex_animation", None), ("iudex_attacks", True),
              ("camera_pose", None), ("last_bonfire", None), ("allow_attacks", True),
              ("allow_hits", True), ("allow_moves", True), ("allow_deaths", True),
              ("allow_weapon_durability_dmg", True), ("lock_on", False), ("lock_on_bonus_range", 0),
