@@ -130,3 +130,5 @@ dmypy.json
 
 # Individual
 tests/debug
+**/*.html
+**/*.PTR*

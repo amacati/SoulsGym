@@ -51,6 +51,7 @@ player:
     FallStart: [0., 0.]
     FallStartFaceUp: [0., 0.]
     FallStartFaceDown: [0., 0.]
+    FallLoop: [0., 0.]
     FallLoopFaceUp: [0., 0.]
     FallLoopFaceDown: [0., 0.]
     FallAttackStart: [0., 0.]  # This only occurs if the player is already falling, frame is not important
