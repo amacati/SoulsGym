@@ -64,3 +64,4 @@ with open(root / "addresses.yaml", "r") as f:
     #: Dictionary of the list of address offsets for the pointer chain to each game property's
     #: memory location
     address_offsets = _addresses["address_offsets"]
+    address_base_patterns = _addresses["bases_by_pattern"]

@@ -32,6 +32,7 @@ import pymem as pym
 from pymem import Pymem
 
 from soulsgym.core.utils import Singleton
+from soulsgym.core.static import address_base_patterns, address_bases
 
 
 class MemoryManipulator(Singleton):
@@ -61,6 +62,20 @@ class MemoryManipulator(Singleton):
             self.pymem = Pymem()
             self.pymem.open_process_from_id(self.pid)
             self.address_cache = {}
+
+            self.ds_module = pym.process.module_from_name(self.pymem.process_handle,self. process_name)
+
+            self.bases = address_bases.copy()
+            for base in address_base_patterns:
+                pattern = bytes(address_base_patterns[base]["pattern"], "ASCII")
+                addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.ds_module, pattern)
+                if not addr:
+                    raise RuntimeError(f'Pattern "{base} could not be resolved!"')
+                if "offset" in address_base_patterns[base]:
+                    addr += address_base_patterns[base]["offset"]
+                addr = addr + self.pymem.read_long(addr + 3) + 7
+                self.bases[base] = addr - self.base_address
+                print(base,hex(addr))
 
     def clear_cache(self):
         """Clear the reference look-up cache of the memory manipulator.

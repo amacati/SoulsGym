@@ -55,13 +55,13 @@ class Game:
         Returns:
             The player's current hit points.
         """
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["PlayerHP"], base=base)
         return self.mem.read_int(address)
 
     @player_hp.setter
     def player_hp(self, hp: int):
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["PlayerHP"], base=base)
         self.mem.write_int(address, hp)
 
@@ -72,13 +72,13 @@ class Game:
         Returns:
             The player's current stamina points.
         """
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["PlayerSP"], base=base)
         return self.mem.read_int(address)
 
     @player_sp.setter
     def player_sp(self, sp: int):
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["PlayerSP"], base=base)
         self.mem.write_int(address, sp)
 
@@ -89,7 +89,7 @@ class Game:
         Returns:
             The player's maximum hit points.
         """
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["PlayerMaxHP"], base=base)
         return self.mem.read_int(address)
 
@@ -104,7 +104,7 @@ class Game:
         Returns:
             The player's maximum stamina points.
         """
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["PlayerMaxSP"], base=base)
         return self.mem.read_int(address)
 
@@ -138,7 +138,7 @@ class Game:
         Returns:
             The current player pose as [x, y, z, a].
         """
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["PlayerA"], base=base)
         buff = self.mem.read_bytes(address, length=24)
         a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure.
@@ -150,7 +150,7 @@ class Game:
         self.allow_player_death = False
         buff_gravity = self.gravity
         self.gravity = False
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         x_address = self.mem.resolve_address(address_offsets["PlayerX"], base=base)
         y_address = self.mem.resolve_address(address_offsets["PlayerY"], base=base)
         z_address = self.mem.resolve_address(address_offsets["PlayerZ"], base=base)
@@ -174,7 +174,7 @@ class Game:
             The player's current animation name.
         """
         # animation string has maximum of 20 chars (utf-16)
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["PlayerAnimation"], base=base)
         return self.mem.read_string(address, 40, codec="utf-16")
 
@@ -185,12 +185,12 @@ class Game:
     @property
     def allow_player_death(self) -> bool:
         """Disable/enable player deaths ingame."""
-        address = self.mem.base_address + address_bases["DebugFlags"]
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"]
         return self.mem.read_int(address) == 0
 
     @allow_player_death.setter
     def allow_player_death(self, flag: bool):
-        address = self.mem.base_address + address_bases["DebugFlags"]
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"]
         self.mem.write_int(address, int(not flag))
 
     @property
@@ -202,7 +202,7 @@ class Game:
         Returns:
             A Tuple with all player attributes in the same order as in the game.
         """
-        base = self.mem.base_address + address_bases["A"]
+        base = self.mem.base_address + self.mem.bases["GameDataMan"]
         address_sl = self.mem.resolve_address(address_offsets["SoulLevel"], base=base)
         address_vigor = self.mem.resolve_address(address_offsets["Vigor"], base=base)
         address_att = self.mem.resolve_address(address_offsets["Attunement"], base=base)
@@ -228,7 +228,7 @@ class Game:
     @player_stats.setter
     def player_stats(self, stats: Tuple[int]):
         assert len(stats) == 10, "Stats tuple dimension does not match requirements"
-        base = self.mem.base_address + address_bases["A"]
+        base = self.mem.base_address + self.mem.bases["GameDataMan"]
         address_sl = self.mem.resolve_address(address_offsets["SoulLevel"], base=base)
         address_vigor = self.mem.resolve_address(address_offsets["Vigor"], base=base)
         address_att = self.mem.resolve_address(address_offsets["Attunement"], base=base)
@@ -295,7 +295,7 @@ class Game:
         Returns:
             True if all flags are correct, False otherwise.
         """
-        base = self.mem.base_address + address_bases["GameFlagData"]
+        base = self.mem.base_address + self.mem.bases["GameFlagData"]
         address = self.mem.resolve_address(address_offsets["IudexDefeated"], base=base)
         buff = self.mem.read_int(address)
         # The leftmost 3 bits tell if iudex is defeated(7), encountered(6) and his sword is pulled
@@ -307,7 +307,7 @@ class Game:
     @iudex_flags.setter
     def iudex_flags(self, val: bool):
         flag = 1 if val else 0
-        base = self.mem.base_address + address_bases["GameFlagData"]
+        base = self.mem.base_address + self.mem.bases["GameFlagData"]
         # Encountered flag
         address = self.mem.resolve_address(address_offsets["IudexDefeated"], base=base)
         self.mem.write_bit(address, 5, flag)
@@ -602,7 +602,7 @@ class Game:
         Returns:
             The bonfire name.
         """
-        base = self.mem.base_address + address_bases["C"]
+        base = self.mem.base_address + self.mem.bases["GameMan"]
         address = self.mem.resolve_address(address_offsets["LastBonfire"], base=base)
         buff = self.mem.read_bytes(address, 4)
         # Get the integer ID and look up the corresponding key to this value from the bonfires dict
@@ -613,7 +613,7 @@ class Game:
     @last_bonfire.setter
     def last_bonfire(self, name: str):
         assert name in bonfires.keys(), f"Unknown bonfire {name} specified!"
-        base = self.mem.base_address + address_bases["C"]
+        base = self.mem.base_address + self.mem.bases["GameMan"]
         address = self.mem.resolve_address(address_offsets["LastBonfire"], base=base)
         buff = (bonfires[name]).to_bytes(4, byteorder='little')
         self.mem.write_bytes(address, buff)
@@ -621,12 +621,12 @@ class Game:
     @property
     def allow_attacks(self) -> bool:
         """Globally enable/disable attacks for all entities."""
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0xB
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xB
         return self.mem.read_int(address) == 0
 
     @allow_attacks.setter
     def allow_attacks(self, flag: bool):
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0xB
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xB
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
@@ -636,45 +636,45 @@ class Game:
         No hits is equivalent to all entities having unlimited iframes, i.e. they are unaffected by
         all attacks, staggers etc.
         """
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0xA
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xA
         return self.mem.read_int(address) == 0
 
     @allow_hits.setter
     def allow_hits(self, flag: bool):
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0xA
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xA
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_moves(self) -> bool:
         """Globally enable/disable movement for all entities."""
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0xC
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xC
         return self.mem.read_int(address) == 0
 
     @allow_moves.setter
     def allow_moves(self, flag: bool):
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0xC
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xC
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_deaths(self) -> bool:
         """Globally enable/disable deaths for all entities."""
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0x8
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0x8
         return self.mem.read_int(address) == 0
 
     @allow_deaths.setter
     def allow_deaths(self, flag: bool):
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0x8
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0x8
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def allow_weapon_durability_dmg(self) -> bool:
         """Globally enable/disable weapon durability damage for all entities."""
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0xE
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xE
         return self.mem.read_int(address) == 0
 
     @allow_weapon_durability_dmg.setter
     def allow_weapon_durability_dmg(self, flag: bool):
-        address = self.mem.base_address + address_bases["DebugFlags"] + 0xE
+        address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xE
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     def reload(self):
@@ -706,7 +706,7 @@ class Game:
         Returns:
             True if the player is currently locked on a target, else False.
         """
-        base = self.mem.base_address + address_bases["LockOn"]
+        base = self.mem.base_address + self.mem.bases["LockTgtMan"]
         address = self.mem.resolve_address(address_offsets["LockOn"], base=base)
         buff = self.mem.read_bytes(address, 1)
         lock_on = struct.unpack("?", buff)[0]  # Interpret buff as boolean
@@ -729,15 +729,16 @@ class Game:
         Returns:
             The current maximum bonus lock on range.
         """
-        base = self.mem.base_address + address_bases["LockOnParam"]
+        base = self.mem.base_address + self.mem.bases["LockTgtMan"]
         address = self.mem.resolve_address(address_offsets["LockOnBonusRange"], base=base)
+        print(hex(address))
         dist = self.mem.read_float(address)
         return dist
 
     @lock_on_bonus_range.setter
     def lock_on_bonus_range(self, val: float):
         assert val >= 0, "Bonus lock on range must be greater or equal to 0"
-        base = self.mem.base_address + address_bases["LockOnParam"]
+        base = self.mem.base_address + self.mem.bases["LockTgtMan"]
         address = self.mem.resolve_address(address_offsets["LockOnBonusRange"], base=base)
         self.mem.write_float(address, val)
 
@@ -751,13 +752,13 @@ class Game:
         Returns:
             The current line of sight lock on deactivate time.
         """
-        base = self.mem.base_address + address_bases["LockOnParam"]
+        base = self.mem.base_address + self.mem.bases["LockTgtMan"]
         address = self.mem.resolve_address(address_offsets["LoSLockOnTime"], base=base)
         return self.mem.read_float(address)
 
     @los_lock_on_deactivate_time.setter
     def los_lock_on_deactivate_time(self, val: float):
-        base = self.mem.base_address + address_bases["LockOnParam"]
+        base = self.mem.base_address + self.mem.bases["LockTgtMan"]
         address = self.mem.resolve_address(address_offsets["LoSLockOnTime"], base=base)
         self.mem.write_float(address, val)
 
@@ -776,7 +777,7 @@ class Game:
         Returns:
             The current game time.
         """
-        base = self.mem.base_address + address_bases["A"]
+        base = self.mem.base_address + self.mem.bases["GameDataMan"]
         address = self.mem.resolve_address(address_offsets["Time"], base=base)
         return self.mem.read_int(address)
 
@@ -825,11 +826,11 @@ class Game:
         Returns:
             The game loop speed.
         """
-        return self.mem.read_float(self.mem.base_address + address_bases["GlobalSpeed"])
+        return self.mem.read_float(self.mem.base_address + self.mem.bases["GlobalSpeed"])
 
     @global_speed.setter
     def global_speed(self, value: float):
-        self.mem.write_float(self.mem.base_address + address_bases["GlobalSpeed"], value)
+        self.mem.write_float(self.mem.base_address + self.mem.bases["GlobalSpeed"], value)
         time.sleep(0.001)  # Increase robustness by giving the game time to write the value
 
     @property
@@ -839,14 +840,14 @@ class Game:
         Returns:
             True if gravity is active, else False.
         """
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["noGravity"], base=base)
         buff = self.mem.read_int(address)
         return buff & 64 == 0  # Gravity disabled flag is saved at bit 6 (including 0)
 
     @gravity.setter
     def gravity(self, flag: bool):
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(address_offsets["noGravity"], base=base)
         bit = 0 if flag else 1
         self.mem.write_bit(address, 6, bit)
