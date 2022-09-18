@@ -55,7 +55,7 @@ class Game:
         Returns:
             The player's current hit points.
         """
-        base = self.mem.base_address + address_bases["B"]
+        base = self.mem.base_address + address_bases["WorldCharMan"]
         address = self.mem.resolve_address(address_offsets["PlayerHP"], base=base)
         return self.mem.read_int(address)
 

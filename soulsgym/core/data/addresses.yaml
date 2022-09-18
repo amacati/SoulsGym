@@ -1,5 +1,6 @@
 bases:
   A: 0x4740178
+  WorldCharMan: 0x477FDB8
   B: 0x4768E78
   C: 0x4743AB0
   D: 0x4743A80
