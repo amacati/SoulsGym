@@ -373,14 +373,14 @@ class Game:
         Returns:
             Iudex Gundyr's current hit points.
         """
-        base = self.mem.base_address + address_bases["IudexA"]
+        base = self.mem.base_address + address_bases["Iudex"]
         address = self.mem.resolve_address(address_offsets["IudexHP"], base=base)
         return self.mem.read_int(address)
 
     @iudex_hp.setter
     def iudex_hp(self, hp: int):
         assert 0 <= hp <= 1037  # Iudex HP has to lie in this range
-        base = self.mem.base_address + address_bases["IudexA"]
+        base = self.mem.base_address + address_bases["Iudex"]
         address = self.mem.resolve_address(address_offsets["IudexHP"], base=base)
         self.mem.write_int(address, hp)
 
@@ -423,7 +423,7 @@ class Game:
         Returns:
             Iudex Gundyr's pose.
         """
-        base = self.mem.base_address + address_bases["IudexA"]
+        base = self.mem.base_address + address_bases["Iudex"]
         address = self.mem.resolve_address(address_offsets["IudexPoseA"], base=base)
         buff = self.mem.read_bytes(address, length=24)
         a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure
@@ -433,7 +433,7 @@ class Game:
     def iudex_pose(self, coordinates: Tuple[float]):
         game_speed = self.global_speed  # TODO: Verify this is necessary
         self.pause_game()
-        base = self.mem.base_address + address_bases["IudexA"]
+        base = self.mem.base_address + address_bases["Iudex"]
         x_addr = self.mem.resolve_address(address_offsets["IudexPoseX"], base=base)
         y_addr = self.mem.resolve_address(address_offsets["IudexPoseY"], base=base)
         z_addr = self.mem.resolve_address(address_offsets["IudexPoseZ"], base=base)
@@ -463,6 +463,7 @@ class Game:
 
     @property
     def iudex_phase(self) -> int:
+        """Phase detection is currently not implemented."""
         raise NotImplementedError
 
     def get_boss_animation(self, boss_id: str) -> str:
@@ -491,7 +492,7 @@ class Game:
             Iudex Gundyr's current animation.
         """
         # Animation string has maximum of 20 chars (utf-16)
-        base = self.mem.base_address + address_bases["IudexA"]
+        base = self.mem.base_address + address_bases["Iudex"]
         address = self.mem.resolve_address(address_offsets["IudexAnimation"], base=base)
         animation = self.mem.read_string(address, 40, codec="utf-16")
         # Damage animations 'SABlend_xxx' overwrite the current animation for ~0.4s. This leads to
@@ -504,7 +505,7 @@ class Game:
         # still need to confirm via the attack registers to not catch the tail of an animation that
         # is already finished but still lingers in animation.
         if "SABlend" in animation or "Attack" in animation:
-            base = self.mem.base_address + address_bases["IudexA"]
+            base = self.mem.base_address + address_bases["Iudex"]
             address = self.mem.resolve_address(address_offsets["IudexAttackID"], base=base)
             attack_id = self.mem.read_int(address)
             if attack_id == -1:  # Read fallback register
@@ -537,7 +538,7 @@ class Game:
         Returns:
             True if Iudex is allowed to attack, else False.
         """
-        base = self.mem.base_address + address_bases["IudexA"]
+        base = self.mem.base_address + address_bases["Iudex"]
         address = self.mem.resolve_address(address_offsets["IudexAttacks"], base=base)
         no_atk = self.mem.read_bytes(address, 1)  # Checks if attacks are forbidden
         return (no_atk[0] & 64) == 0  # Flag is saved in bit 6 (including 0)
@@ -545,7 +546,7 @@ class Game:
     @iudex_attacks.setter
     def iudex_attacks(self, val: bool):
         flag = not val
-        base = self.mem.base_address + address_bases["IudexA"]
+        base = self.mem.base_address + address_bases["Iudex"]
         address = self.mem.resolve_address(address_offsets["IudexAttacks"], base=base)
         # Flag is saved in bit 6 (including 0)
         self.mem.write_bit(address, 6, flag)
@@ -731,7 +732,6 @@ class Game:
         """
         base = self.mem.base_address + self.mem.bases["LockTgtMan"]
         address = self.mem.resolve_address(address_offsets["LockOnBonusRange"], base=base)
-        print(hex(address))
         dist = self.mem.read_float(address)
         return dist
 
@@ -782,7 +782,7 @@ class Game:
         return self.mem.read_int(address)
 
     @staticmethod
-    def timed(tend: int, tstart: int):
+    def timed(tend: int, tstart: int) -> float:
         """Safe game time difference function.
 
         If time has overflowed, uses 0 as best guess for tstart. Divides by 1000 to get the time
@@ -791,6 +791,9 @@ class Game:
         Args:
             tend: End time.
             tstart: Start time.
+
+        Returns:
+            The time difference.
         """
         td = (tend - tstart) / 1000
         if td < 0:

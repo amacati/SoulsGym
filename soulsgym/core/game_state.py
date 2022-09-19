@@ -5,7 +5,7 @@ representation of the gym.
 """
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict
 
 import numpy as np
 
@@ -59,7 +59,7 @@ class GameState:
         """
         setattr(self, name, value)
 
-    def as_json(self):
+    def as_json(self) -> Dict:
         """JSON encode the ``GameState`` class.
 
         Returns:
@@ -72,7 +72,15 @@ class GameState:
         return json_dict
 
     @staticmethod
-    def from_dict(data_dict):
+    def from_dict(data_dict: Dict) -> GameState:
+        """Create a ``GameState`` object from a dictionary.
+
+        Args:
+            data_dict: Dictionary containing the GameState information.
+
+        Returns:
+            A GameState object with matching values.
+        """
         for key, value in data_dict.items():
             if isinstance(value, list):
                 data_dict[key] = np.array(value)

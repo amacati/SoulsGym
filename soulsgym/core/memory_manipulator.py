@@ -62,15 +62,18 @@ class MemoryManipulator(Singleton):
             self.pymem = Pymem()
             self.pymem.open_process_from_id(self.pid)
             self.address_cache = {}
-
-            self.ds_module = pym.process.module_from_name(self.pymem.process_handle,self. process_name)
-
+            # Find the base addresses. Use static addresses where nothing else available. Else use
+            # pymems AOB scan functions
+            self.ds_module = pym.process.module_from_name(self.pymem.process_handle,
+                                                          self.process_name)
             self.bases = address_bases.copy()
             for base in address_base_patterns:
                 pattern = bytes(address_base_patterns[base]["pattern"], "ASCII")
-                addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.ds_module, pattern)
+                addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.ds_module,
+                                                       pattern)
                 if not addr:
                     raise RuntimeError(f'Pattern "{base} could not be resolved!"')
+                # Conversion logic from TGA cheat table for Dark Souls III v. 3.1.2
                 if "offset" in address_base_patterns[base]:
                     addr += address_base_patterns[base]["offset"]
                 addr = addr + self.pymem.read_long(addr + 3) + 7

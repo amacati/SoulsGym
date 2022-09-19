@@ -22,10 +22,8 @@ bases_by_pattern:
 
 bases:
   GlobalSpeed: 0x9A3D48 # updated
-  Cam: 0x47809C8 # old
-  IudexA: 0x475a7a8 # old
-  IudexB: 0x0473A410 # old
-  IudexC: 0x04739958 # old
+  Cam: 0x47962A8 # updated
+  Iudex: 0x475a7a8 # old
 address_offsets:
   PlayerHP: [0x80, 0x1F90, 0x18, 0xD8]
   PlayerMaxHP: [0x80, 0x1F90, 0x18, 0xDC]
