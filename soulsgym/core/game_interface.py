@@ -183,6 +183,42 @@ class Game:
         raise NotImplementedError("Setting the player animation is not supported at the moment")
 
     @property
+    def player_animation_time(self) -> float:
+        """The player's current animation duration.
+
+        Note:
+            The player animation time cannot be overwritten.
+
+        Returns:
+            The player's current animation time.
+        """
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(address_offsets["PlayerAnimationTime"], base=base)
+        return self.mem.read_float(address)
+
+    @player_animation_time.setter
+    def player_animation_time(self, _: float):
+        raise NotImplementedError("Setting the player animation time is not supported")
+
+    @property
+    def player_animation_max_time(self) -> float:
+        """The player's current animation maximum duration.
+
+        Note:
+            The player animation max time cannot be overwritten.
+
+        Returns:
+            The player's current animation maximum duration.
+        """
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(address_offsets["PlayerAnimationMaxTime"], base=base)
+        return self.mem.read_float(address)
+
+    @player_animation_max_time.setter
+    def player_animation_max_time(self, _: float):
+        raise NotImplementedError("Setting the player animation max time is not supported")
+
+    @property
     def allow_player_death(self) -> bool:
         """Disable/enable player deaths ingame."""
         address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"]
