@@ -52,13 +52,17 @@ class SoulsEnv(gym.Env, ABC):
     metadata = {'render.modes': ['human']}
     ENV_ID = ""  # Each SoulsGym has to define its own ID and name the config files accordingly
     step_size = 0.1
+    pause_time_estimate = 0.03  # Estimated time for pauses to take effect.
     game_speed = 1.
 
     def __init__(self):
         """Initialize the game managers, load the environment config and set the game properties."""
         super().__init__()
+        assert self.step_size > self.pause_time_estimate
         self.action_space = gym.spaces.Discrete(len(actions))
         self._internal_state = None
+        self._last_player_animation_time = 0
+        self._last_boss_animation_time = 0
         self.done = False
         self._game_input = GameInput()
         self._game_window = GameWindow()
@@ -219,10 +223,6 @@ class SoulsEnv(gym.Env, ABC):
         while self.game.timed(self.game.time, t_start) / self.game_speed < (self.step_size - 0.005):
             boss_animation = self.game.get_boss_animation(self.ENV_ID)
             if boss_animation != previous_boss_animation:
-                if "Attack" in boss_animation:
-                    self._internal_state.combo_length += 1
-                else:
-                    self._internal_state.combo_length = 0
                 boss_animation_start = self.game.time
                 previous_boss_animation = boss_animation
             player_animation = self.game.player_animation
@@ -237,10 +237,6 @@ class SoulsEnv(gym.Env, ABC):
         # We therefore have to check one last time and update the animation durations accordingly
         if game_state.boss_animation != previous_boss_animation:
             boss_animation_start = t_loop
-            if "Attack" in game_state.boss_animation:
-                self._internal_state.combo_length += 1
-            else:
-                self._internal_state.combo_length = 0
         if game_state.player_animation != previous_player_animation:
             player_animation_start = t_loop
         player_animation_td = self.game.timed(t_end, player_animation_start)
@@ -328,12 +324,10 @@ class SoulsEnv(gym.Env, ABC):
         else:
             boss_animation_duration = boss_animation_td
         player_hp, boss_hp = self._internal_state.player_hp, self._internal_state.boss_hp
-        combo_length = self._internal_state.combo_length
         # Update animation count and HP
         self._internal_state = game_state
         self._internal_state.player_animation_duration = player_animation_duration
         self._internal_state.boss_animation_duration = boss_animation_duration
-        self._internal_state.combo_length = combo_length
         self._internal_state.player_hp -= game_state.player_max_hp - player_hp
         self._internal_state.boss_hp -= game_state.boss_max_hp - boss_hp
         if self._internal_state.player_hp < 0:

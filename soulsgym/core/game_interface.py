@@ -552,6 +552,72 @@ class Game:
             return "Attack" + str(attack_id)
         return animation
 
+    def get_boss_animation_time(self, boss_id: str) -> float:
+        """Get the duration of the bosses current animation.
+
+        Note:
+            The animation time cannot be overwritten.
+
+        Returns:
+            The bosses current animation time.
+        """
+        if boss_id == "iudex":
+            return self.iudex_animation_time
+        else:
+            logger.error(f"Boss name {boss_id} currently not supported")
+            raise KeyError(f"Boss name {boss_id} currently not supported")
+
+    @property
+    def iudex_animation_time(self) -> float:
+        """Iudex's current animation duration.
+
+        Note:
+            Iudex animation time cannot be overwritten.
+
+        Returns:
+            Iudex's current animation time.
+        """
+        base = self.mem.base_address + self.mem.bases["Iudex"]
+        address = self.mem.resolve_address(address_offsets["IudexAnimationTime"], base=base)
+        return self.mem.read_float(address)
+
+    @iudex_animation_time.setter
+    def iudex_animation_time(self, _: float):
+        raise NotImplementedError("Setting boss animation time is not supported")
+
+    def get_boss_animation_max_time(self, boss_id: str) -> float:
+        """Get the maximum duration of the bosses current animation.
+
+        Note:
+            The animation max time cannot be overwritten.
+
+        Returns:
+            The bosses current maximum animation time.
+        """
+        if boss_id == "iudex":
+            return self.iudex_animation_max_time
+        else:
+            logger.error(f"Boss name {boss_id} currently not supported")
+            raise KeyError(f"Boss name {boss_id} currently not supported")
+
+    @property
+    def iudex_animation_max_time(self) -> float:
+        """Iudex's current animation maximum duration.
+
+        Note:
+            The animation max time cannot be overwritten.
+
+        Returns:
+            Iudex's current animation maximum duration.
+        """
+        base = self.mem.base_address + self.mem.bases["Iudex"]
+        address = self.mem.resolve_address(address_offsets["IudexAnimationMaxTime"], base=base)
+        return self.mem.read_float(address)
+
+    @iudex_animation_max_time.setter
+    def iudex_animation_max_time(self, _: float):
+        raise NotImplementedError("Setting iudex animation max time is not supported")
+
     def set_boss_attacks(self, boss_id: str, flag: bool):
         """Set the ``allow_attack`` flag of a boss.
 
@@ -720,7 +786,7 @@ class Game:
         self._save_game_flags()
         self.resume_game()  # For safety, player might never change animation otherwise
         self.clear_cache()
-        self.game.sleep(0.5)  # Give the game time to register player death and change animation
+        self.sleep(0.5)  # Give the game time to register player death and change animation
         while True:
             try:
                 if self.player_animation == "Event63000":  # Player resurrection animation
@@ -728,9 +794,9 @@ class Game:
             except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
                 pass
             self.clear_cache()
-            self.game.sleep(0.05)
+            self.sleep(0.05)
         while self.player_animation != "Idle":  # Wait for the player to reach a safe "Idle" state
-            self.game.sleep(0.05)
+            self.sleep(0.05)
         self._restore_game_flags()
 
     @property

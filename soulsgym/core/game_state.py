@@ -28,7 +28,6 @@ class GameState:
     player_animation_duration: float = 0.
     boss_animation: str = "NoAnimation"
     boss_animation_duration: float = 0.
-    combo_length: int = 0
     lock_on: bool = False
 
     def copy(self) -> GameState:
