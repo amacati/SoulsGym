@@ -16,11 +16,11 @@ class GameState:
 
     phase: int = 1
     player_hp: int = 0
-    player_max_hp: int = 0
+    player_max_hp: int = 1
     player_sp: int = 0
-    player_max_sp: int = 0
+    player_max_sp: int = 1
     boss_hp: int = 0
-    boss_max_hp: int = 0
+    boss_max_hp: int = 1
     player_pose: np.ndarray = np.zeros(4, dtype=np.float32)
     boss_pose: np.ndarray = np.zeros(4, dtype=np.float32)
     camera_pose: np.ndarray = np.zeros(6, dtype=np.float32)
