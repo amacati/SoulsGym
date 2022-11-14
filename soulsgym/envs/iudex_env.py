@@ -176,9 +176,9 @@ class IudexEnv(SoulsEnv):
         player_hp_diff /= game_state.player_max_hp
         boss_hp_diff = next_game_state.boss_hp - game_state.boss_hp
         boss_hp_diff /= game_state.boss_max_hp
-        final_reward = (game_state.player_hp == 0) * -10 + (game_state.boss_hp == 0) * 10
+        final_reward = (next_game_state.player_hp == 0) * -10 + (next_game_state.boss_hp == 0) * 10
         # TODO: Experimental: Introduce a penalty term for deviating too much from the arena center
-        return - boss_hp_diff + player_hp_diff + final_reward
+        return -boss_hp_diff + player_hp_diff + final_reward
 
     def _reset_check(self) -> bool:
         """Check if the environment reset was successful.
