@@ -90,14 +90,15 @@ class SoulsEnv(gym.Env, ABC):
 
     @staticmethod
     @abstractmethod
-    def compute_reward(game_state: GameState) -> float:
-        """Compute the reward from a game state.
+    def compute_reward(game_state: GameState, next_game_state: GameState) -> float:
+        """Compute the reward from the current game state and the next game state.
 
         Args:
-            game_state: A game state.
+            game_state: The game state before the step.
+            next_game_state: The game state after the step.
 
         Returns:
-            The reward for the provided game state.
+            The reward for the provided game states.
         """
 
     def step(self, action: int) -> Tuple[GameState, float, bool, dict]:
@@ -119,9 +120,10 @@ class SoulsEnv(gym.Env, ABC):
         if self.done:
             logger.error("step: Environment step called after environment was done")
             raise ResetNeeded("Environment step called after environment was done")
+        previous_game_state = self._internal_state.copy()
         self._apply_action(action)
         self._step()
-        reward = self.compute_reward(self._internal_state)
+        reward = self.compute_reward(previous_game_state, self._internal_state)
         if self.done:
             logger.debug("step: Episode finished")
         return self._internal_state, reward, self.done, {}

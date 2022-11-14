@@ -162,24 +162,21 @@ class IudexEnv(SoulsEnv):
         logger.debug("_enter_fog_gate: Done")
 
     @staticmethod
-    def compute_reward(game_state: GameState) -> float:
-        """Compute the reward from a game game state.
+    def compute_reward(game_state: GameState, next_game_state: GameState) -> float:
+        """Compute the reward from the current game state and the next game state.
 
         Args:
-            game_state: A game state.
+            game_state: The game state before the step.
+            next_game_state: The game state after the step.
 
         Returns:
-            The reward for the provided game state.
+            The reward for the provided game states.
         """
-        player_hp_reward = game_state.player_hp / game_state.player_max_hp - 0.5
-        boss_hp_reward = 0.5 - game_state.boss_hp / game_state.boss_max_hp
-        if game_state.player_hp == 0:
-            final_reward = -200
-        elif game_state.boss_hp == 0:
-            final_reward = 200
-        else:
-            final_reward = 0
-        return boss_hp_reward + player_hp_reward + final_reward
+        player_hp_diff = next_game_state.player_hp - game_state.player_hp
+        boss_hp_diff = next_game_state.boss_hp - game_state.boss_hp
+        final_reward = (game_state.player_hp == 0) * -10 + (game_state.boss_hp == 0) * 10
+        # TODO: Experimental: Introduce a penalty term for deviating too much from the arena center
+        return - boss_hp_diff + player_hp_diff + final_reward
 
     def _reset_check(self) -> bool:
         """Check if the environment reset was successful.
