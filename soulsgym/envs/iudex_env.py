@@ -173,7 +173,9 @@ class IudexEnv(SoulsEnv):
             The reward for the provided game states.
         """
         player_hp_diff = next_game_state.player_hp - game_state.player_hp
+        player_hp_diff /= game_state.player_max_hp
         boss_hp_diff = next_game_state.boss_hp - game_state.boss_hp
+        boss_hp_diff /= game_state.boss_max_hp
         final_reward = (game_state.player_hp == 0) * -10 + (game_state.boss_hp == 0) * 10
         # TODO: Experimental: Introduce a penalty term for deviating too much from the arena center
         return - boss_hp_diff + player_hp_diff + final_reward
