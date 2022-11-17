@@ -172,15 +172,13 @@ class IudexEnv(SoulsEnv):
         Returns:
             The reward for the provided game states.
         """
-        player_hp_diff = next_game_state.player_hp - game_state.player_hp
-        player_hp_diff /= game_state.player_max_hp
-        boss_hp_diff = next_game_state.boss_hp - game_state.boss_hp
-        boss_hp_diff /= game_state.boss_max_hp
-        final_reward = (next_game_state.player_hp == 0) * -2 + (next_game_state.boss_hp == 0) * 2
+        boss_reward = 0.5 - next_game_state.boss_hp / next_game_state.boss_max_hp
+        player_reward = next_game_state.player_hp / next_game_state.player_max_hp - 0.5
+        end_reward = (next_game_state.player_hp == 0) * -200 + (next_game_state.boss_hp == 0) * 200
         # Experimental: Introduce a penalty term for deviating too much from the arena center
-        d_center = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
-        position_reward = (d_center > 10) * -2e-4 * d_center
-        return -boss_hp_diff + player_hp_diff + position_reward + final_reward
+        # d_center = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
+        # position_reward = (d_center > 10) * -2e-4 * d_center
+        return boss_reward + player_reward + end_reward
 
     def _reset_check(self) -> bool:
         """Check if the environment reset was successful.
