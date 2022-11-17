@@ -55,7 +55,7 @@ class SoulsEnv(gym.Env, ABC):
     pause_time_estimate = 0.03  # Estimated time for pauses to take effect.
     game_speed = 1.
 
-    def __init__(self):
+    def __init__(self, use_info=False):
         """Initialize the game managers, load the environment config and set the game properties."""
         super().__init__()
         assert self.step_size > self.pause_time_estimate
@@ -64,6 +64,7 @@ class SoulsEnv(gym.Env, ABC):
         self._last_player_animation_time = 0
         self._last_boss_animation_time = 0
         self.done = False
+        self._use_info = use_info
         self._game_input = GameInput()
         self._game_window = GameWindow()
         self._game_check()
@@ -130,7 +131,8 @@ class SoulsEnv(gym.Env, ABC):
         reward = self.compute_reward(previous_game_state, self._internal_state)
         if self.done:
             logger.debug("step: Episode finished")
-        return self._internal_state, reward, self.done, {}
+        info = {"allowed_actions": self.current_valid_actions()} if self._use_info else {}
+        return self._internal_state, reward, self.done, info
 
     def close(self):
         """Unpause the game, reset altered game properties and reload.
@@ -150,6 +152,22 @@ class SoulsEnv(gym.Env, ABC):
         self.game.allow_weapon_durability_dmg = True
         self.game.player_hp = 0  # Kill player to force game reload. Don't wait for completion
         logger.debug("SoulsEnv close successful")
+
+    def current_valid_actions(self):
+        """Get the set of currently valid actions.
+
+        Returns:
+            An array of integers containing the currently allowed actions.
+        """
+        if self._internal_state is None:
+            return []
+        player_animation = self._internal_state.player_animation
+        durations = player_animations["standard"].get(player_animation, [0., 0.])
+        current_duration = self._internal_state.player_animation_duration
+        attack_actions = [16, 17] if current_duration >= durations[0] else []
+        roll_actions = list(range(8, 16)) if current_duration >= durations[1] else []
+        other_actions = [0, 1, 2, 3, 4, 5, 6, 7, 18] if current_duration >= max(durations) else []
+        return other_actions + roll_actions + attack_actions + [19]
 
     def _game_check(self):
         """Check if the game is currently running."""

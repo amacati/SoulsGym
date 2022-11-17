@@ -29,9 +29,9 @@ class IudexEnv(SoulsEnv):
 
     ENV_ID = "iudex"
 
-    def __init__(self):
+    def __init__(self, use_info=False):
         """Define the state space."""
-        super().__init__()  # DarkSoulsIII needs to be open at this point
+        super().__init__(use_info=use_info)  # DarkSoulsIII needs to be open at this point
         # The state space consists of multiple spaces. These represent:
         # 1) Boss phase. Either 1 or 2 for Iudex
         # 2) Player and boss stats. In order: Player HP, Player SP, Boss HP
