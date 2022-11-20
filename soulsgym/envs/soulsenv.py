@@ -162,12 +162,18 @@ class SoulsEnv(gym.Env, ABC):
         if self._internal_state is None:
             return []
         player_animation = self._internal_state.player_animation
-        durations = player_animations["standard"].get(player_animation, [0., 0.])
+        durations = player_animations["standard"].get(player_animation, [0., 0., 0.])
         current_duration = self._internal_state.player_animation_duration
-        attack_actions = [16, 17] if current_duration >= durations[0] else []
-        roll_actions = list(range(8, 16)) if current_duration >= durations[1] else []
-        other_actions = [0, 1, 2, 3, 4, 5, 6, 7, 18] if current_duration >= max(durations) else []
-        return other_actions + roll_actions + attack_actions + [19]
+        player_sp = self._internal_state.player_sp
+        # Movement actions (duration index 2) do not require SP
+        movement_ids = list(range(8)) if current_duration >= durations[2] else []
+        # Roll actions (duration index 1) require SP > 0
+        roll_ids = list(range(8, 16)) if player_sp > 0 and current_duration >= durations[1] else []
+        # Hit actions and parry (duration index 0) require SP > 0
+        attack_ids = [16, 17, 18] if player_sp > 0 and current_duration >= durations[0] else []
+        # ID 19 (do nothing) is always a valid action
+        movement_ids + roll_ids + attack_ids + [19]
+        return movement_ids + roll_ids + attack_ids + [19]
 
     def _game_check(self):
         """Check if the game is currently running."""
@@ -211,16 +217,7 @@ class SoulsEnv(gym.Env, ABC):
         Args:
             action: The action that is applied during this step.
         """
-        player_animation = self._internal_state.player_animation
-        durations = player_animations["standard"].get(player_animation, [0., 0.])
-        player_action = actions[action]
-        if player_action and "attack" in player_action[0]:
-            duration = durations[0]
-        elif "roll" in player_action:
-            duration = durations[1]
-        else:
-            duration = max(durations)
-        if self._internal_state.player_animation_duration >= duration:
+        if action in self.current_valid_actions():
             self._game_input.update(actions[action])
         else:
             self._game_input.reset()

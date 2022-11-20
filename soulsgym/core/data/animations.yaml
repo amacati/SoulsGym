@@ -1,60 +1,60 @@
 player:
-  # Animations have durations during which game input is disabled to prevent action queueing. Each animation has 2 timings.
-  # The first one is for hitting actions, the second one is for rolling actions. Movement actions always use the maximum of both.
+  # Animations have durations during which game input is disabled to prevent action queueing. Each animation has 3 timings.
+  # The first one is for hitting actions, the second one is for rolling actions, and the third for all movements.
   standard:
     # Damage
-    AddDamageDefault: [0.5, 0.5]
-    AddDamageStartLeft: [0.5, 0.5]
-    AddDamageStartRight: [0.5, 0.5]
-    AddDamageStartFront: [0.5, 0.5]
-    AddDamageStartBack: [0.5, 0.5]
-    GuardBreakWall: [0.53, 0.53]
-    DamageSmall: [0.54, 0.54]
-    DamageMiddle: [0.85, 0.85]
-    DamageUpper: [2.85, 2.19]
-    DamageLarge:  [1.04, 1.17]
-    DamageExLarge: [3.60, 1.93]
-    DamageFling: [0., 1.01]
-    DamagePush: [1.02, 1.01]
-    DamageSmallBlow: [3.13, 1.67]
-    ThrowAtk: [4.35, 4.25] # Parry attack
-    ThrowDef: [8.22, 6.91]
-    EStepDown: [0.69, 0.60]
+    AddDamageDefault: [0.5, 0.5, 0.5]
+    AddDamageStartLeft: [0.5, 0.5, 0.5]
+    AddDamageStartRight: [0.5, 0.5, 0.5]
+    AddDamageStartFront: [0.5, 0.5, 0.5]
+    AddDamageStartBack: [0.5, 0.5, 0.5]
+    GuardBreakWall: [0.54, 0.54, 0.57]
+    DamageSmall: [0.35, 0.35, 0.52]
+    DamageMiddle: [0.85, 0.85, 0.97]
+    DamageUpper: [2.85, 2.19, 2.92]
+    DamageLarge:  [1.02, 1.18, 1.25]
+    DamageExLarge: [3.60, 1.92, 3.72]
+    DamageFling: [1.01, 1.01, 1.01]  # Not sure what caused this, timings are not verified
+    DamagePush: [1.02, 1.02, 1.27]
+    DamageSmallBlow: [3.10, 1.67, 3.19]
+    ThrowAtk: [4.34, 4.25, 4.37] # Player parry attack on Iudex
+    ThrowDef: [8.22, 6.91, 8.3]
+    EStepDown: [0.69, 0.59, 0.87]  # Player roll recover after knockdown
     # Movement
-    Idle: [0., 0.]
-    Move: [0., 0.]
-    None: [0., 0.]
-    BackStepNomal: [0.41, 0.63]  # Not a typo, animation is called like that
-    RollingMedium: [0.69, 0.73]
-    RollingMediumSelftra: [0.70, 0.73]
-    RunStopFront: [0., 0.]
-    RunStopBack: [0., 0.]
-    RunStopLeft: [0., 0.]
-    RunStopRight: [0., 0.]
-    QuickTurnLeft180: [0.1, 0.2]
-    QuickTurnRight180: [0.1, 0.2]
+    Idle: [0., 0., 0.]
+    Move: [0., 0., 0.]
+    None: [0., 0., 0.]
+    BackStepNomal: [0.41, 0.63, 0.67]  # Not a typo, animation is called like that
+    RollingMedium: [0.69, 0.73, 0.75]
+    RollingMediumSelftra: [0.7, 0.73, 0.75]
+    RunStopFront: [0., 0., 0.]
+    RunStopBack: [0., 0., 0.]
+    RunStopLeft: [0., 0., 0.]
+    RunStopRight: [0., 0., 0.]
+    QuickTurnLeft180: [0.1, 0.2, 0.2]
+    QuickTurnRight180: [0.1, 0.2, 0.2]
     # Attacks
-    AttackRightLight1: [0.62, 0.79]
-    AttackRightLight2: [0.62, 0.75]
-    AttackRightLight3: [0.53, 0.79]
-    AttackRightLightStep: [0.73, 0.79]
-    AttackRightHeavy1Sta: [1., 1.]  # During animation start, no action should be taken at all
+    AttackRightLight1: [0.63, 0.8, 1.03]
+    AttackRightLight2: [0.63, 0.77, 1.03]
+    AttackRightLight3: [0.53, 0.8, 1.13]
+    AttackRightLightStep: [0.73, 0.8, 0.9]  # Hit after roll
+    AttackRightHeavy1Sta: [1., 1., 1.]  # During animation start, no action should be taken at all
     AttackRightHeavy1Sub: [0.1, 0.1]  # TODO: Verify
-    AttackRightHeavy1End: [0.53, 0.70]  # Only for follow up attacks, but 
-    AttackRightHeavy2Sta: [1., 1.]  # During animation start, no action should be taken at all
-    AttackRightHeavy2End: [0.77, 0.76]
-    ParryLeftStart: [0.79, 0.89]
-    LandLow: [0., 0.]  # TODO: Verify
-    Land: [0., 0.]
-    LandFaceUp: [25., 25.]  # TODO: Verify
-    LandFaceDown: [25., 25.]
-    FallStart: [0., 0.]
-    FallStartFaceUp: [0., 0.]
-    FallStartFaceDown: [0., 0.]
-    FallLoop: [0., 0.]
-    FallLoopFaceUp: [0., 0.]
-    FallLoopFaceDown: [0., 0.]
-    FallAttackStart: [0., 0.]  # This only occurs if the player is already falling, frame is not important
+    AttackRightHeavy1End: [0.53, 0.70, 0.89]  # Only for follow up attacks. Light follow ups are slower (0.7)
+    AttackRightHeavy2Sta: [1., 1., 1.]  # During animation start, no action should be taken at all
+    AttackRightHeavy2End: [0.75, 0.76, 0.9]
+    ParryLeftStart: [0.8, 0.9, 0.93]
+    LandLow: [0., 0., 0.]  # TODO: Verify
+    Land: [0., 0., 0.]
+    LandFaceUp: [25., 25., 25.]  # TODO: Verify
+    LandFaceDown: [25., 25., 25.]
+    FallStart: [0., 0., 0.]
+    FallStartFaceUp: [0., 0., 0.]
+    FallStartFaceDown: [0., 0., 0.]
+    FallLoop: [0., 0., 0.]
+    FallLoopFaceUp: [0., 0., 0.]
+    FallLoopFaceDown: [0., 0., 0.]
+    FallAttackStart: [0., 0., 0.]  # This only occurs if the player is already falling, frame is not important
 
   unused:
     DashStop: [0., 0.]
@@ -82,7 +82,7 @@ player:
     AttackBothDash: 10
 
   critical:  # Animations require special handling
-    DeathIdle: [0., 0.]
+    DeathIdle: [0., 0., 0.]
 
 boss:
   iudex:
