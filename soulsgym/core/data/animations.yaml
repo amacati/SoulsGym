@@ -39,7 +39,7 @@ player:
     AttackRightLight3: [0.53, 0.8, 1.13]
     AttackRightLightStep: [0.73, 0.8, 0.9]  # Hit after roll
     AttackRightHeavy1Sta: [1., 1., 1.]  # During animation start, no action should be taken at all
-    AttackRightHeavy1Sub: [0.1, 0.1]  # TODO: Verify
+    AttackRightHeavy1Sub: [0.1, 0.1, 0.1]  # TODO: Verify
     AttackRightHeavy1End: [0.53, 0.70, 0.89]  # Only for follow up attacks. Light follow ups are slower (0.7)
     AttackRightHeavy2Sta: [1., 1., 1.]  # During animation start, no action should be taken at all
     AttackRightHeavy2End: [0.75, 0.76, 0.9]
