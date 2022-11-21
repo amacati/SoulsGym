@@ -12,6 +12,7 @@ from argparse import Namespace
 import gym
 import yaml
 import numpy as np
+from PIL import Image
 from pymem.exception import MemoryReadError
 
 from soulsgym.core.game_input import GameInput
@@ -288,6 +289,9 @@ class SoulsEnv(gym.Env, ABC):
         if not all(bounds):
             logger.error("_step_check: Player outside of arena bounds")
             logger.error(game_state)
+            img = self._game_window.screenshot()
+            im = Image.fromarray(img)
+            im.save("error_scene.png")
             raise InvalidPlayerStateError("Player outside of arena bounds")
         # Critical animations need special recovery routines
         if game_state.player_animation in player_animations["critical"]:
