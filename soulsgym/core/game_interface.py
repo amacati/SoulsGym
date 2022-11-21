@@ -687,10 +687,6 @@ class Game:
             self._game_input.single_action("cameradown" if dz > 0 else "cameraup", .02)
             dz = self.camera_pose[5] - normal[2]
             t += 1
-            # Periodically check if lock on is still False. If not, release the lock to enable cam
-            # movement
-            if t % 5 == 0 and self.lock_on:
-                self._game_input.single_action("lockon")
         cpose = self.camera_pose
         d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
         t = 0
@@ -699,8 +695,6 @@ class Game:
             cpose = self.camera_pose
             d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
             t += 1
-            if t % 5 == 0 and self.lock_on:
-                self._game_input.single_action("lockon")
 
     @property
     def last_bonfire(self) -> str:
