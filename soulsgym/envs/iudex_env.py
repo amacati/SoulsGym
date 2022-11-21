@@ -108,10 +108,6 @@ class IudexEnv(SoulsEnv):
                 return self.reset()
             self.game.sleep(0.01)
         self.game.pause_game()
-        # Release lock on. In rare cases, lock on switches over to units outside the arena on reset
-        # and blocks the lock on to Iudex
-        if self.game.lock_on:
-            self._game_input.single_action("lockon")
         if not self.game.lock_on:
             self._lock_on(self.game.iudex_pose[:3])
         self.game.allow_attacks = True
