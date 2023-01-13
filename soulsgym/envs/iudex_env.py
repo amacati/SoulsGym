@@ -172,13 +172,23 @@ class IudexEnv(SoulsEnv):
         Returns:
             The reward for the provided game states.
         """
-        boss_reward = 0.5 - next_game_state.boss_hp / next_game_state.boss_max_hp
-        player_reward = next_game_state.player_hp / next_game_state.player_max_hp - 0.5
-        end_reward = (next_game_state.player_hp == 0) * -200 + (next_game_state.boss_hp == 0) * 200
+        # boss_reward = 0.5 - next_game_state.boss_hp / next_game_state.boss_max_hp
+        # player_reward = next_game_state.player_hp / next_game_state.player_max_hp - 0.5
+        # end_reward = (next_game_state.player_hp == 0) * -200 + (next_game_state.boss_hp == 0) * 200
         # Experimental: Introduce a penalty term for deviating too much from the arena center
         # d_center = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
         # position_reward = (d_center > 10) * -2e-4 * d_center
-        return boss_reward + player_reward + end_reward
+        boss_reward = (game_state.boss_hp - next_game_state.boss_hp) / game_state.boss_max_hp * 100.
+        player_reward = ((next_game_state.player_hp - game_state.player_hp) /
+                         game_state.player_max_hp * 100.)
+        if next_game_state.boss_hp == 0 or next_game_state.player_hp == 0:
+            base_reward = 10 if next_game_state.boss_hp == 0 else -10
+        else:
+            # Experimental: Reward for moving towards the arena center, no reward within 4m distance
+            d_center_now = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
+            d_center_prev = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
+            base_reward = -0.1 + 0.1 * (d_center_prev - d_center_now) * (d_center_now > 4)
+        return boss_reward + player_reward + base_reward
 
     def _reset_check(self) -> bool:
         """Check if the environment reset was successful.
