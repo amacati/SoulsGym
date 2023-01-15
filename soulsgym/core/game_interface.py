@@ -665,11 +665,11 @@ class Game:
             [x, y, z, nx, ny, nz].
         """
         base = self.mem.base_address + address_bases["Cam"]
-        address = self.mem.resolve_address(address_offsets["CamQ1"], base=base)
-        buff = self.mem.read_bytes(address, length=36)
+        address = self.mem.resolve_address(address_offsets["CamQx"], base=base)
+        buff = self.mem.read_bytes(address, length=28)
         # cam orientation seems to be given as a normal vector for the camera plane. As with the
         # position, the game switches y and z
-        _, nx, nz, ny, x, z, y = struct.unpack('f' + 4 * 'x' + 'fff' + 4 * 'x' + 'fff', buff)
+        nx, nz, ny, x, z, y = struct.unpack('fff' + 4 * 'x' + 'fff', buff)
         return np.array([x, y, z, nx, ny, nz])
 
     @camera_pose.setter
@@ -931,11 +931,15 @@ class Game:
         Returns:
             The game loop speed.
         """
-        return self.mem.read_float(self.mem.base_address + self.mem.bases["GlobalSpeed"])
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(address_offsets["GlobalSpeed"], base=base)
+        return self.mem.read_float(address)
 
     @global_speed.setter
     def global_speed(self, value: float):
-        self.mem.write_float(self.mem.base_address + self.mem.bases["GlobalSpeed"], value)
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(address_offsets["GlobalSpeed"], base=base)
+        self.mem.write_float(address, value)
         time.sleep(0.001)  # Increase robustness by giving the game time to write the value
 
     @property

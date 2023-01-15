@@ -12,8 +12,7 @@ bases_by_pattern:
   FieldArea:
     pattern: \x48\x8B\x0D....\x48\x85\xC9\x74\x26\x44\x8B
   GameFlagData:
-    pattern: \x45\x33\xC0\x8B\xD3\x48\x83\xC4.\x5B\xE9....\x90\x48
-    offset: -0x34
+    pattern: \x48\x8B\x0D....\x44\x0F\xB6\xCB\x41\xB8\x07\x00\x00\x00\x8B\xD6
   # DebugFlags
   WorldChrManDbg_Flags:
     pattern: \x4C\x8D\x05....\x48\x8D\x15....\x48\x8B\xCB\xE8....\x48\x83\x3D....\x00
@@ -21,8 +20,7 @@ bases_by_pattern:
     pattern: \x48\x8B\x0D....\xE8....\x48\x8B\xD8\x48\x85\xC0\x0F\x84....\xC7
 
 bases:
-  GlobalSpeed: 0x9A3D48 # updated
-  Cam: 0x47962A8 # updated
+  Cam: 0x04796298
   Iudex: 0x475a7a8 # old
 address_offsets:
   PlayerHP: [0x80, 0x1F90, 0x18, 0xD8]
@@ -62,13 +60,12 @@ address_offsets:
   TargetedAnimation: [0x1F90, 0x28, 0x898]
   PlayerSpeedMod: [0x80, 0x1F90, 0x28, 0xA58]
   LockedOnFlag: [0x70]
-  CamQ1: [0x10, 0x568, 0x108]
-  CamQ2: [0x10, 0x568, 0x110]
-  CamQ3: [0x10, 0x568, 0x114]
-  CamQ4: [0x10, 0x568, 0x118]
-  CameraX: [0x18, 0x0568, 0x120]
-  CameraY: [0x18, 0x0568, 0x128]
-  CameraZ: [0x18, 0x0568, 0x124]
+  CamQx: [0x10, 0x568, 0x110]
+  CamQz: [0x10, 0x568, 0x114]
+  CamQy: [0x10, 0x568, 0x118]
+  CameraX: [0x60, 0x60, 0x90]
+  CameraY: [0x60, 0x60, 0x98]
+  CameraZ: [0x60, 0x60, 0x94]
   LoSLockOnTime: [0x2910]
   LockOnBonusRange: [0x2914]
   noGravity: [0x80, 0x1a08]  # Bit 6 saves the gravity flag
@@ -87,3 +84,4 @@ address_offsets:
   PlayerNoDeath: [0x0]
   PlayerDeathCount: [0x98]
   Time: [0xA4]
+  GlobalSpeed: [0x80, 0x1F90, 0x28, 0xA58]
