@@ -537,10 +537,11 @@ class Game:
         # attack is currently performed. In the split second between attack decisions, register 1 is
         # empty. We then read register 2. If that one is -1 as well, we default to a neutral
         # `IdleBattle` animation, but this could really be any non-attacking animation.
-        # If the attack has ended, SABlend has finished and animation is a valid attack read we
+        # If the attack has ended, SABlend has finished, and animation is a valid attack read, we
         # still need to confirm via the attack registers to not catch the tail of an animation that
         # is already finished but still lingers in animation.
-        if "SABlend" in animation or "Attack" in animation:
+        # In phase 2, bleed animations "Partxxx" are also possible.
+        if "SABlend" in animation or "Attack" in animation or "Part" in animation:
             base = self.mem.base_address + address_bases["Iudex"]
             address = self.mem.resolve_address(address_offsets["IudexAttackID"], base=base)
             attack_id = self.mem.read_int(address)

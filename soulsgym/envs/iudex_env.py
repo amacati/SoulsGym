@@ -7,7 +7,8 @@ upgrades. We do not allow shield blocking or two handing at this point, although
 be supported. Parrying is enabled.
 
 Note:
-    Only covers phase 1 of the boss fight. See :mod:`~.envs` for details.
+    Phase 2 of the boss fight is available by specifying it as keyword. See :mod:`~.envs` for
+    details.
 """
 import logging
 
@@ -29,8 +30,13 @@ class IudexEnv(SoulsEnv):
 
     ENV_ID = "iudex"
 
-    def __init__(self, use_info=False):
-        """Define the state space."""
+    def __init__(self, use_info=False, phase=1):
+        """Define the state space.
+
+        Args:
+            use_info: Turns on additional information via the ``info`` return values in ``step``.
+            phase: Set the boss phase. Either 1 or 2 for Iudex.
+        """
         super().__init__(use_info=use_info)  # DarkSoulsIII needs to be open at this point
         # The state space consists of multiple spaces. These represent:
         # 1) Boss phase. Either 1 or 2 for Iudex
@@ -61,6 +67,9 @@ class IudexEnv(SoulsEnv):
             "boss_animation": spaces.Discrete(len(boss_animations["iudex"]["all"])),
             "boss_animation_duration": spaces.Box(0., 10., (1,))
         })
+        assert phase in (1, 2)
+        self.phase = phase
+        self._phase_init = False
 
     def _env_setup(self, init_retries: int = 3):
         """Execute the Iudex environment setup.
@@ -96,7 +105,21 @@ class IudexEnv(SoulsEnv):
         self.game.allow_hits = False
         self.game.reset_player_hp()
         self.game.reset_player_sp()
-        self.game.reset_boss_hp("iudex")
+        if self.phase == 1:
+            self.game.reset_boss_hp("iudex")
+        # If Iudex is set to phase 2, set HP to 100 to trigger phase transition and wait
+        elif not self._phase_init:
+            self.game.iudex_hp = 100
+            self.game.allow_attacks = True  # Iudex needs to attack for the transition
+            self.game.resume_game()
+            while not self.game.iudex_animation == "Attack1500":
+                self.game.sleep(0.1)
+            while self.game.iudex_animation == "Attack1500":
+                self.game.sleep(0.1)
+            self.game.allow_attacks = False
+            self.game.pause_game()
+            self.game.reset_boss_hp("iudex")
+            self._phase_init = True
 
         self.game.global_speed = 3  # Speed up recovery
         while not self._reset_check():
@@ -115,7 +138,7 @@ class IudexEnv(SoulsEnv):
         self._internal_state = self._game_logger.log()
         return self._internal_state
 
-    def _iudex_setup(self) -> None:
+    def _iudex_setup(self):
         """Set up Iudex flags, focus the application, teleport to the fog gate and enter."""
         self.game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
         if not self.game.check_boss_flags("iudex"):

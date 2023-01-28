@@ -126,3 +126,9 @@ boss:
       - SABlend_Add_Right
       - SABlend_Add_Left
       - SABlend_Add_Back
+      - PartBlend_Add1
+      - PartBlend_Add2
+      - PartBlend_Add3
+      - PartBlend_NoAdd1
+      - PartBlend_NoAdd2
+      - PartBlend_NoAdd3
