@@ -72,7 +72,7 @@ class MemoryManipulator(Singleton):
                 addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.ds_module,
                                                        pattern)
                 if not addr:
-                    raise RuntimeError(f'Pattern "{base} could not be resolved!"')
+                    raise RuntimeError(f'Pattern "{base}" could not be resolved!')
                 # Conversion logic from TGA cheat table for Dark Souls III v. 3.1.2
                 if "offset" in address_base_patterns[base]:
                     addr += address_base_patterns[base]["offset"]
