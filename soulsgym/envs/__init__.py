@@ -18,10 +18,9 @@ on the reload of the game. As soon as the initial state is restored, the gym con
 episode.
 
 Note:
-    Since we always top off the boss' HP it never enters its second phase. We could allow for it to
-    drop in the game as well, but transformation into the second phase is irreversible so far. Until
-    we find the flags inside the game memory responsible for the phase change we will stick to the
-    first phase only.
+    Since we always top off the boss' HP it never enters its second phase. We support training on
+    different phases by specifying the phase on environment initialization. This phase cannot be
+    changed during runtime. We recommend training one agent for each phase instead.
 
 Warning:
     Do not attempt to launch more than one environment at once! There can only be one instance of
