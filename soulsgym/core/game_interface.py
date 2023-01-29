@@ -222,12 +222,12 @@ class Game:
     def allow_player_death(self) -> bool:
         """Disable/enable player deaths ingame."""
         address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"]
-        return self.mem.read_int(address) == 0
+        return self.mem.read_bytes(address, 1) == b'\x00'
 
     @allow_player_death.setter
     def allow_player_death(self, flag: bool):
         address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"]
-        self.mem.write_int(address, int(not flag))
+        self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
     def player_stats(self) -> Tuple[int]:
@@ -726,7 +726,7 @@ class Game:
     def allow_attacks(self) -> bool:
         """Globally enable/disable attacks for all entities."""
         address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xB
-        return self.mem.read_int(address) == 0
+        return self.mem.read_bytes(address, 1) == b'\x00'
 
     @allow_attacks.setter
     def allow_attacks(self, flag: bool):
@@ -741,7 +741,7 @@ class Game:
         all attacks, staggers etc.
         """
         address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xA
-        return self.mem.read_int(address) == 0
+        return self.mem.read_bytes(address, 1) == b'\x00'
 
     @allow_hits.setter
     def allow_hits(self, flag: bool):
@@ -752,7 +752,7 @@ class Game:
     def allow_moves(self) -> bool:
         """Globally enable/disable movement for all entities."""
         address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xC
-        return self.mem.read_int(address) == 0
+        return self.mem.read_bytes(address, 1) == b'\x00'
 
     @allow_moves.setter
     def allow_moves(self, flag: bool):
@@ -763,7 +763,7 @@ class Game:
     def allow_deaths(self) -> bool:
         """Globally enable/disable deaths for all entities."""
         address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0x8
-        return self.mem.read_int(address) == 0
+        return self.mem.read_bytes(address, 1) == b'\x00'
 
     @allow_deaths.setter
     def allow_deaths(self, flag: bool):
@@ -774,7 +774,7 @@ class Game:
     def allow_weapon_durability_dmg(self) -> bool:
         """Globally enable/disable weapon durability damage for all entities."""
         address = self.mem.base_address + self.mem.bases["WorldChrManDbg_Flags"] + 0xE
-        return self.mem.read_int(address) == 0
+        return self.mem.read_bytes(address, 1) == b'\x00'
 
     @allow_weapon_durability_dmg.setter
     def allow_weapon_durability_dmg(self, flag: bool):

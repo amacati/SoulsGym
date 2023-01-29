@@ -263,6 +263,14 @@ class SoulsEnv(gym.Env, ABC):
             self._handle_critical_game_state(game_state)
             return
         self._update_internal_game_state(game_state, player_animation_td, boss_animation_td)
+        self._step_hook()
+
+    def _step_hook(self):
+        """Reset player and boss HP after a step has been made.
+
+        Overwriting this hook in :class:`.SoulsEnvDemo` allows demos to skip the HP replenishment
+        step for an unmodified episode.
+        """
         self.game.reset_player_hp()
         self.game.reset_boss_hp(self.ENV_ID)
 
@@ -407,3 +415,55 @@ class SoulsEnv(gym.Env, ABC):
                     # therefore turn the camera towards Iudex again and continue without lock on
                     self.game.camera_pose = target_pose[:3] - self.game.player_pose[:3]
         self.game.global_speed = game_speed
+
+
+class SoulsEnvDemo(SoulsEnv):
+    """Demo class to show the performance of agents in the unaltered game.
+
+    Demo envs do not reset the player and boss HP so that an episode resembles an actual boss fight.
+    After a single episode, a hard reset of the game is necessary since either the player has died
+    or the boss has been defeated.
+    """
+
+    def __init__(self, use_info=False):
+        super().__init__(use_info)
+
+    def _update_internal_game_state(self, game_state: GameState, player_animation_td: float,
+                                    boss_animation_td: float):
+        if self._internal_state is None or self.done:
+            logger.error("_update_internal_game_state: SoulsEnv.step() called before reset")
+            raise ResetNeeded("SoulsEnv.step() called before reset")
+        # Save animation duration and HP
+        if game_state.player_animation == self._internal_state.player_animation:
+            player_animation_duration = self._internal_state.player_animation_duration
+            player_animation_duration += player_animation_td
+        else:
+            player_animation_duration = player_animation_td
+        if game_state.boss_animation == self._internal_state.boss_animation:
+            boss_animation_duration = self._internal_state.boss_animation_duration
+            boss_animation_duration += boss_animation_td
+        else:
+            boss_animation_duration = boss_animation_td
+        # Update animation count and HP
+        self._internal_state = game_state
+        self._internal_state.player_animation_duration = player_animation_duration
+        self._internal_state.boss_animation_duration = boss_animation_duration
+        if self._internal_state.player_hp < 0:
+            self._internal_state.player_hp = 0
+        if self._internal_state.boss_hp < 0:
+            self._internal_state.boss_hp = 0
+        self.done = self._internal_state.player_hp == 0 or self._internal_state.boss_hp == 0
+
+    def _step_hook(self):
+        """Omit HP replenishment steps to allow player and boss HP drop."""
+
+    def _set_game_properties(self):
+        """Enable player and boss deaths."""
+        super()._set_game_properties()
+        self.game.allow_deaths = True
+
+    def _step(self):
+        """Continue the game after finishing the demo."""
+        super()._step()
+        if self.done:
+            self.game.resume_game()

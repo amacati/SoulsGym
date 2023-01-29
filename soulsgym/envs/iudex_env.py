@@ -17,7 +17,7 @@ import numpy as np
 from gym import spaces
 from gym.error import RetriesExceededError
 
-from soulsgym.envs.soulsenv import SoulsEnv
+from soulsgym.envs.soulsenv import SoulsEnv, SoulsEnvDemo
 from soulsgym.core.game_state import GameState
 from soulsgym.exception import GameStateError, InvalidPlayerStateError
 from soulsgym.core.static import boss_animations, player_animations, coordinates
@@ -103,6 +103,7 @@ class IudexEnv(SoulsEnv):
         self.game.pause_game()
         self.game.allow_attacks = False
         self.game.allow_hits = False
+        self.game.allow_moves = False
         self.game.reset_player_hp()
         self.game.reset_player_sp()
         if self.phase == 1:
@@ -135,6 +136,7 @@ class IudexEnv(SoulsEnv):
             self._lock_on(self.game.iudex_pose[:3])
         self.game.allow_attacks = True
         self.game.allow_hits = True
+        self.game.allow_moves = True
         self._internal_state = self._game_logger.log()
         return self._internal_state
 
@@ -303,3 +305,9 @@ class IudexEnv(SoulsEnv):
         if self.game.player_animation != "Idle":
             logger.debug(f"_env_setup_check: Unexpected animation {self.game.player_animation}")
         return True
+
+
+class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
+
+    def __init__(self, use_info=False):
+        super().__init__(use_info=use_info)

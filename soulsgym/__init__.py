@@ -66,3 +66,6 @@ available_envs = ["SoulsGymIudex-v0"]
 register(id="SoulsGymIudex-v0",
          entry_point='soulsgym.envs.iudex_env:IudexEnv',
          nondeterministic=True)
+register(id="SoulsGymIudex-v1",
+         entry_point="soulsgym.envs.iudex_env:IudexEnvDemo",
+         nondeterministic=True)
