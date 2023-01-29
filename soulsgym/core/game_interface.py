@@ -128,9 +128,9 @@ class Game:
         player or bosses) the rotation is given as a single angle in radians around the z axis.
 
         Setting the player's pose is more complex than just overwriting the pose values. The player
-        might be killed if the teleported distance is interpreted as a fall. We save all game flags,
-        disable player deaths and gravity, set the coordinates and restore all flags to their
-        previous state.
+        might be killed if the teleported distance is interpreted as a fall. We save the player
+        death game flag, disable player deaths and gravity, set the coordinates and restore the
+        player death flag to its previous state. Gravity is always enabled after a teleport.
 
         Warning:
             Pose modifications are particularly affected by race conditions!
@@ -148,7 +148,6 @@ class Game:
     def player_pose(self, coordinates: Tuple[float]):
         buff_death = self.allow_player_death
         self.allow_player_death = False
-        buff_gravity = self.gravity
         self.gravity = False
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
         x_address = self.mem.resolve_address(address_offsets["PlayerX"], base=base)
@@ -159,7 +158,7 @@ class Game:
         self.mem.write_float(y_address, coordinates[1])
         self.mem.write_float(z_address, coordinates[2])
         self.mem.write_float(a_address, coordinates[3])
-        self.gravity = buff_gravity
+        self.gravity = True
         self.allow_player_death = buff_death
         self.player_hp = self.player_max_hp
 
