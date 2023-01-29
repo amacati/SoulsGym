@@ -65,7 +65,9 @@ available_envs = ["SoulsGymIudex-v0"]
 # Register environments in OpenAI gym
 register(id="SoulsGymIudex-v0",
          entry_point='soulsgym.envs.iudex_env:IudexEnv',
+         max_episode_steps=3000,
          nondeterministic=True)
 register(id="SoulsGymIudex-v1",
          entry_point="soulsgym.envs.iudex_env:IudexEnvDemo",
+         max_episode_steps=3000,
          nondeterministic=True)
