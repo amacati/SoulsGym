@@ -16,7 +16,7 @@ if on_rtd:
 # -- Project information -----------------------------------------------------
 
 project = 'SoulsGym'
-copyright = '2022, Martin Schuck, Raphael Krauthann'
+copyright = '2022, Martin Schuck'
 author = 'Martin Schuck, Raphael Krauthann'
 
 # The full version, including alpha/beta/rc tags
@@ -35,7 +35,7 @@ if on_rtd:
     # We have to include ctypes since RTD can't import windows ctypes
     autodoc_mock_imports = [
         "gym", "win32api", "numpy", "pymem", "mss", "win32gui", "win32con", "win32com",
-        "win32process", "psutil", "ctypes"
+        "win32process", "psutil", "ctypes", "win32event"
     ]
 
 # Add any paths that contain templates here, relative to this directory.
