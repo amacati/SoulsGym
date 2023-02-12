@@ -6,7 +6,7 @@ the underlying engine that is modified at runtime by reading and writing into th
 create the environments.
 
 Note:
-    The environments only cover phase one of the boss fights so far. For further explanations see
+    The environments only cover one phase of the boss fights so far. For further explanations see
     :mod:`~.envs`.
 
 We do however provide a demo environment. This environment is meant to test the agent on a single

@@ -2,7 +2,7 @@
 
 The injection functions inject a DLL into a target process and force it to load the library. First,
 we obtain a handle of the target process and allocate memory in the external process. Then we write
-the path to the DLL into the allocated memory, create a remote thread in the target process, and 
+the path to the DLL into the allocated memory, create a remote thread in the target process, and
 call ``LoadLibrary`` on ``kernel32.lib`` to force the process to load the DLL. The allocated memory
 is subsequently released and the handles are closed. This completes the injection.
 

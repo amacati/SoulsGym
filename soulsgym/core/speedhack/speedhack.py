@@ -1,7 +1,8 @@
-"""The injection functions inject a DLL into a target process and force it to load the library. 
+"""The injection functions inject a DLL into a target process and force it to load the library.
+
 First, we obtain a handle of the target process and allocate memory in the external process. Then we
-write the path to the DLL into the allocated memory, create a remote thread in the target process, 
-and call ``LoadLibrary`` on ``kernel32.lib`` to force the process to load the DLL. The allocated 
+write the path to the DLL into the allocated memory, create a remote thread in the target process,
+and call ``LoadLibrary`` on ``kernel32.lib`` to force the process to load the DLL. The allocated
 memory is subsequently released and the handles are closed. This completes the injection.
 
 The injection reroutes the game's calls to Windows' performance timer functions to custom timers.
@@ -75,7 +76,7 @@ def _get_process_id_by_name(process_name: str) -> int:
     raise InjectionFailure(f"Process {process_name} not found.")
 
 
-def _write_dll_to_process(p_handle: int, dll_path: Path):
+def _write_dll_to_process(p_handle: int, dll_path: Path) -> int:
     """Write the DLL path to the external process memory.
 
     Args:
@@ -99,7 +100,7 @@ def _write_dll_to_process(p_handle: int, dll_path: Path):
     return mem_addr
 
 
-def _create_remote_thread(p_handle: int, mem_addr: int):
+def _create_remote_thread(p_handle: int, mem_addr: int) -> int:
     """Create a remote thread and load the injected DLL.
 
     Args:
@@ -116,7 +117,7 @@ def _create_remote_thread(p_handle: int, mem_addr: int):
 
 
 def _injection_cleanup(p_handle: int, t_handle: int, mem_addr: int):
-    """Clean up the injection by freeing the allocated memory for the injection path and closing the handles.
+    """Clean up the injection by freeing the allocated memory and closing the handles.
 
     Args:
         p_handle: Target process handle.
@@ -147,7 +148,10 @@ class SpeedHackConnector(metaclass=Singleton):
     _lock = Lock()
 
     def __init__(self):
-        """Try to connect to the SpeedHack pipe"""
+        """Connect to the SpeedHack pipe.
+
+        If the pipe is not yet open, inject the DLL into the game.
+        """
         try:
             self.pipe = self._connect_pipe()
             logger.info("SpeedHack already enabled, skipping injection")
@@ -169,9 +173,10 @@ class SpeedHackConnector(metaclass=Singleton):
         assert value >= 0
         win32file.WriteFile(self.pipe, struct.pack("f", value))
 
-    def _connect_pipe(self):
+    def _connect_pipe(self) -> int:
         return win32file.CreateFile(self.pipe_name, win32file.GENERIC_WRITE, 0, None,
                                     win32file.OPEN_EXISTING, 0, None)
 
     def __del__(self):
+        """Close the pipe handle on deletion."""
         win32file.CloseHandle(self.pipe)

@@ -48,6 +48,7 @@ class _INPUT(ctypes.Structure):
 
 class GameInput:
     """Trigger keystrokes by calling the Windows user32 API."""
+
     press_and_release_actions = ("roll", "lightattack", "heavyattack", "parry")
 
     def __init__(self):
@@ -81,7 +82,7 @@ class GameInput:
     def update_input(self):
         """Update the pressed keys state with queued actions and execute key presses/releases.
 
-        Actions have to be queued with :meth:`.GameInput.add_action` and 
+        Actions have to be queued with :meth:`.GameInput.add_action` and
         :meth:`.GameInput.add_actions`. Some actions (e.g. rolling) require an immediate release
         after pressing the key, or else the player would perform a different action such as running.
         All other keystrokes remain pressed as long as successive updates contain the corresponding

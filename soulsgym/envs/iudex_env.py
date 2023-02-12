@@ -30,7 +30,7 @@ class IudexEnv(SoulsEnv):
 
     ENV_ID = "iudex"
 
-    def __init__(self, use_info=False, phase=1):
+    def __init__(self, use_info: bool = False, phase: int = 1):
         """Define the state space.
 
         Args:
@@ -141,7 +141,7 @@ class IudexEnv(SoulsEnv):
         self._internal_state = self._game_logger.log()
         return self._internal_state
 
-    def _iudex_setup(self):
+    def _iudex_setup(self) -> None:
         """Set up Iudex flags, focus the application, teleport to the fog gate and enter."""
         self.game.resume_game()  # In case SoulsGym crashed without unpausing Dark Souls III
         if not self.game.check_boss_flags("iudex"):
@@ -198,15 +198,9 @@ class IudexEnv(SoulsEnv):
         Returns:
             The reward for the provided game states.
         """
-        # boss_reward = 0.5 - next_game_state.boss_hp / next_game_state.boss_max_hp
-        # player_reward = next_game_state.player_hp / next_game_state.player_max_hp - 0.5
-        # end_reward = (next_game_state.player_hp == 0) * -200 + (next_game_state.boss_hp == 0) * 200
-        # Experimental: Introduce a penalty term for deviating too much from the arena center
-        # d_center = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
-        # position_reward = (d_center > 10) * -2e-4 * d_center
         boss_reward = (game_state.boss_hp - next_game_state.boss_hp) / game_state.boss_max_hp * 100.
-        player_reward = ((next_game_state.player_hp - game_state.player_hp) /
-                         game_state.player_max_hp * 100.)
+        player_hp_diff = (next_game_state.player_hp - game_state.player_hp)
+        player_reward = player_hp_diff / game_state.player_max_hp * 100.
         if next_game_state.boss_hp == 0 or next_game_state.player_hp == 0:
             base_reward = 10 if next_game_state.boss_hp == 0 else -10
         else:
@@ -309,6 +303,15 @@ class IudexEnv(SoulsEnv):
 
 
 class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
+    """Demo environment for the Iudex Gundyr fight.
 
-    def __init__(self, use_info=False):
+    Covers both phases. Player and boss loose HP, and the episode does not reset.
+    """
+
+    def __init__(self, use_info: bool = False):
+        """Initialize the demo environment.
+
+        Args:
+            use_info: Turns on additional information via the ``info`` return values in ``step``.
+        """
         super().__init__(use_info=use_info)

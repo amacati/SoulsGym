@@ -4,7 +4,7 @@ It includes the general gym logic and defines abstract methods that all environm
 implement.
 """
 import logging
-from typing import Tuple, Optional
+from typing import Tuple, Optional, List
 from pathlib import Path
 from abc import ABC, abstractmethod
 from argparse import Namespace
@@ -57,8 +57,12 @@ class SoulsEnv(gym.Env, ABC):
     pause_time_estimate = 0.03  # Estimated time for pauses to take effect.
     game_speed = 1.
 
-    def __init__(self, use_info=False):
-        """Initialize the game managers, load the environment config and set the game properties."""
+    def __init__(self, use_info: bool = False):
+        """Initialize the game managers, load the environment config and set the game properties.
+
+        Args:
+            use_info: Turns on additional information via the ``info`` return values in ``step``.
+        """
         super().__init__()
         assert self.step_size > self.pause_time_estimate
         self.action_space = gym.spaces.Discrete(len(actions))
@@ -156,7 +160,7 @@ class SoulsEnv(gym.Env, ABC):
         self.game.player_hp = 0  # Kill player to force game reload. Don't wait for completion
         logger.debug("SoulsEnv close successful")
 
-    def current_valid_actions(self):
+    def current_valid_actions(self) -> List[int]:
         """Get the set of currently valid actions.
 
         Returns:
@@ -431,7 +435,12 @@ class SoulsEnvDemo(SoulsEnv):
     or the boss has been defeated.
     """
 
-    def __init__(self, use_info=False):
+    def __init__(self, use_info: bool = False):
+        """Initialize the demo environment.
+
+        Args:
+            use_info: Turns on additional information via the ``info`` return values in ``step``.
+        """
         super().__init__(use_info)
 
     def _update_internal_game_state(self, game_state: GameState, player_animation_td: float,
