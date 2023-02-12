@@ -1,6 +1,8 @@
 """Utility module for ``soulsgym``."""
 from __future__ import annotations
 from typing import Union
+from threading import Lock
+from weakref import WeakValueDictionary
 
 import numpy as np
 
@@ -17,11 +19,17 @@ def wrap_to_pi(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
     return ((x + np.pi) % (2 * np.pi)) - np.pi
 
 
-class Singleton(object):
-    """Singleton base class."""
+class Singleton(type):
+    """Metaclass for singletons."""
+    # Enables automatic __del__ call after all instances have gone out of scope
+    # See https://stackoverflow.com/questions/43619748/destroying-a-singleton-object-in-python
+    _instances = WeakValueDictionary()
+    _lock = Lock()
 
-    def __new__(cls) -> Singleton:
-        """Create a new class only if singleton has no instance so far, else return instance."""
-        if not hasattr(cls, 'instance'):
-            cls.instance = super(Singleton, cls).__new__(cls)
-        return cls.instance
+    def __call__(cls, *args, **kwargs):
+        with cls._lock:
+            if cls not in cls._instances:
+                # This variable declaration is required to force a strong reference on the instance
+                instance = super(Singleton, cls).__call__(*args, **kwargs)
+                cls._instances[cls] = instance
+            return cls._instances[cls]

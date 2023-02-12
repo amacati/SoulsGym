@@ -35,7 +35,7 @@ from soulsgym.core.utils import Singleton
 from soulsgym.core.static import address_base_patterns, address_bases
 
 
-class MemoryManipulator(Singleton):
+class MemoryManipulator(metaclass=Singleton):
     """Handle reads and writes to the game process memory.
 
     The ``MemoryManipulator`` wraps ``pymem`` functions for memory read and writes. It manages the

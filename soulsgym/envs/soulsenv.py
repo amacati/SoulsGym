@@ -21,6 +21,7 @@ from soulsgym.core.game_state import GameState
 from soulsgym.core.game_interface import Game
 from soulsgym.core.static import coordinates, actions, player_animations, player_stats
 from soulsgym.core.static import boss_animations
+from soulsgym.core.utils import wrap_to_pi
 from soulsgym.core.game_window import GameWindow
 from soulsgym.exception import GameStateError, ResetNeeded, InvalidPlayerStateError
 
@@ -64,6 +65,7 @@ class SoulsEnv(gym.Env, ABC):
         self._internal_state = None
         self._last_player_animation_time = 0
         self._last_boss_animation_time = 0
+        self._lock_on_timer = 0  # Steps until lock on press is allowed
         self.done = False
         self._use_info = use_info
         self._game_input = GameInput()
@@ -219,9 +221,10 @@ class SoulsEnv(gym.Env, ABC):
             action: The action that is applied during this step.
         """
         if action in self.current_valid_actions():
-            self._game_input.update(actions[action])
-        else:
-            self._game_input.reset()
+            self._game_input.add_actions(actions[action])
+        # We always call the update because it includes actions added by _lock_on for camera control
+        # If no action was queued, the update is equivalent to a reset.
+        self._game_input.update_input()
 
     def _step(self):
         """Perform the actual step ingame.
@@ -259,6 +262,12 @@ class SoulsEnv(gym.Env, ABC):
             player_animation_start = t_loop
         player_animation_td = self.game.timed(t_end, player_animation_start)
         boss_animation_td = self.game.timed(t_end, boss_animation_start)
+        # During grab attacks, the lock cannot be established
+        if not game_state.lock_on and game_state.player_animation not in ("ThrowAtk", "ThrowDef"):
+            logger.debug("_step_check: Missing lock on detected")
+            self._lock_on()
+        else:
+            self._lock_on_timer = 0
         if not self._step_check(game_state):
             self._handle_critical_game_state(game_state)
             return
@@ -307,18 +316,6 @@ class SoulsEnv(gym.Env, ABC):
         # Fall detection by lower state space bound on z coordinate
         if self.env_args.space_coords_low[2] > game_state.player_pose[2]:
             return False
-        # During grab attacks, the lock cannot be established
-        if not game_state.lock_on and game_state.player_animation not in ("ThrowAtk", "ThrowDef"):
-            logger.debug("_step_check: Missing lock on detected")
-            self._lock_on()
-            # The player might have begun falling, but still barely passed the earlier lower bounds
-            # check. In that case he's falling during lock-on and continues to fall after the step
-            # returns. If ``step`` is not called again sufficiently fast the player will die. To
-            # prevent this we double check the lower z bound after lock on.
-            player_z = self.game.player_pose[2]
-            if self.env_args.space_coords_low[2] > player_z:
-                self._internal_state.player_pose[2] = player_z
-                return False
         # Unknown player animation. Shouldn't happen, add animation to tables!
         if game_state.player_animation not in player_animations["all"]:
             logger.warning(f"_step: Unknown player animation {game_state.player_animation}")
@@ -393,28 +390,37 @@ class SoulsEnv(gym.Env, ABC):
             Lock on is disabled during the *ThrowAtk* and *ThrowDef* player animations because it is
             disabled on the game side for these animations.
 
+        Warning:
+            Lock on actions are only queued for execution on the subsequent environment step. Since
+            the game is paused during :meth:`.SoulsEnv._lock_on`, we cannot restore the lock
+            immediately as the camera does not move.
+
         Args:
             target_pose: The target pose towards which the camera should be oriented from its
                 current position.
         """
-        game_speed = self.game.global_speed
-        self.game.pause_game()
         # During grab attacks, the lock cannot be established
         if self.game.player_animation not in ("ThrowAtk", "ThrowDef"):
             # Additional safeguard to make sure the player is currently not locked on
             if not self.game.lock_on:
+                cpose = self.game.camera_pose
                 if target_pose is None:
-                    target_pose = self.game.get_boss_pose(self.ENV_ID)
-                self.game.camera_pose = target_pose[:3] - self.game.player_pose[:3]
-                self._game_input.single_action("lockon")
-                self.game.sleep(0.01)
-                if not self.game.lock_on:
-                    logger.debug("_lock_on: Failed to reestablish lock on")
-                    # If the player is still oriented towards Iudex we essentially recover a lock on
-                    # behavior. Pressing lock on turns the camera towards the player orientation. We
-                    # therefore turn the camera towards Iudex again and continue without lock on
-                    self.game.camera_pose = target_pose[:3] - self.game.player_pose[:3]
-        self.game.global_speed = game_speed
+                    target_pose = self.game.get_boss_pose(self.ENV_ID) - self.game.player_pose
+                normal = target_pose[:3] / np.linalg.norm(target_pose[:3])
+                if np.dot(cpose[3:], normal) > 0.8 and self._lock_on_timer <= 0:
+                    # Lock on is established on "button down", so we press once per 3 steps to make
+                    # sure we don't get stuck after one bad press
+                    self._game_input.add_action("lockon")
+                    self._lock_on_timer = 3
+                    return
+                self._lock_on_timer -= 1
+                dz = cpose[5] - normal[2]  # Camera pose is [x, y, z, nx, ny, nz], we need nz
+                normal_angle = np.arctan2(*normal[:2])
+                d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
+                if abs(dz) > 0.3:
+                    self._game_input.add_action("cameradown" if dz > 0 else "cameraup")
+                if abs(d_angle) > 0.3:
+                    self._game_input.add_action("cameraleft" if d_angle > 0 else "cameraright")
 
 
 class SoulsEnvDemo(SoulsEnv):

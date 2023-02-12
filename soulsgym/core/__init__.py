@@ -5,6 +5,9 @@ At the lowest level we directly manipulate the game memory with the :mod:`.memor
 had access to the actual game properties. We cannot however trigger actions directly in game.
 Instead we rely on the :mod:`.game_input` to trigger keystrokes in order to control the player.
 
+To pause and accelerate the game, the :mod:`.speedhack` module provides functions to inject a DLL
+into the game process and dynamically change the game loop speed.
+
 The :mod:`.logger` module further abstracts the game interface and logs snapshots of the game into a
 :class:`.GameState`. This ``GameState`` contains sufficient information about the boss fight to
 fulfill the Markov property.

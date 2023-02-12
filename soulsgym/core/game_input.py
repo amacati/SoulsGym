@@ -48,30 +48,51 @@ class _INPUT(ctypes.Structure):
 
 class GameInput:
     """Trigger keystrokes by calling the Windows user32 API."""
+    press_and_release_actions = ("roll", "lightattack", "heavyattack", "parry")
 
     def __init__(self):
         """Initialize the key state dictionary."""
         self.state = {key: False for key in keybindings.keys()}
+        self.queued_actions = []
 
-    def update(self, actions: List[str]):
-        """Update the pressed keys state and execute key presses/releases.
+    def add_action(self, action: str):
+        """Queue a single action for the next game input.
 
-        Action strings have to be contained in :data:`.static.keybindings`. Some actions
-        (e.g. rolling) require an immediate release after pressing the key, or else the player would
-        perform a different action such as running. All other keystrokes remain pressed as long as
-        successive updates contain the corresponding action (e.g. running).
+        Action string has to be contained in :data:`.static.keybindings`.
+
+        Args:
+            actions: The pressed action.
+        """
+        assert action in self.state.keys()
+        self.queued_actions.append(action)
+
+    def add_actions(self, actions: List[str]):
+        """Queue multiple actions for the next game input.
+
+        Action strings have to be contained in :data:`.static.keybindings`.
 
         Args:
             actions: A list of pressed actions.
         """
+        for action in actions:
+            assert action in self.state.keys()
+        self.queued_actions.extend(actions)
+
+    def update_input(self):
+        """Update the pressed keys state with queued actions and execute key presses/releases.
+
+        Actions have to be queued with :meth:`.GameInput.add_action` and 
+        :meth:`.GameInput.add_actions`. Some actions (e.g. rolling) require an immediate release
+        after pressing the key, or else the player would perform a different action such as running.
+        All other keystrokes remain pressed as long as successive updates contain the corresponding
+        action (e.g. running).
+        """
         for action in self.state:
-            if action in ("roll", "lightattack", "heavyattack", "parry") and action in actions:
-                self._press_key(keymap[keybindings[action]])
-                time.sleep(0.02)
-                self._release_key(keymap[keybindings[action]])
+            if action in self.press_and_release_actions and action in self.queued_actions:
+                self.single_action(action, press_time=0.02)
                 continue
             # nothing new, continue
-            if self.state[action] == (action in actions):
+            if self.state[action] == (action in self.queued_actions):
                 continue
             # key was not pressed before
             if not self.state[action]:
@@ -81,6 +102,7 @@ class GameInput:
             elif self.state[action]:
                 self.state[action] = False
                 self._release_key(keymap[keybindings[action]])
+        self.queued_actions.clear()
 
     def reset(self):
         """Release all keys and set the press state to False."""
@@ -88,6 +110,7 @@ class GameInput:
             if self.state[action]:
                 self._release_key(keymap[keybindings[action]])
                 self.state[action] = False
+        self.queued_actions.clear()
 
     def single_action(self, action: str, press_time: float = 0.15):
         """Perform a single action for a given amount of time.

@@ -24,6 +24,7 @@ from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.utils import wrap_to_pi
 from soulsgym.core.static import bonfires, address_bases, address_offsets
+from soulsgym.core.speedhack import SpeedHackConnector
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +48,9 @@ class Game:
         self._game_input = GameInput()  # Necessary for camera control etc
         self.iudex_max_hp = 1037
         self._game_flags = {}  # Cache game flags to restore them after a game reload
+        self._speed_hack_connector = SpeedHackConnector()
+        self._global_speed = 1.0
+        self.global_speed = 1.0
 
     @property
     def player_hp(self) -> int:
@@ -146,6 +150,7 @@ class Game:
 
     @player_pose.setter
     def player_pose(self, coordinates: Tuple[float]):
+        game_speed = self.global_speed
         buff_death = self.allow_player_death
         self.allow_player_death = False
         self.gravity = False
@@ -161,6 +166,7 @@ class Game:
         self.gravity = True
         self.allow_player_death = buff_death
         self.player_hp = self.player_max_hp
+        self.global_speed = game_speed
 
     @property
     def player_animation(self) -> str:
@@ -675,26 +681,29 @@ class Game:
     @camera_pose.setter
     def camera_pose(self, normal: Tuple[float]):
         assert len(normal) == 3, "Normal vector must have 3 elements"
+        assert self.global_speed > 0, "Camera cannot move while the game is paused"
         normal = np.array(normal, dtype=np.float64)
         normal /= np.linalg.norm(normal)
         normal_angle = np.arctan2(*normal[:2])
-        dz = self.camera_pose[5] - normal[2]  # Camera pose is [x, y, z, nx, ny, nz], we need nz
+        cpose = self.camera_pose
+        dz = cpose[5] - normal[2]  # Camera pose is [x, y, z, nx, ny, nz], we need nz
+        d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
         t = 0
         # If lock on is already established and target is out of tolerances, the cam can't move. We
         # limit camera rotations to 50 actions to not run into an infinite loop where the camera
         # tries to move but can't because lock on prevents it from actually moving
-        while abs(dz) > 0.05 and t < 50:
-            self._game_input.single_action("cameradown" if dz > 0 else "cameraup", .02)
-            dz = self.camera_pose[5] - normal[2]
-            t += 1
-        cpose = self.camera_pose
-        d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
-        t = 0
-        while abs(d_angle) > 0.05 and t < 50:
-            self._game_input.single_action("cameraleft" if d_angle > 0 else "cameraright", .02)
+        while (abs(dz) > 0.05 or abs(d_angle) > 0.05) and t < 50:
+            if abs(dz) > 0.05:
+                self._game_input.add_action("cameradown" if dz > 0 else "cameraup")
+            if abs(d_angle) > 0.05:
+                self._game_input.add_action("cameraleft" if d_angle > 0 else "cameraright")
+            self._game_input.update_input()
+            time.sleep(0.02)
             cpose = self.camera_pose
+            dz = cpose[5] - normal[2]
             d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
             t += 1
+        self._game_input.reset()  # Disable cam buttons after the loop
 
     @property
     def last_bonfire(self) -> str:
@@ -812,15 +821,7 @@ class Game:
         base = self.mem.base_address + self.mem.bases["LockTgtMan"]
         address = self.mem.resolve_address(address_offsets["LockOn"], base=base)
         buff = self.mem.read_bytes(address, 1)
-        lock_on = struct.unpack("?", buff)[0]  # Interpret buff as boolean
-        # We suspect the lock on flag actually signals the alignment of the target with the camera.
-        # If lock_on is False, we therefore wait a small amount of time and recheck to make sure we
-        # don't get too many False negatives
-        if not lock_on:
-            time.sleep(0.01)
-            buff = self.mem.read_bytes(address, 1)
-            lock_on = struct.unpack("?", buff)[0]
-        return lock_on
+        return struct.unpack("?", buff)[0]  # Interpret buff as boolean
 
     @property
     def lock_on_bonus_range(self) -> float:
@@ -928,19 +929,28 @@ class Game:
         Note:
             Setting this value to 0 will effectively pause the game. Default speed is 1.
 
+        Warning:
+            The process slows down with game speeds lower than 1. Values close to 0 may cause
+            windows to assume the process has frozen.
+
+        Warning:
+            Values significantly higher than 1 (e.g. 5+) may not be achievable for the game loop.
+            This is probably dependant on the available hardware.
+
         Returns:
             The game loop speed.
+
+        Raises:
+            ValueError: The game speed was set to negative values.
         """
-        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["GlobalSpeed"], base=base)
-        return self.mem.read_float(address)
+        return self._global_speed
 
     @global_speed.setter
     def global_speed(self, value: float):
-        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["GlobalSpeed"], base=base)
-        self.mem.write_float(address, value)
-        time.sleep(0.001)  # Increase robustness by giving the game time to write the value
+        if value < 0:
+            raise ValueError("Attempting to set a negative game speed")
+        self._speed_hack_connector.set_game_speed(value)
+        self._global_speed = value
 
     @property
     def gravity(self) -> bool:

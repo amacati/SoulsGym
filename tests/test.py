@@ -11,26 +11,15 @@ if __name__ == "__main__":
                         filemode="w",
                         format="%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s",
                         datefmt='%H:%M:%S',
-                        level=logging.WARNING)
+                        level=logging.DEBUG)
     logging.getLogger().addHandler(logging.StreamHandler())
-    soulsgym.set_log_level(level=logging.DEBUG)
+    soulsgym.set_log_level(level=logging.INFO)
     env = gym.make("SoulsGymIudex-v0")
-    t_start = time.time()
-    sample_count = 0
     try:
-        i = 1
-        while datetime.timedelta(seconds=time.time() - t_start).days == 0:
-            print(f"Starting episode {i}")
-            state = env.reset()
-            done = False
-            while not done:
-                next_state, reward, done, info = env.step(env.action_space.sample())
-                sample_count += 1
-            seconds = round(time.time() - t_start)
-            print(f"Current gym uptime: {str(datetime.timedelta(seconds=seconds))}")
-            i += 1
+        state = env.reset()
+        done = False
+        while not done:
+            next_state, reward, done, info = env.step(19)
     finally:
-        t_end = time.time()
-        print(f"Total gym run time: {str(datetime.timedelta(seconds=round(t_end-t_start)))}")
-        print(f"Total sample count: {sample_count}")
+        print("Iudex" if next_state.boss_hp == 0 else "Player", " defeated.")
         env.close()

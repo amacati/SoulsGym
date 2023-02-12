@@ -23,3 +23,7 @@ class ResetNeeded(SoulsGymException):
 
 class LockOnFailure(SoulsGymException):
     """Raised when lock on can't be established."""
+
+
+class InjectionFailure(SoulsGymException):
+    """SpeedHack DLL injection failure."""

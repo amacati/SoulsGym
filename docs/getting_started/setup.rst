@@ -5,8 +5,8 @@ SoulsGym setup
 
 Requirements
 ~~~~~~~~~~~~
-SoulsGym requires you to have Dark Souls III installed in version 1.15. It is only compatible with
-Windows. 
+SoulsGym requires you to have Dark Souls III installed in version 1.15.2 with all DLCs. It is only
+compatible with Windows. 
 
 Installation
 ~~~~~~~~~~~~

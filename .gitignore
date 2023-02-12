@@ -132,3 +132,5 @@ dmypy.json
 tests/debug
 **/*.html
 **/*.PTR*
+**/.vs
+soulsgym/core/speedhack/_C/x64

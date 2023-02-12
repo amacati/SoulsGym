@@ -131,9 +131,10 @@ class IudexEnv(SoulsEnv):
                 self._env_setup()
                 return self.reset()
             self.game.sleep(0.01)
-        self.game.pause_game()
-        if not self.game.lock_on:
+        while not self.game.lock_on:
             self._lock_on(self.game.iudex_pose[:3])
+            self._game_input.update_input()
+        self.game.pause_game()
         self.game.allow_attacks = True
         self.game.allow_hits = True
         self.game.allow_moves = True

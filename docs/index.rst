@@ -35,6 +35,7 @@ With SoulsGym you can train Reinforcement Learning algorithms on Dark Souls III 
    core.memory_manipulator
    core.static
    core.utils
+   core.speedhack
    exception
 
 .. toctree::
