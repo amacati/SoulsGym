@@ -35,7 +35,7 @@ if on_rtd:
     # We have to include ctypes since RTD can't import windows ctypes
     autodoc_mock_imports = [
         "gym", "win32api", "numpy", "pymem", "mss", "win32gui", "win32con", "win32com",
-        "win32process", "psutil", "ctypes", "win32event", "win32file"
+        "win32process", "psutil", "ctypes", "win32event", "win32file", "pywintypes"
     ]
 
 # Add any paths that contain templates here, relative to this directory.
