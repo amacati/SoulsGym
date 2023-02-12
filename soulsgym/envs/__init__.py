@@ -13,9 +13,10 @@ Note:
 
 Once the fight starts, ``soulsgym`` keeps the player and the boss alive and at full health. HP
 losses are tracked internally instead. After the gym has determined that either the player or the
-boss has died it resets the poses and animations of the player and the boss. We do this to save time
-on the reload of the game. As soon as the initial state is restored, the gym continues with a new
-episode.
+boss has died it resets the poses and animations of the player and the boss. This is done to save
+time on the reload of the game. As soon as the initial state is restored, the gym continues with a
+new episode.  Alternatively, an episode ends after 3000 steps (5 minutes). Sometimes, the player can
+get stuck in a weird position. The time limit ensures frequent resets to aleviate this problem.
 
 Note:
     Since we always top off the boss' HP it never enters its second phase. We support training on

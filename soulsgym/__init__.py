@@ -9,6 +9,9 @@ Note:
     The environments only cover phase one of the boss fights so far. For further explanations see
     :mod:`~.envs`.
 
+We do however provide a demo environment. This environment is meant to test the agent on a single
+episode of the full boss fight.
+
 The second main module is the :mod:`soulsgym.core` module. It contains all necessary
 functionalities for the environments to interact with the game. Unless you want to develop your own
 environment for :mod:`~.envs` or are trying to contribute, this module can safely be ignored.
@@ -65,7 +68,9 @@ available_envs = ["SoulsGymIudex-v0"]
 # Register environments in OpenAI gym
 register(id="SoulsGymIudex-v0",
          entry_point='soulsgym.envs.iudex_env:IudexEnv',
+         max_episode_steps=3000,
          nondeterministic=True)
 register(id="SoulsGymIudex-v1",
          entry_point="soulsgym.envs.iudex_env:IudexEnvDemo",
+         max_episode_steps=3000,
          nondeterministic=True)
