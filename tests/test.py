@@ -1,6 +1,4 @@
 import logging
-import time
-import datetime
 
 import gym
 import soulsgym
@@ -19,7 +17,7 @@ if __name__ == "__main__":
         state = env.reset()
         done = False
         while not done:
-            next_state, reward, done, info = env.step(19)
+            next_state, reward, done, info = env.step(env.action_space.sample())
     finally:
         print("Iudex" if next_state.boss_hp == 0 else "Player", " defeated.")
         env.close()

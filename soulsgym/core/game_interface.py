@@ -703,7 +703,9 @@ class Game:
             dz = cpose[5] - normal[2]
             d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
             t += 1
-        self._game_input.reset()  # Disable cam buttons after the loop
+            # Sometimes the initial cam key presses get "lost" and the cam does not move while the
+            # buttons remain pressed. Resetting the game input on each iteration avoids this issue
+            self._game_input.reset()
 
     @property
     def last_bonfire(self) -> str:
@@ -912,6 +914,7 @@ class Game:
             t: Time interval in seconds.
         """
         assert t > 0
+        assert self.global_speed > 0, "Game can't be paused during sleeps"
         # We save the start time and use nonbusy python sleeps while t has not been reached
         tstart, td = self.time, t
         while True:

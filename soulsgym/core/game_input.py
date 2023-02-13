@@ -89,8 +89,9 @@ class GameInput:
         action (e.g. running).
         """
         for action in self.state:
+            # If roll and a direction are specified, the roll press has to come after the direction
+            # key. We therefore handle press_and_release_actions at the end of the function
             if action in self.press_and_release_actions and action in self.queued_actions:
-                self.single_action(action, press_time=0.02)
                 continue
             # nothing new, continue
             if self.state[action] == (action in self.queued_actions):
@@ -103,6 +104,10 @@ class GameInput:
             elif self.state[action]:
                 self.state[action] = False
                 self._release_key(keymap[keybindings[action]])
+        # Process roll / hit / parry actions with blocking sleep
+        for action in self.press_and_release_actions:
+            if action in self.queued_actions:
+                self.single_action(action, press_time=0.005)
         self.queued_actions.clear()
 
     def reset(self):

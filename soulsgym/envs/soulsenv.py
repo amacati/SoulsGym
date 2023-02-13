@@ -133,8 +133,7 @@ class SoulsEnv(gym.Env, ABC):
             logger.error("step: Environment step called after environment was done")
             raise ResetNeeded("Environment step called after environment was done")
         previous_game_state = self._internal_state.copy()
-        self._apply_action(action)
-        self._step()
+        self._step(action)
         reward = self.compute_reward(previous_game_state, self._internal_state)
         if self.done:
             logger.debug("step: Episode finished")
@@ -230,13 +229,16 @@ class SoulsEnv(gym.Env, ABC):
         # If no action was queued, the update is equivalent to a reset.
         self._game_input.update_input()
 
-    def _step(self):
+    def _step(self, action: int):
         """Perform the actual step ingame.
 
         Unpauses the game, takes 0.01s substeps ingame, checks if the step size is already reached,
         times animations, handles critical events, updates the internal state and resets the player
         and boss HP. Once the ``step_size`` length has been reached the game gets paused again and
         step postprocessing begins.
+
+        Args:
+            action: The action that is applied during this step.
         """
         self.game.resume_game()
         t_start = self.game.time
@@ -244,6 +246,10 @@ class SoulsEnv(gym.Env, ABC):
         previous_boss_animation = self._internal_state.boss_animation
         boss_animation_start = t_start
         player_animation_start = t_start
+        # Needs to be called AFTER resume game to apply roll/hits. Since roll and hit actions have
+        # a blocking sleep call, we also begin the timing of animations before applying the action
+        # so that this sleep is accounted for in the total step time.
+        self._apply_action(action)
         # Offset of 0.005s to account for processing time of the loop
         while self.game.timed(self.game.time, t_start) / self.game_speed < (self.step_size - 0.005):
             boss_animation = self.game.get_boss_animation(self.ENV_ID)

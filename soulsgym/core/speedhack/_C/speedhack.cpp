@@ -1,14 +1,14 @@
 /* Code adapted from https://github.com/IamSanjid/ce_speed_hack */
 #include <Windows.h>
-#include "detours.h"																// Version 3.0 use for this hook. Be sure to include the library and includes to your project in visual studio
+#include "detours.h"
 // Detours: https://www.microsoft.com/en-us/research/project/detours/
 #include <chrono>
 #include <thread>
 #include <mutex>
 
-#pragma comment(lib,"detours.lib")													// Need to include this so we can use Detours
-#pragma comment(lib,"Kernel32.lib")													// Need to include this since we're hooking QueryPerformanceCounter and GetTickCount which reside inside the Kernel32 library
-#pragma comment(lib,"Winmm.lib")													// Neet to include this since we're hooking timeGetTime which resides inside the Winmm library
+#pragma comment(lib,"detours.lib")	   // Need to include this so we can use Detours
+#pragma comment(lib,"Kernel32.lib")	   // Need to include this since we're hooking QueryPerformanceCounter and GetTickCount which reside inside the Kernel32 library
+#pragma comment(lib,"Winmm.lib")	   // Neet to include this since we're hooking timeGetTime which resides inside the Winmm library
 
 #define BUFSIZE 512
 
@@ -150,19 +150,19 @@ void InitializeSpeedHackConnection(LPVOID hModule) {
 					std::unique_lock<std::recursive_mutex> qpc_lock(QPCMutex);
 					std::unique_lock<std::recursive_mutex> gtc_lock(GTCMutex);
 					// Update Query Counter
-					h_QueryPerformanceCounter.set_speed(speed_cmd);
 					originalQueryPerformanceCounter(&initialtime64);
 					newQueryPerformanceCounter(&initialoffset64);
 					h_QueryPerformanceCounter.set_offsets(initialtime64.QuadPart, initialoffset64.QuadPart);
+					h_QueryPerformanceCounter.set_speed(speed_cmd);
 					// Update Tick Counter
-					h_GetTickCount.set_speed(speed_cmd);
 					h_GetTickCount.set_offsets(originalGetTickCount(), newGetTickCount());
+					h_GetTickCount.set_speed(speed_cmd);
 					// Update Tick Count 64
-					h_GetTickCount64.set_speed(speed_cmd);
 					h_GetTickCount64.set_offsets(originalGetTickCount64(), newGetTickCount64());
+					h_GetTickCount64.set_speed(speed_cmd);
 					// Update Get Time
-					h_GetTime.set_speed(speed_cmd);
 					h_GetTime.set_offsets(originalTimeGetTime(), newTimeGetTime());
+					h_GetTime.set_speed(speed_cmd);
 				}
 			}
 		}
