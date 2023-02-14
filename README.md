@@ -16,7 +16,7 @@ You need to have the latest version of Dark Souls III installed since SoulsGym u
 > **Warning:** Please follow the setup description in our [official docs](https://soulsgym.readthedocs.io/en/latest/index.html) for the correct key settings, ban prevention, loss of game saves etc.
 
 ## Installation
-To install soulsgym, use `pip install soulsgym`. We support Python 3.9 and higher on Windows only. SoulsGym requires a running instance of Dark Souls III (see [requirements](#requirements)). It is therefore not available on other operating systems.
+To install soulsgym, use `pip install soulsgym`. At this time, we only support Windows. SoulsGym requires a running instance of Dark Souls III (see [requirements](#requirements)) and relies on the win32api. It is therefore not available on other operating systems.
 
 ## API
 SoulsGym's environments follow the `gym` API as closely as possible. Since our environments are based on Dark Souls III we are, however, not able to provide reproducible results by setting the RNG seeds.
