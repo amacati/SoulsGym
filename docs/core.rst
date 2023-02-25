@@ -1,3 +1,0 @@
-core
-====
-.. automodule:: soulsgym.core

@@ -6,9 +6,11 @@
 SoulsGym documentation
 ====================================
 
+.. figure:: img/soulsgym_banner.png
+   :align: center
+
 SoulsGym is an extension of the OpenAI Gym module for Reinforcement Learning in Python.
 With SoulsGym you can train Reinforcement Learning algorithms on Dark Souls III bosses using the Gym API.
-
 
 .. toctree::
    :maxdepth: 1
@@ -23,19 +25,8 @@ With SoulsGym you can train Reinforcement Learning algorithms on Dark Souls III 
    :caption: Python API
 
    soulsgym
-   envs
-   envs.soulsgym
-   envs.iudex_env
-   core
-   core.game_input
-   core.game_interface
-   core.game_state
-   core.game_window
-   core.logger
-   core.memory_manipulator
-   core.static
-   core.utils
-   core.speedhack
+   envs/index
+   core/index
    exception
 
 .. toctree::

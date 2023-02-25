@@ -1,3 +1,0 @@
-envs
-====
-.. automodule:: soulsgym.envs

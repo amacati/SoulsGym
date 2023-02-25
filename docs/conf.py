@@ -52,6 +52,8 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # a list of builtin themes.
 #
 html_theme = 'sphinx_book_theme'
+html_logo = "img/logo.png"
+html_favicon = "img/logo.png"
 html_theme_options = {
     "repository_url": "https://github.com/amacati/SoulsGym",
     "use_repository_button": True
