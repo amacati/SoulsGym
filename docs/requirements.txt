@@ -1,1 +1,4 @@
 sphinx-book-theme==0.3.2
+gym==0.21.0
+psutil==5.9.0
+numpy==1.22.3
