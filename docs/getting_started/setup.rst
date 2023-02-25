@@ -17,7 +17,7 @@ The soulsgym package can be installed with pip:
     pip install soulsgym
 
 .. note::
-    You need at least Python 3.9 to run soulsgym!
+    You need at least Python 3.10 to run soulsgym!
 
 Setup
 ~~~~~
