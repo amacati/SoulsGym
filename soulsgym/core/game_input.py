@@ -3,6 +3,7 @@ import ctypes
 from ctypes import wintypes
 from typing import Any, List
 import time
+import sys
 
 from soulsgym.core.static import keybindings, keymap
 
@@ -12,7 +13,8 @@ KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_UNICODE = 0x0004
 MAPVK_VK_TO_VSC = 0
 
-USER32 = ctypes.WinDLL('user32', use_last_error=True)
+if sys.platform == "win32":  # Guard to prevent WinDLL to load on non-Windows systems
+    USER32 = ctypes.WinDLL('user32', use_last_error=True)
 
 wintypes.ULONG_PTR = wintypes.WPARAM
 

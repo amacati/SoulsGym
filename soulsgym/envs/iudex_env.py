@@ -7,8 +7,8 @@ upgrades. We do not allow shield blocking or two handing at this point, although
 be supported. Parrying is enabled.
 
 Note:
-    Phase 2 of the boss fight is available by specifying it as keyword. See :mod:`~.envs` for
-    details.
+    Phase 2 of the boss fight is available by setting the environment keyword argument ``phase``.
+    See :mod:`~.envs` for details.
 """
 import logging
 
