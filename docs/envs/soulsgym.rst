@@ -7,3 +7,7 @@ envs.soulsenv
 .. autoclass:: SoulsEnv
     :members:
     :private-members: _apply_action, _lock_on
+
+.. autoclass:: SoulsEnvDemo
+    :members:
+    :inherited-members:
