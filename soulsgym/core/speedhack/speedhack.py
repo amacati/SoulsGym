@@ -152,6 +152,7 @@ class SpeedHackConnector(metaclass=Singleton):
 
         If the pipe is not yet open, inject the DLL into the game.
         """
+        self.pipe = None
         try:
             self.pipe = self._connect_pipe()
             logger.info("SpeedHack already enabled, skipping injection")
@@ -179,4 +180,8 @@ class SpeedHackConnector(metaclass=Singleton):
 
     def __del__(self):
         """Close the pipe handle on deletion."""
-        win32file.CloseHandle(self.pipe)
+        if self.pipe is not None:
+            try:
+                win32file.CloseHandle(self.pipe)
+            except TypeError:  # Throws NoneType object not callable error for some reason
+                ...

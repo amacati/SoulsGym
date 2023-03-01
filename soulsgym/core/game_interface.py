@@ -49,8 +49,8 @@ class Game:
         self.iudex_max_hp = 1037
         self._game_flags = {}  # Cache game flags to restore them after a game reload
         self._speed_hack_connector = SpeedHackConnector()
-        self._global_speed = 1.0
-        self.global_speed = 1.0
+        self._game_speed = 1.0
+        self.game_speed = 1.0
 
     @property
     def player_hp(self) -> int:
@@ -150,7 +150,7 @@ class Game:
 
     @player_pose.setter
     def player_pose(self, coordinates: Tuple[float]):
-        game_speed = self.global_speed
+        game_speed = self.game_speed
         buff_death = self.allow_player_death
         self.allow_player_death = False
         self.gravity = False
@@ -166,7 +166,7 @@ class Game:
         self.gravity = True
         self.allow_player_death = buff_death
         self.player_hp = self.player_max_hp
-        self.global_speed = game_speed
+        self.game_speed = game_speed
 
     @property
     def player_animation(self) -> str:
@@ -472,7 +472,7 @@ class Game:
 
     @iudex_pose.setter
     def iudex_pose(self, coordinates: Tuple[float]):
-        game_speed = self.global_speed  # TODO: Verify this is necessary
+        game_speed = self.game_speed  # TODO: Verify this is necessary
         self.pause_game()
         base = self.mem.base_address + address_bases["Iudex"]
         x_addr = self.mem.resolve_address(address_offsets["IudexPoseX"], base=base)
@@ -483,7 +483,7 @@ class Game:
         self.mem.write_float(y_addr, coordinates[1])
         self.mem.write_float(z_addr, coordinates[2])
         self.mem.write_float(a_addr, coordinates[3])
-        self.global_speed = game_speed
+        self.game_speed = game_speed
 
     def get_boss_phase(self, boss_id: str) -> int:
         """Get the current boss phase.
@@ -681,7 +681,7 @@ class Game:
     @camera_pose.setter
     def camera_pose(self, normal: Tuple[float]):
         assert len(normal) == 3, "Normal vector must have 3 elements"
-        assert self.global_speed > 0, "Camera cannot move while the game is paused"
+        assert self.game_speed > 0, "Camera cannot move while the game is paused"
         normal = np.array(normal, dtype=np.float64)
         normal /= np.linalg.norm(normal)
         normal_angle = np.arctan2(*normal[:2])
@@ -886,6 +886,13 @@ class Game:
         address = self.mem.resolve_address(address_offsets["Time"], base=base)
         return self.mem.read_int(address)
 
+    @time.setter
+    def time(self, val: int):
+        assert isinstance(val, int)
+        base = self.mem.base_address + self.mem.bases["GameDataMan"]
+        address = self.mem.resolve_address(address_offsets["Time"], base=base)
+        self.mem.write_int(address, val)
+
     @staticmethod
     def timed(tend: int, tstart: int) -> float:
         """Safe game time difference function.
@@ -914,7 +921,7 @@ class Game:
             t: Time interval in seconds.
         """
         assert t > 0
-        assert self.global_speed > 0, "Game can't be paused during sleeps"
+        assert self.game_speed > 0, "Game can't be paused during sleeps"
         # We save the start time and use nonbusy python sleeps while t has not been reached
         tstart, td = self.time, t
         while True:
@@ -926,7 +933,7 @@ class Game:
             td = max(t - self.timed(tcurr, tstart), 1e-3)
 
     @property
-    def global_speed(self) -> float:
+    def game_speed(self) -> float:
         """The game loop speed.
 
         Note:
@@ -946,14 +953,14 @@ class Game:
         Raises:
             ValueError: The game speed was set to negative values.
         """
-        return self._global_speed
+        return self._game_speed
 
-    @global_speed.setter
-    def global_speed(self, value: float):
+    @game_speed.setter
+    def game_speed(self, value: float):
         if value < 0:
             raise ValueError("Attempting to set a negative game speed")
         self._speed_hack_connector.set_game_speed(value)
-        self._global_speed = value
+        self._game_speed = value
 
     @property
     def gravity(self) -> bool:
@@ -976,11 +983,11 @@ class Game:
 
     def pause_game(self):
         """Pause the game by setting the global speed to 0."""
-        self.global_speed = 0
+        self.game_speed = 0
 
     def resume_game(self):
         """Resume the game by setting the global speed to 1."""
-        self.global_speed = 1
+        self.game_speed = 1
 
     def clear_cache(self):
         """Clear the address cache of the memory manipulator.

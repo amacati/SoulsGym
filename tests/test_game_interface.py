@@ -18,7 +18,7 @@ attr_list = [("player_hp", 454), ("player_sp", 95), ("player_max_hp", 454), ("pl
              ("last_bonfire", None), ("allow_attacks", True), ("allow_hits", True),
              ("allow_moves", True), ("allow_deaths", True), ("allow_weapon_durability_dmg", True),
              ("lock_on", False), ("lock_on_bonus_range", 0), ("los_lock_on_deactivate_time", 2),
-             ("time", PositiveNumber), ("global_speed", 1.0), ("gravity", True),
+             ("time", PositiveNumber), ("game_speed", 1.0), ("gravity", True),
              ("player_animation_time", None), ("player_animation_max_time", None)]
 
 
