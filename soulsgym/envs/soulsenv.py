@@ -12,6 +12,7 @@ from typing import Tuple, Optional, List, Any
 from pathlib import Path
 from abc import ABC, abstractmethod
 from argparse import Namespace
+import time
 
 import gym
 import yaml
@@ -296,6 +297,9 @@ class SoulsEnv(gym.Env, ABC):
                 player_animation_start = self.game.time
                 previous_player_animation = player_animation
             t_loop = self.game.time
+            # Theoretically limits the loop to 1000 iterations / step. Effectively reduces the loop
+            # to a few iterations as context switching allows the CPU to schedule other processes
+            time.sleep(self.step_size / 1000.)
         self.game.pause_game()
         t_end = self.game.time
         game_state = self._game_logger.log()

@@ -182,6 +182,7 @@ class IudexEnv(SoulsEnv):
             self.game.reload()
             return self._iudex_setup()
         self._enter_fog_gate()
+        self._phase_init = False
         logger.debug("_iudex_setup: Done")
 
     def _phase_2_setup(self):
@@ -247,7 +248,7 @@ class IudexEnv(SoulsEnv):
         if dist > 1:
             return False
         dist = np.linalg.norm(self.game.iudex_pose[:3] - coordinates["iudex"]["boss_init_pose"][:3])
-        if dist > 1:
+        if dist > 2:
             return False
         boss_animation = self.game.iudex_animation
         if not any([a in boss_animation for a in ("Walk", "Idle")]) and boss_animation != "":
