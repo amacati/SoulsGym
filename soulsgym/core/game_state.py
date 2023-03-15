@@ -5,7 +5,8 @@ representation of the gym.
 """
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Dict
+import copy
 
 import numpy as np
 
@@ -38,25 +39,18 @@ class GameState:
         """
         return GameState(**self.__dict__)
 
-    def __getitem__(self, name: str) -> Any:
-        """Enable attribute access by key indexing.
+    def as_dict(self, deepcopy: bool = True) -> Dict:
+        """Create a dictionary from the data members.
 
         Args:
-            name: Attribute name.
+            deepcopy: Creates a deep copy of the data. Arrays will be copied instead of referenced.
 
         Returns:
-            The attribute value.
+            The class members and their values as a dictionary.
         """
-        return getattr(self, name)
-
-    def __setitem__(self, name: str, value: Any):
-        """Enable attribute assignment by key indexing.
-
-        Args:
-            name: Attribute name.
-            value: Attribute value.
-        """
-        setattr(self, name, value)
+        if deepcopy:
+            return copy.deepcopy(self.__dict__)
+        return self.__dict__.copy()
 
     def as_json(self) -> Dict:
         """JSON encode the ``GameState`` class.

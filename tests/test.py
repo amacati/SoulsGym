@@ -1,6 +1,6 @@
 import logging
 
-import gym
+import gymnasium as gym
 import soulsgym
 from soulsgym.core.game_input import GameInput  # noqa: F401
 
@@ -12,26 +12,15 @@ if __name__ == "__main__":
                         level=logging.DEBUG)
     logging.getLogger().addHandler(logging.StreamHandler())
     soulsgym.set_log_level(level=logging.INFO)
-    env = gym.make("SoulsGymIudex-v0")
-    attacks = {}
+    env = gym.make("SoulsGymIudex-v0", init_pose_randomization=True, game_speed=3)
     try:
         while True:
-            state = env.reset()
-            done = False
-            while not done:
-                next_state, reward, done, info = env.step(env.action_space.sample())
-                if next_state.boss_animation != state.boss_animation:
-                    if "Attack" in state.boss_animation:
-                        if state.boss_animation not in attacks:
-                            attacks[state.boss_animation] = [state.boss_animation_duration]
-                        else:
-                            attacks[state.boss_animation].append(state.boss_animation_duration)
-                    print(state.boss_animation, f"{state.boss_animation_duration:.2f}")
-                state = next_state
+            obs, info = env.reset()
+            terminated = False
+            while not terminated:
+                action = env.action_space.sample()
+                next_obs, reward, terminated, truncated, info = env.step(action)
+                obs = next_obs
     finally:
-        print("Iudex" if next_state.boss_hp == 0 else "Player", " defeated.")
-        print(f"Env speed: {env.game_speed}")
+        print("Iudex" if next_obs["boss_hp"] == 0 else "Player", " defeated.")
         env.close()
-        results = sorted([(key, val) for key, val in attacks.items() if val])
-        for key, val in results:
-            print(f"{key}: {sum(val) / len(val) :.2f} ({len(val)} samples)")

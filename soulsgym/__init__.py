@@ -24,7 +24,7 @@ from pathlib import Path
 import logging
 import sys
 
-from gym.envs.registration import register
+from gymnasium.envs.registration import register
 if sys.platform == "win32":
     on_windows = True
     import win32api
@@ -63,14 +63,14 @@ def set_log_level(level: int):
     logger.setLevel(level)
 
 
-available_envs = ["SoulsGymIudex-v0"]
+available_envs = ["SoulsGymIudex-v0", "SoulsGymIudexDemo-v0"]
 
 # Register environments in OpenAI gym
 register(id="SoulsGymIudex-v0",
          entry_point='soulsgym.envs.iudex_env:IudexEnv',
          max_episode_steps=3000,
          nondeterministic=True)
-register(id="SoulsGymIudex-v1",
+register(id="SoulsGymIudexDemo-v0",
          entry_point="soulsgym.envs.iudex_env:IudexEnvDemo",
          max_episode_steps=3000,
          nondeterministic=True)

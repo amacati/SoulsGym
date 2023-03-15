@@ -13,16 +13,16 @@ Iudex Gundyr:
 
 .. code-block:: python
 
-    import gym
+    import gymnasium as gym
     import soulsgym
 
 
     if __name__ == "__main__":
         env = gym.make("SoulsGymIudex-v0")
-        state = env.reset()
-        done = False
-        while not done:
-            next_state, reward, done, info = env.step(env.action_space.sample())
+        obs, info = env.reset()
+        terminated = False
+        while not terminated:
+            next_obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
         env.close()
 
 It is important to import soulsgym because it can only register the environments to the gym module 

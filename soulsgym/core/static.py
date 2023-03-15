@@ -37,17 +37,24 @@ for boss in coordinates.keys():
 with open(root / "animations.yaml", "r") as f:
     _animations = yaml.load(f, Loader=yaml.SafeLoader)
 
-#: Dictionary of player animations. Animations are separated into ``standard``, ``critical`` and
-#: ``all``. ``critical`` animations should not occur during normal operation and can be disregarded
-#: by users. All animations have an animation timing during which the player cannot take any action.
-player_animations = _animations["player"]
-player_animations["all"] = player_animations["standard"] | player_animations["critical"]
+#: Dictionary of player animations. All animations have an animation timing during which the player
+#: cannot take any action, and a unique ID.
+player_animations = _animations["player"]["standard"] | _animations["player"]["critical"]
+for i, animation in enumerate(player_animations):
+    player_animations[animation] = {"timings": player_animations[animation], "ID": i}
+
+#: ``critical`` animations should not occur during normal operation and can be disregarded by users.
+#: They require special recovery handling by the gym.
+critical_player_animations = _animations["player"]["critical"]
 
 #: Dictionary of boss animations. Each boss has its own dictionary accessed by its boss ID.
-#: Individual boss animations are separated into ``attacks``, ``movement`` and ``all``.
+#: Individual boss animations are separated into ``attacks``, ``movement`` and ``all``. ``all``
+#: animations have a unique ID.
 boss_animations = _animations["boss"]
 for boss_anim in boss_animations.values():
-    boss_anim["all"] = boss_anim["attacks"] + boss_anim["movement"]
+    boss_anim["all"] = {}
+    for i, animation in enumerate(boss_anim["attacks"] + boss_anim["movement"]):
+        boss_anim["all"][animation] = {"ID": i}
 
 with open(root / "player_stats.yaml", "r") as f:
     #: Dictionary of player stats for each boss fight. Player stats are mapped by boss ID.

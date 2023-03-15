@@ -7,10 +7,10 @@ capable if desired to provide a visual game observation.
 
 Note:
     ``mss`` refers to the `PyPI package <https://pypi.org/project/mss/>`_, **not** the conda-forge
-    package!
+    package! To install with conda, use ``python-mss``.
 """
 import time
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 import mss
@@ -29,7 +29,7 @@ class GameWindow:
     for processing.
     """
 
-    def __init__(self, processing: Optional[Callable] = None):
+    def __init__(self, processing: Callable | None = None):
         """Initialize the monitor and screen frame grab.
 
         We offer an optional ``processing`` callable which can be used to transform images from the

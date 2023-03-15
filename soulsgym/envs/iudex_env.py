@@ -13,11 +13,12 @@ Note:
 import logging
 import random
 import time
+from typing import Any, Tuple
 
 from pymem.exception import MemoryReadError
 import numpy as np
-from gym import spaces
-from gym.error import RetriesExceededError
+from gymnasium import spaces
+from gymnasium.error import RetriesExceededError
 
 from soulsgym.envs.soulsenv import SoulsEnv, SoulsEnvDemo
 from soulsgym.core.game_state import GameState
@@ -43,33 +44,38 @@ class IudexEnv(SoulsEnv):
         # DarkSoulsIII needs to be open at this point
         super().__init__(game_speed=game_speed)
         # The state space consists of multiple spaces. These represent:
-        # 1) Boss phase. Either 1 or 2 for Iudex
-        # 2) Player and boss stats. In order: Player HP, Player SP, Boss HP
-        # 3) Player, boss and camera poses. In order: Player x, y, z, a, boss x, y, z, a,
-        #    camera x, y, z, nx, ny, nz where a represents the orientation and [nx ny nz] the camera
-        #    plane normal
-        # 4) Player animation
-        # 5) Player animation duration. We assume no animation takes longer than 10s
-        # 6) Boss animation
-        # 7) Boss animation duration. We assume no animation takes longer than 10s.
-        player_anim_len = len(player_animations["standard"]) + len(player_animations["critical"])
-        stats_space = spaces.Box(np.array(self.env_args.space_stats_low, dtype=np.float32),
-                                 np.array(self.env_args.space_stats_high, dtype=np.float32))
-        pose_space = spaces.Box(np.array(self.env_args.space_coords_low, dtype=np.float32),
-                                np.array(self.env_args.space_coords_high, dtype=np.float32))
-        camera_pose_space = spaces.Box(
-            np.array(self.env_args.space_coords_low + [-1, -1, -1], dtype=np.float32),
-            np.array(self.env_args.space_coords_low + [1, 1, 1], dtype=np.float32))
-        self.state_space = spaces.Dict({
-            "phase": spaces.Discrete(2),
-            "stats": stats_space,
-            "player_pose": pose_space,
-            "boss_pose": pose_space,
-            "camera_pose": camera_pose_space,
-            "player_animation": spaces.Discrete(player_anim_len),
-            "player_animation_duration": spaces.Box(0., 10., (1,)),
+        # 1)      Boss phase. Either 1 or 2 for Iudex
+        # 2 - 7)  Player and boss stats. In order: Player HP, player max HP, player SP, player max
+        #         HP, boss HP, boss max HP
+        # 8 - 10) Player, boss and camera poses. In order: Player x, y, z, a, boss x, y, z, a,
+        #         camera x, y, z, nx, ny, nz, where a represents the orientation and [nx ny nz]
+        #         the camera plane normal
+        # 11)     Player animation
+        # 12)     Player animation duration. We assume no animation takes longer than 10s
+        # 13)     Boss animation
+        # 14)     Boss animation duration. We assume no animation takes longer than 10s.
+        # 15)     Lock on flag. Either true or false.
+        pose_box_low = np.array(self.env_args.coordinate_box_low, dtype=np.float32)
+        pose_box_high = np.array(self.env_args.coordinate_box_high, dtype=np.float32)
+        cam_box_low = np.array(self.env_args.coordinate_box_low[:3] + [-1, -1, -1],
+                               dtype=np.float32)
+        cam_box_high = np.array(self.env_args.coordinate_box_high[:3] + [1, 1, 1], dtype=np.float32)
+        self.observation_space = spaces.Dict({
+            "phase": spaces.Discrete(2, start=1),
+            "player_hp": spaces.Box(0, self.env_args.player_max_hp),
+            "player_max_hp": spaces.Discrete(1, start=self.env_args.player_max_hp),
+            "player_sp": spaces.Box(0, self.env_args.player_max_sp),
+            "player_max_sp": spaces.Discrete(1, start=self.env_args.player_max_sp),
+            "boss_hp": spaces.Box(0, self.env_args.boss_max_hp),
+            "boss_max_hp": spaces.Discrete(1, start=self.env_args.boss_max_hp),
+            "player_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
+            "boss_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
+            "camera_pose": spaces.Box(cam_box_low, cam_box_high, dtype=np.float32),
+            "player_animation": spaces.Discrete(len(player_animations)),
+            "player_animation_duration": spaces.Box(0., 10.),
             "boss_animation": spaces.Discrete(len(boss_animations["iudex"]["all"])),
-            "boss_animation_duration": spaces.Box(0., 10., (1,))
+            "boss_animation_duration": spaces.Box(0., 10.),
+            "lock_on": spaces.Discrete(2)
         })
         assert phase in (1, 2)
         self.phase = phase
@@ -95,15 +101,19 @@ class IudexEnv(SoulsEnv):
         self._is_init = True
         self.game.pause_game()
 
-    def reset(self) -> GameState:
+    def reset(self, seed: int | None = None, options: Any | None = None) -> Tuple[dict, dict]:
         """Reset the environment to the beginning of an episode.
 
+        Args:
+            seed: Random seed. Required by gymnasium, but does not apply to SoulsGyms.
+            options: Options argument required by gymnasium. Not used in SoulsGym.
+
         Returns:
-            The first game state after a reset.
+            A tuple of the first game state and the info dict after the reset.
         """
         if not self._is_init:
             self._env_setup()
-        self.done = False
+        self.terminated = False
         self._game_input.reset()
         self.game.pause_game()
         self.game.allow_attacks = False
@@ -149,7 +159,8 @@ class IudexEnv(SoulsEnv):
         self.game.allow_hits = True
         self.game.allow_moves = True
         self._internal_state = self._game_logger.log()
-        return self._internal_state
+        info = {"allowed_actions": self.current_valid_actions()}
+        return self._gamestate2obs(self._internal_state), info
 
     def _iudex_setup(self) -> None:
         """Set up Iudex flags, focus the application, teleport to the fog gate and enter."""
@@ -271,15 +282,15 @@ class IudexEnv(SoulsEnv):
             logger.debug("_reset_inner_check failed: Iudex flags not set properly")
             return False
         # Make sure the player and Iudex are still within arena bounds
-        bounds = (low < pos < high for low, pos, high in zip(
-            self.env_args.space_coords_low, self.game.player_pose, self.env_args.space_coords_high))
-        if not all(bounds):
+        coords = zip(self.env_args.coordinate_box_low, self.game.player_pose,
+                     self.env_args.coordinate_box_high)
+        if not all(low < pos < high for low, pos, high in coords):
             logger.debug("_reset_inner_check failed: Player position out of arena bounds")
             logger.debug(self._game_logger.log())
             return False
-        bounds = (low < pos < high for low, pos, high in zip(
-            self.env_args.space_coords_low, self.game.iudex_pose, self.env_args.space_coords_high))
-        if not all(bounds):
+        coords = zip(self.env_args.coordinate_box_low, self.game.iudex_pose,
+                     self.env_args.coordinate_box_high)
+        if not all(low < pos < high for low, pos, high in coords):
             logger.debug("_reset_inner_check failed: Iudex position out of arena bounds")
             logger.debug(self._game_logger.log())
             return False
@@ -306,7 +317,6 @@ class IudexEnv(SoulsEnv):
             raise GameStateError("Player does not seem to be ingame")
         if game_state.player_animation != "Idle":
             logger.error("_env_setup_init_check failed: Player is not idle")
-            logger.error(game_state)
             raise InvalidPlayerStateError("Player is not idle")
 
     def _env_setup_check(self) -> bool:
@@ -347,7 +357,16 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
         # IudexEnv can't be called with all arguments, so we have to set it manually after __init__
         self._init_pose_randomization = init_pose_randomization
 
-    def reset(self):
+    def reset(self, seed: int | None = None, options: Any | None = None) -> Tuple[dict, dict]:
+        """Reset the environment to the beginning of an episode.
+
+        Args:
+            seed: Random seed. Required by gymnasium, but does not apply to SoulsGyms.
+            options: Options argument required by gymnasium. Not used in SoulsGym.
+
+        Returns:
+            A tuple of the first game state and the info dict after the reset.
+        """
         self._game_input.reset()
         self.game.reload()
         self._is_init = False

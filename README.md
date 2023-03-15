@@ -29,16 +29,16 @@ A detailed API documentation of our environments and the core library can be fou
 You can use SoulsGym like any other `gym` environment. Below is an example of a random agent fighting against Iudex Gundyr:
 
 ```python
-import gym
+import gymnasium as gym
 import soulsgym
 
 env = gym.make("SoulsGymIudex-v0")
-state = env.reset()
-done = False
+obs, info = env.reset()
+terminated = False
 
-while not done:
+while not terminated:
     action = env.action_space.sample()
-    next_state, reward, done, info = env.step(action)
+    next_obs, reward, terminated, truncated, info = env.step(action)
 
 env.close()
 ```
