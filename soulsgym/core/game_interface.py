@@ -45,6 +45,7 @@ class Game:
             ``MemoryManipulator`` will fail.
         """
         self.mem = MemoryManipulator()
+        self.mem.clear_cache()  # If the singleton already exists, clear the cache
         self._game_input = GameInput()  # Necessary for camera control etc
         self.iudex_max_hp = 1037
         self._game_flags = {}  # Cache game flags to restore them after a game reload
@@ -795,12 +796,14 @@ class Game:
         """Kill the player, clear the address cache and wait for the player to respawn."""
         self.player_hp = 0
         self._save_game_flags()
-        self.resume_game()  # For safety, player might never change animation otherwise
+        if self.game_speed == 0:
+            self.resume_game()  # For safety, player might never change animation otherwise
         self.clear_cache()
         self.sleep(0.5)  # Give the game time to register player death and change animation
         while True:
             try:
-                if self.player_animation == "Event63000":  # Player resurrection animation
+                # Break on player resurrection animation. If missed, also break on Idle
+                if self.player_animation in ("Event63000", "Idle"):
                     break
             except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
                 pass

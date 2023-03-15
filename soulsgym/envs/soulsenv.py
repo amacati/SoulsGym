@@ -480,9 +480,13 @@ class SoulsEnvDemo(SoulsEnv):
     or the boss has been defeated.
     """
 
-    def __init__(self):
-        """Initialize the demo environment."""
-        super().__init__()
+    def __init__(self, game_speed: int = 1.):
+        """Initialize the demo environment.
+
+        Args:
+            game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
+        """
+        super().__init__(game_speed)
 
     def _update_internal_game_state(self, game_state: GameState, player_animation_td: float,
                                     boss_animation_td: float):
@@ -523,3 +527,21 @@ class SoulsEnvDemo(SoulsEnv):
         super()._step(action)
         if self.done:
             self.game.resume_game()
+
+    def _step_check(self, game_state: GameState) -> bool:
+        """Check if game and player state are within expected values.
+
+        Overwrite player death as non-critical.
+
+        Args:
+            game_state: The current game state.
+
+        Returns:
+            True if the check passed, else False.
+
+        Raises:
+            InvalidPlayerStateError: Player state is outside of expected values.
+        """
+        if game_state.player_hp == 0:
+            return True
+        return super()._step_check(game_state)

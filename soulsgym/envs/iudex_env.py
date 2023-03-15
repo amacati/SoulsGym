@@ -336,12 +336,19 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
     Covers both phases. Player and boss loose HP, and the episode does not reset.
     """
 
-    def __init__(self, init_pose_randomization: bool = False):
+    def __init__(self, game_speed: int = 1., init_pose_randomization: bool = False):
         """Initialize the demo environment.
 
         Args:
+            game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
             init_pose_randomization: Flag to randomize the player pose on reset.
         """
-        super().__init__()
+        super().__init__(game_speed)
         # IudexEnv can't be called with all arguments, so we have to set it manually after __init__
         self._init_pose_randomization = init_pose_randomization
+
+    def reset(self):
+        self._game_input.reset()
+        self.game.reload()
+        self._is_init = False
+        return super().reset()
