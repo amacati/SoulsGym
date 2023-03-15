@@ -4,6 +4,10 @@ from pathlib import Path
 
 root = Path(__file__).parent
 long_description = (root / "README.md").read_text()
+# Replace banner source
+lines = long_description.splitlines()
+lines[0] = "![soulsgym_banner](https://raw.githubusercontent.com/amacati/SoulsGym/master/docs/img/soulsgym_banner.png)"  # noqa: E501 yapf: disable
+long_description = "\n".join(lines)
 
 setup(
     name="soulsgym",
