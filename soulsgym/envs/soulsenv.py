@@ -59,7 +59,7 @@ class SoulsEnv(gym.Env, ABC):
         [1, 3].
     """
 
-    metadata = {'render.modes': ['human']}
+    metadata = {'render_modes': []}
     ENV_ID = ""  # Each SoulsGym has to define its own ID and name the config files accordingly
     step_size = 0.1
 
@@ -440,8 +440,10 @@ class SoulsEnv(gym.Env, ABC):
         obs["player_hp"] = np.array([obs["player_hp"]], dtype=np.float32)
         obs["player_sp"] = np.array([obs["player_sp"]], dtype=np.float32)
         obs["boss_hp"] = np.array([obs["boss_hp"]], dtype=np.float32)
-        obs["player_animation"] = player_animations[obs["player_animation"]]["ID"]
-        obs["boss_animation"] = boss_animations["iudex"]["all"][obs["boss_animation"]]["ID"]
+        # Default animation ID for unknown animations is -1
+        obs["player_animation"] = player_animations.get(obs["player_animation"], {"ID": -1})["ID"]
+        obs["boss_animation"] = boss_animations["iudex"]["all"].get(obs["boss_animation"],
+                                                                    {"ID": -1})["ID"]
         obs["player_animation_duration"] = np.array([obs["player_animation_duration"]],
                                                     dtype=np.float32)
         obs["boss_animation_duration"] = np.array([obs["boss_animation_duration"]],

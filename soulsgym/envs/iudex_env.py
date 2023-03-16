@@ -50,9 +50,9 @@ class IudexEnv(SoulsEnv):
         # 8 - 10) Player, boss and camera poses. In order: Player x, y, z, a, boss x, y, z, a,
         #         camera x, y, z, nx, ny, nz, where a represents the orientation and [nx ny nz]
         #         the camera plane normal
-        # 11)     Player animation
+        # 11)     Player animation. -1 denotes unknown animations.
         # 12)     Player animation duration. We assume no animation takes longer than 10s
-        # 13)     Boss animation
+        # 13)     Boss animation. -1 denotes unknown animations.
         # 14)     Boss animation duration. We assume no animation takes longer than 10s.
         # 15)     Lock on flag. Either true or false.
         pose_box_low = np.array(self.env_args.coordinate_box_low, dtype=np.float32)
@@ -71,9 +71,9 @@ class IudexEnv(SoulsEnv):
             "player_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
             "boss_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
             "camera_pose": spaces.Box(cam_box_low, cam_box_high, dtype=np.float32),
-            "player_animation": spaces.Discrete(len(player_animations)),
+            "player_animation": spaces.Discrete(len(player_animations) + 1, start=-1),
             "player_animation_duration": spaces.Box(0., 10.),
-            "boss_animation": spaces.Discrete(len(boss_animations["iudex"]["all"])),
+            "boss_animation": spaces.Discrete(len(boss_animations["iudex"]["all"]) + 1, start=-1),
             "boss_animation_duration": spaces.Box(0., 10.),
             "lock_on": spaces.Discrete(2)
         })

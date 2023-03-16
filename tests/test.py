@@ -22,5 +22,4 @@ if __name__ == "__main__":
                 next_obs, reward, terminated, truncated, info = env.step(action)
                 obs = next_obs
     finally:
-        print("Iudex" if next_obs["boss_hp"] == 0 else "Player", " defeated.")
         env.close()

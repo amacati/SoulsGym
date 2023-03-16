@@ -1,7 +1,7 @@
 ![soulsgym_banner](docs/img/soulsgym_banner.png)
 [![PEP8 Check](https://github.com/amacati/SoulsGym/actions/workflows/github-actions.yaml/badge.svg)](https://github.com/amacati/SoulsGym/actions/workflows/github-actions.yaml)   [![Documentation Status](https://readthedocs.org/projects/soulsgym/badge/?version=latest)](https://soulsgym.readthedocs.io/en/latest/?badge=latest)
 
-SoulsGym is an extension for OpenAI's [gym](https://github.com/openai/gym) toolkit for reinforcement learning environments. It enables training and testing of reinforcement learning algorithms on Dark Souls III bosses.
+SoulsGym is an extension for OpenAI's [gym](https://github.com/Farama-Foundation/Gymnasium) toolkit for reinforcement learning environments. It enables training and testing of reinforcement learning algorithms on Dark Souls III bosses.
 SoulsGym uses the game as a simulation that is modified at runtime by reading and writing into the game memory to create gym environments from the game's boss fights.
 
 - [Requirements](#requirements)
