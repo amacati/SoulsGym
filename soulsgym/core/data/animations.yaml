@@ -116,10 +116,11 @@ boss:
       - TurnBattle_Right180
       - TurnBattle_Left90
       - TurnBattle_Left180
-      - SABreak
-      - DamageParryEnemy1
       - FallingDefault
       - LandDefault
+    misc:
+      - SABreak
+      - DamageParryEnemy1
     unused:
       - SABlend_NoAdd
       - SABlend_Add_Front

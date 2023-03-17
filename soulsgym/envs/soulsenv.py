@@ -427,7 +427,8 @@ class SoulsEnv(gym.Env, ABC):
             game_state.player_hp = 0
             self._update_internal_game_state(game_state, self.step_size, self.step_size)
 
-    def _gamestate2obs(self, game_state: GameState) -> dict:
+    @staticmethod
+    def _gamestate2obs(game_state: GameState) -> dict:
         """Convert a gamestate to an observation.
 
         Args:

@@ -50,9 +50,9 @@ class IudexEnv(SoulsEnv):
         # 8 - 10) Player, boss and camera poses. In order: Player x, y, z, a, boss x, y, z, a,
         #         camera x, y, z, nx, ny, nz, where a represents the orientation and [nx ny nz]
         #         the camera plane normal
-        # 11)     Player animation. -1 denotes unknown animations.
+        # 11)     Player animation. -1 denotes unknown or critical animations.
         # 12)     Player animation duration. We assume no animation takes longer than 10s
-        # 13)     Boss animation. -1 denotes unknown animations.
+        # 13)     Boss animation. -1 denotes unknown or critical animations.
         # 14)     Boss animation duration. We assume no animation takes longer than 10s.
         # 15)     Lock on flag. Either true or false.
         pose_box_low = np.array(self.env_args.coordinate_box_low, dtype=np.float32)

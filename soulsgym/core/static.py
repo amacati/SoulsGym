@@ -39,7 +39,7 @@ with open(root / "animations.yaml", "r") as f:
 
 #: Dictionary of player animations. All animations have an animation timing during which the player
 #: cannot take any action, and a unique ID.
-player_animations = _animations["player"]["standard"] | _animations["player"]["critical"]
+player_animations = _animations["player"]["standard"]
 for i, animation in enumerate(player_animations):
     player_animations[animation] = {"timings": player_animations[animation], "ID": i}
 
@@ -51,10 +51,18 @@ critical_player_animations = _animations["player"]["critical"]
 #: Individual boss animations are separated into ``attacks``, ``movement`` and ``all``. ``all``
 #: animations have a unique ID.
 boss_animations = _animations["boss"]
-for boss_anim in boss_animations.values():
-    boss_anim["all"] = {}
-    for i, animation in enumerate(boss_anim["attacks"] + boss_anim["movement"]):
-        boss_anim["all"][animation] = {"ID": i}
+for _boss_animation in boss_animations.values():
+    _boss_animation["all"] = {}
+    i = 0
+    for animation in _boss_animation["attacks"]:
+        _boss_animation["all"][animation] = {"ID": i, "type": "attacks"}
+        i += 1
+    for animation in _boss_animation["movement"]:
+        _boss_animation["all"][animation] = {"ID": i, "type": "movement"}
+        i += 1
+    for animation in _boss_animation["misc"]:
+        _boss_animation["all"][animation] = {"ID": i, "type": "misc"}
+        i += 1
 
 with open(root / "player_stats.yaml", "r") as f:
     #: Dictionary of player stats for each boss fight. Player stats are mapped by boss ID.
