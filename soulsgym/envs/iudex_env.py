@@ -356,6 +356,7 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
         super().__init__(game_speed)
         # IudexEnv can't be called with all arguments, so we have to set it manually after __init__
         self._init_pose_randomization = init_pose_randomization
+        self.phase = 1
 
     def reset(self, seed: int | None = None, options: Any | None = None) -> Tuple[dict, dict]:
         """Reset the environment to the beginning of an episode.
@@ -370,4 +371,24 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
         self._game_input.reset()
         self.game.reload()
         self._is_init = False
+        self.phase = 1
         return super().reset()
+
+    def step(self, action: int) -> Tuple[dict, float, bool, dict]:
+        """Perform a step forward in the environment with a given action.
+
+        Each step advances the ingame time by `step_size` seconds. The game is paused before and
+        after the step.
+
+        Args:
+            action: The action that is applied during this step.
+
+        Returns:
+            A tuple of the next game state, the reward, the terminated flag, the truncated flag, and
+            an additional info dictionary.
+        """
+        obs, reward, terminated, truncated, info = super().step(action)
+        if self._internal_state.boss_animation == "Attack1500":  # Phase change animation
+            self.phase = 2
+        obs["phase"] = self.phase
+        return obs, reward, terminated, truncated, info
