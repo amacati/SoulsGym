@@ -16,11 +16,11 @@ if on_rtd:
 # -- Project information -----------------------------------------------------
 
 project = 'SoulsGym'
-copyright = '2022, Martin Schuck'
+copyright = '2023, Martin Schuck'
 author = 'Martin Schuck, Raphael Krauthann'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1'
+release = '1.0.0'
 
 # -- General configuration ---------------------------------------------------
 

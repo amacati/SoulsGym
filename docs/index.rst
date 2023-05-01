@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 SoulsGym documentation
-====================================
+======================
 
 .. figure:: img/soulsgym_banner.png
    :align: center
