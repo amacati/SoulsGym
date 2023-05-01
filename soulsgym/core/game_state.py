@@ -4,7 +4,7 @@ It is also the observation type returned by soulsgym steps and resets and used a
 representation of the gym.
 """
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict
 import copy
 
@@ -22,9 +22,9 @@ class GameState:
     player_max_sp: int = 1
     boss_hp: int = 0
     boss_max_hp: int = 1
-    player_pose: np.ndarray = np.zeros(4, dtype=np.float32)
-    boss_pose: np.ndarray = np.zeros(4, dtype=np.float32)
-    camera_pose: np.ndarray = np.zeros(6, dtype=np.float32)
+    player_pose: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=np.float32))
+    boss_pose: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=np.float32))
+    camera_pose: np.ndarray = field(default_factory=lambda: np.zeros(6, dtype=np.float32))
     player_animation: str = "NoAnimation"
     player_animation_duration: float = 0.
     boss_animation: str = "NoAnimation"
