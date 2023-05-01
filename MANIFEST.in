@@ -1,3 +1,0 @@
-include soulsgym/core/data/*.yaml
-include soulsgym/core/speedhack/_C/*.dll
-include soulsgym/envs/config/*.yaml
