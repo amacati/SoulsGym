@@ -9,6 +9,7 @@ SoulsGym uses the game as a simulation that is modified at runtime by reading an
 - [API](#api)
 - [Getting Started](#getting-started)
 - [Documentation](#documentation)
+- [Contributing](#contributing)
 
 ## Requirements
 You need to have the latest version of Dark Souls III installed since SoulsGym uses the game as engine for its environments. Dark Souls III is **not** available for free and has to be purchased (e.g. at the [Steam store](https://store.steampowered.com/app/374320/DARK_SOULS_III/)). SoulsGym requires the player to load into the game before any environments are created. In addition we require custom key bindings and graphic settings. It is also highly recommended to start the game in offline mode and delete your new save game after gym use to protect you from multiplayer bans.
@@ -45,3 +46,8 @@ env.close()
 > **Note:** Dark Souls III has to be running with the correct settings when executing the script. See [requirements](#requirements).
 ## Documentation
 For details on the `soulsgym` package see our [official docs](https://soulsgym.readthedocs.io/en/latest/index.html).
+
+## Contributing
+If you'd like to contribute, feel free to reach out to me. In addition, have a look at the documentation and try to understand how the gym works.  
+
+Implementing new bosses is probably the easiest way to contribute, and should be fairly self-contained. If you'd like to include other Souls games, definitely reach out first so that we can structure the project properly.
