@@ -3,8 +3,45 @@ from __future__ import annotations
 from typing import Union, Any
 from threading import Lock
 from weakref import WeakValueDictionary
+import win32gui
+import psutil
 
 import numpy as np
+
+
+def get_window_id(app_name: str) -> int:
+    """Get an application window ID.
+
+    Args:
+        app_name: The name of the application.
+
+    Returns:
+        The application's window ID.
+    """
+    apps = []
+    _app_name = app_name.lower().replace(" ", "")
+    # Lambda function handles the EnumWindows callback and appends the app ID and name to the list
+    win32gui.EnumWindows(lambda hwnd, apps: apps.append((hwnd, win32gui.GetWindowText(hwnd))), apps)
+    for app in apps:
+        if app[1].lower().replace(" ", "") == _app_name:
+            return app[0]
+    raise RuntimeError(f"It appears {app_name} is not open. Please launch the game!")
+
+
+def get_pid(app_name: str) -> int:
+    """Get an application process ID.
+
+    Args:
+        app_name: The name of the application.
+
+    Returns:
+        The application's process ID.
+    """
+    _app_name = app_name.lower().replace(" ", "")
+    for proc in psutil.process_iter():
+        if proc.name().lower().rstrip(".exe") == _app_name:
+            return proc.pid
+    raise RuntimeError(f"It appears {app_name} is not open. Please launch the game!")
 
 
 def wrap_to_pi(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:

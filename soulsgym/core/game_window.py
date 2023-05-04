@@ -20,6 +20,8 @@ import win32con
 import win32com
 import win32com.client
 
+from soulsgym.core.utils import get_window_id
+
 
 class GameWindow:
     """Provide an interface with the game window.
@@ -29,16 +31,17 @@ class GameWindow:
     for processing.
     """
 
-    def __init__(self, processing: Callable | None = None):
+    def __init__(self, game_id: str, processing: Callable | None = None):
         """Initialize the monitor and screen frame grab.
 
         We offer an optional ``processing`` callable which can be used to transform images from the
         screen capture.
 
         Args:
+            game_id: The name of the game.
             processing: Optional function for raw image processing.
         """
-        self._app_id = self._get_ds_app_id()
+        self._app_id = get_window_id(game_id)
         self._monitor = self._get_monitor()
         self._sct = mss.mss()
         self._process_fn = processing or self._default_processing
@@ -81,32 +84,6 @@ class GameWindow:
         height = bottom - top
         monitor = {"top": top + 46, "left": left + 11, "width": width - 22, "height": height - 56}
         return monitor
-
-    def _window_enumeration_handler(self, hwnd: int, top_windows: list):
-        """Handle the EnumWindows callback.
-
-        Args:
-            hwnd: A handle to a top-level window.
-            top_windows: The application-defined value given in EnumWindows.
-        """
-        top_windows.append((hwnd, win32gui.GetWindowText(hwnd)))
-
-    def _get_ds_app_id(self) -> int:
-        """Get the Dark Souls III application ID.
-
-        Returns:
-            The app ID.
-        """
-        top_windows = []
-        win32gui.EnumWindows(self._window_enumeration_handler, top_windows)
-        ds_app_id = 0
-        for apps in top_windows:
-            if apps[1] == "DARK SOULS III":
-                ds_app_id = apps[0]
-                break
-        if not ds_app_id:
-            raise RuntimeError("It appears DS3 is not open. Please launch the game!")
-        return ds_app_id
 
     @staticmethod
     def _default_processing(raw: np.ndarray) -> np.ndarray:

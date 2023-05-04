@@ -1,10 +1,10 @@
 import logging
 from typing import NewType
 
-import psutil
 import pytest
 
-from soulsgym.core.game_interface import Game
+from soulsgym.core.games.darksouls3 import DarkSoulsIII
+from soulsgym.core.utils import get_pid
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ attr_list = [("player_hp", 454), ("player_sp", 95), ("player_max_hp", 454), ("pl
 @pytest.mark.parametrize("attr", attr_list)
 def test_game_interface_attributes(attr):
     assert game_is_open()
-    game = Game()
+    game = DarkSoulsIII()
     print(f"Checking attribute {attr[0]}")
     output = getattr(game, attr[0])
     if attr[1] is None:
@@ -39,7 +39,8 @@ def test_game_interface_attributes(attr):
 
 
 def game_is_open():
-    for proc in psutil.process_iter():
-        if proc.name() == "DarkSoulsIII.exe":
-            return True
-    return False
+    try:
+        get_pid("DarkSoulsIII")
+        return True
+    except RuntimeError:
+        return False

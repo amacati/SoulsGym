@@ -8,20 +8,20 @@ Note:
 Todo:
     * Include a phase detection independent of the transition animation ``Attack1500``.
 """
-from soulsgym.core.game_interface import Game
+from soulsgym.core.games import game_factory
 from soulsgym.core.game_state import GameState
 
 
 class Logger:
     """The ``Logger`` snapshots all relevant game states into a ``GameState``."""
 
-    def __init__(self, boss_id: str):
+    def __init__(self, game_id: str, boss_id: str):
         """Initialize the game state with static attributes.
 
         Args:
             boss_id: The target boss ID.
         """
-        self.game = Game()
+        self.game = game_factory(game_id)
         self.boss_id = boss_id
         self._game_state = GameState(player_max_hp=self.game.player_max_hp,
                                      player_max_sp=self.game.player_max_sp,

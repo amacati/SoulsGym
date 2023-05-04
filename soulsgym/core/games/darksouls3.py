@@ -1,17 +1,4 @@
-"""The ``game_interface`` provides an interface for the game properties.
-
-It abstracts the memory manipulation into properties and functions that write into the appropriate
-game memory addresses.
-
-Note:
-    The ``Game`` interface is essentially a wrapper around the :class:`.MemoryManipulator`. As such
-    it inherits the same cache restrictions. See :data:`.MemoryManipulator.cache`,
-    :meth:`.Game.clear_cache` and :meth:`.MemoryManipulator.clear_cache` for more information.
-
-Warning:
-    Writing into the process memory is not guaranteed to be "stable". Race conditions with the main
-    game loop *will* occur and overwrite values. Coordinates are most affected by this.
-"""
+"""This module contains the game interface for Dark Souls III."""
 import struct
 from typing import Tuple
 import logging
@@ -25,17 +12,13 @@ from soulsgym.core.game_input import GameInput
 from soulsgym.core.utils import wrap_to_pi
 from soulsgym.core.static import bonfires, address_bases, address_offsets
 from soulsgym.core.speedhack import SpeedHackConnector
+from soulsgym.core.games import Game
 
 logger = logging.getLogger(__name__)
 
 
-class Game:
-    """The Game interface exposes the game properties as class properties and methods.
-
-    Almost all properties and methods write directly into the game memory. The only exception is the
-    :attr:`~.Game.camera_pose`. We haven't found a method to directly manipulate the camera pose
-    and instead use a ``GameInput`` instance to manually control the camera with keystrokes.
-    """
+class DarkSoulsIII(Game):
+    """Dark Souls III game interface."""
 
     def __init__(self):
         """Initialize the :class:`.MemoryManipulator` and the :class:`.GameInput`.
@@ -47,7 +30,6 @@ class Game:
         self.mem = MemoryManipulator()
         self.mem.clear_cache()  # If the singleton already exists, clear the cache
         self._game_input = GameInput()  # Necessary for camera control etc
-        self.iudex_max_hp = 1037
         self._game_flags = {}  # Cache game flags to restore them after a game reload
         self._speed_hack_connector = SpeedHackConnector()
         self._game_speed = 1.0
@@ -425,6 +407,15 @@ class Game:
         base = self.mem.base_address + address_bases["Iudex"]
         address = self.mem.resolve_address(address_offsets["IudexHP"], base=base)
         self.mem.write_int(address, hp)
+
+    @property
+    def iudex_max_hp(self) -> int:
+        """Iudex Gundyr's maximum hit points.
+
+        Returns:
+            Iudex Gundyr's maximum hit points.
+        """
+        return 1037
 
     def reset_boss_hp(self, boss_id: str):
         """Reset the current boss hit points.

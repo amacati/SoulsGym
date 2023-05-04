@@ -13,7 +13,7 @@ Note:
 import logging
 import random
 import time
-from typing import Any, Tuple
+from typing import Any, Tuple, Dict
 
 from pymem.exception import MemoryReadError
 import numpy as np
@@ -23,7 +23,7 @@ from gymnasium.error import RetriesExceededError
 from soulsgym.envs.soulsenv import SoulsEnv, SoulsEnvDemo
 from soulsgym.core.game_state import GameState
 from soulsgym.exception import GameStateError, InvalidPlayerStateError
-from soulsgym.core.static import boss_animations, player_animations, coordinates
+from soulsgym.core.static import boss_animations, player_animations, coordinates, actions
 
 logger = logging.getLogger(__name__)
 
@@ -77,10 +77,48 @@ class IudexEnv(SoulsEnv):
             "boss_animation_duration": spaces.Box(0., 10.),
             "lock_on": spaces.Discrete(2)
         })
+        self.action_space = spaces.Discrete(len(actions))
         assert phase in (1, 2)
         self.phase = phase
         self._phase_init = False
         self._init_pose_randomization = init_pose_randomization
+
+    @property
+    def game_id(self):
+        return "Dark Souls III"
+
+    @property
+    def obs(self) -> Dict:
+        """Observation property of the environment.
+
+        Returns:
+            The current observation of the environment.
+        """
+        obs = self._internal_state.as_dict()
+        obs["player_hp"] = np.array([obs["player_hp"]], dtype=np.float32)
+        obs["player_sp"] = np.array([obs["player_sp"]], dtype=np.float32)
+        obs["boss_hp"] = np.array([obs["boss_hp"]], dtype=np.float32)
+        # Default animation ID for unknown animations is -1
+        obs["player_animation"] = player_animations.get(obs["player_animation"], {"ID": -1})["ID"]
+        obs["boss_animation"] = boss_animations["iudex"]["all"].get(obs["boss_animation"],
+                                                                    {"ID": -1})["ID"]
+        obs["player_animation_duration"] = np.array([obs["player_animation_duration"]],
+                                                    dtype=np.float32)
+        obs["boss_animation_duration"] = np.array([obs["boss_animation_duration"]],
+                                                  dtype=np.float32)
+        obs["player_pose"] = obs["player_pose"].astype(np.float32)
+        obs["boss_pose"] = obs["boss_pose"].astype(np.float32)
+        obs["camera_pose"] = obs["camera_pose"].astype(np.float32)
+        return obs
+
+    @property
+    def info(self) -> Dict:
+        """Info property of the environment.
+
+        Returns:
+            The current info dict of the environment.
+        """
+        return {"allowed_actions": self.current_valid_actions()}
 
     def _env_setup(self, init_retries: int = 3):
         """Execute the Iudex environment setup.
@@ -159,8 +197,7 @@ class IudexEnv(SoulsEnv):
         self.game.allow_hits = True
         self.game.allow_moves = True
         self._internal_state = self._game_logger.log()
-        info = {"allowed_actions": self.current_valid_actions()}
-        return self._gamestate2obs(self._internal_state), info
+        return self.obs, self.info
 
     def _iudex_setup(self) -> None:
         """Set up Iudex flags, focus the application, teleport to the fog gate and enter."""
