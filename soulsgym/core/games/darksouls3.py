@@ -9,6 +9,7 @@ from pymem.exception import MemoryReadError
 
 from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.game_input import GameInput
+from soulsgym.core.game_state import GameState
 from soulsgym.core.utils import wrap_to_pi
 from soulsgym.core.static import bonfires, address_bases, address_offsets
 from soulsgym.core.speedhack import SpeedHackConnector
@@ -27,13 +28,65 @@ class DarkSoulsIII(Game):
             The game has to run at initialization, otherwise the initialization of the
             ``MemoryManipulator`` will fail.
         """
+        super().__init__()
+        # Initialize helpers for game access and manipulation
         self.mem = MemoryManipulator()
         self.mem.clear_cache()  # If the singleton already exists, clear the cache
         self._game_input = GameInput()  # Necessary for camera control etc
-        self._game_flags = {}  # Cache game flags to restore them after a game reload
         self._speed_hack_connector = SpeedHackConnector()
+        # Helper attributed
+        self._game_flags = {}  # Cache game flags to restore them after a game reload
+        self._game_state_cache = {}  # Partially cache game states to reduce the number of reads
         self._game_speed = 1.0
         self.game_speed = 1.0
+
+    def get_state(self, boss_id: str, use_cache: bool = False):
+        """Get the current state of the game.
+
+        Some attributes (i.e. boss_max_hp, player_max_hp, player_max_sp) can be cached to reduce
+        redundand memory reads.
+
+        Warning:
+            We do not have access to the length of the current animation and are unable to determine
+            the animation count from the game memory alone. All animation durations in the
+            ``GameState`` are set to 0. The animation durations tracking is the responsibility of
+            the gyms instead.
+
+        Warning:
+            If the maximum player hp, sp or boss hp change and the cache is enabled, the change
+            won't be reflected in the ``GameState``! You need to call
+            :meth:`.DarkSoulsIII.clear_game_state_cache` yourself to ensure subsequent game states
+            are correct
+
+        Args:
+            boss_id: The current boss ID. Used to define the game state context.
+            use_cache: Enable partial caching of game states.
+
+        Returns:
+            The current game state in the context of the boss_id.
+        """
+        if use_cache and boss_id in self._game_state_cache:
+            game_state = self._game_state_cache[boss_id]
+        else:
+            game_state = GameState(player_max_hp=self.player_max_hp,
+                                   player_max_sp=self.player_max_sp,
+                                   boss_max_hp=self.get_boss_max_hp(boss_id))
+        if use_cache and boss_id not in self._game_state_cache:
+            self._game_state_cache[boss_id] = game_state
+        game_state.lock_on = self.lock_on
+        game_state.boss_pose = self.get_boss_pose(boss_id)
+        game_state.boss_hp = self.get_boss_hp(boss_id)
+        game_state.boss_animation = self.get_boss_animation(boss_id)
+        game_state.player_animation = self.player_animation
+        game_state.player_pose = self.player_pose
+        game_state.camera_pose = self.camera_pose
+        game_state.player_hp = self.player_hp
+        game_state.player_sp = self.player_sp
+        return game_state.copy()
+
+    def clear_game_state_cache(self):
+        """Clear the cached game states from all contexts."""
+        self._game_state_cache = {}
 
     @property
     def player_hp(self) -> int:
@@ -974,6 +1027,18 @@ class DarkSoulsIII(Game):
         address = self.mem.resolve_address(address_offsets["noGravity"], base=base)
         bit = 0 if flag else 1
         self.mem.write_bit(address, 6, bit)
+
+    @property
+    def is_ingame(self) -> bool:
+        """Flag that checks if the player is currently loaded into the game.
+
+        Returns:
+            True if the player is ingame, else False.
+        """
+        try:
+            return isinstance(self.player_hp, int)
+        except MemoryReadError:
+            return False
 
     def pause_game(self):
         """Pause the game by setting the global speed to 0."""

@@ -16,10 +16,8 @@ from argparse import Namespace
 import gymnasium
 import yaml
 import numpy as np
-from pymem.exception import MemoryReadError
 
 from soulsgym.core.game_input import GameInput
-from soulsgym.core.logger import Logger
 from soulsgym.core.game_state import GameState
 from soulsgym.core.games import game_factory
 from soulsgym.core.static import coordinates, actions, player_animations, player_stats
@@ -76,9 +74,8 @@ class SoulsEnv(gymnasium.Env, ABC):
         self.game = game_factory(self.game_id)
         self._game_input = GameInput()
         self._game_window = GameWindow(self.game_id)
-        try:
-            self._game_logger = Logger(self.game_id, self.ENV_ID)
-        except MemoryReadError:
+        # Check if the player has loaded into the game
+        if not self.game.is_ingame:
             logger.error("Player is not loaded into the game")
             raise GameStateError("Player is not loaded into the game")
         # Initialize helper variables
@@ -318,7 +315,7 @@ class SoulsEnv(gymnasium.Env, ABC):
             # time.sleep(self.step_size / 1000.)
         self.game.pause_game()
         t_end = self.game.time
-        game_state = self._game_logger.log()
+        game_state = self.game.get_state(self.ENV_ID, use_cache=True)
         # The animations might change between the last loop iteration and the game_state snapshot.
         # We therefore have to check one last time and update the animation durations accordingly
         if game_state.boss_animation != previous_boss_animation:
