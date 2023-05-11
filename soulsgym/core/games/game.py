@@ -12,7 +12,9 @@ Warning:
     Writing into the process memory is not guaranteed to be "stable". Race conditions with the main
     game loop *will* occur and overwrite values. Coordinates are most affected by this.
 """
-from abc import ABC
+from abc import ABC, abstractmethod
+
+from soulsgym.core.game_state import GameState
 
 
 class Game(ABC):
@@ -23,3 +25,11 @@ class Game(ABC):
     :attr:`~.Game.camera_pose`. We haven't found a method to directly manipulate the camera pose
     and instead use a ``GameInput`` instance to manually control the camera with keystrokes.
     """
+
+    @abstractmethod
+    def get_state(self) -> GameState:
+        """Read the current state of the game into a :class:`.GameState`.
+
+        Returns:
+            The current game state.
+        """

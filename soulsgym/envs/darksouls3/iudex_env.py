@@ -196,7 +196,7 @@ class IudexEnv(SoulsEnv):
         self.game.allow_attacks = True
         self.game.allow_hits = True
         self.game.allow_moves = True
-        self._internal_state = self._game_logger.log()
+        self._internal_state = self.game.get_state(self.ENV_ID, use_cache=True)
         return self.obs, self.info
 
     def _iudex_setup(self) -> None:
@@ -323,13 +323,13 @@ class IudexEnv(SoulsEnv):
                      self.env_args.coordinate_box_high)
         if not all(low < pos < high for low, pos, high in coords):
             logger.debug("_reset_inner_check failed: Player position out of arena bounds")
-            logger.debug(self._game_logger.log())
+            logger.debug(self.game.get_state(self.ENV_ID))
             return False
         coords = zip(self.env_args.coordinate_box_low, self.game.iudex_pose,
                      self.env_args.coordinate_box_high)
         if not all(low < pos < high for low, pos, high in coords):
             logger.debug("_reset_inner_check failed: Iudex position out of arena bounds")
-            logger.debug(self._game_logger.log())
+            logger.debug(self.game.get_state(self.ENV_ID))
             return False
         # Player and Iudex have to be alive
         if self.game.player_hp <= 0:
@@ -348,7 +348,7 @@ class IudexEnv(SoulsEnv):
             InvalidPlayerStateError: Player state is outside of expected values.
         """
         try:
-            game_state = self._game_logger.log()
+            game_state = self.game.get_state(self.ENV_ID)
         except MemoryReadError:
             logger.error("_env_setup_init_check failed: Player does not seem to be ingame")
             raise GameStateError("Player does not seem to be ingame")
