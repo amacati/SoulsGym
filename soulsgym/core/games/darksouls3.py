@@ -31,7 +31,7 @@ class DarkSoulsIII(Game):
         self.mem.clear_cache()  # If the singleton already exists, clear the cache
         self._game_input = GameInput()  # Necessary for camera control etc
         self._game_flags = {}  # Cache game flags to restore them after a game reload
-        self._speed_hack_connector = SpeedHackConnector()
+        self._speed_hack_connector = SpeedHackConnector("DarkSoulsIII.exe")
         self._game_speed = 1.0
         self.game_speed = 1.0
 

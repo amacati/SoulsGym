@@ -142,17 +142,20 @@ class SpeedHackConnector(metaclass=Singleton):
         folder.
     """
 
-    pipe_name = r"\\.\pipe\DS3SpeedHackPipe"
+    pipe_name = r"\\.\pipe\SoulsGymSpeedHackPipe"
     dll_path = Path(__file__).parent / "_C" / "SpeedHackDLL.dll"
-    target_name = "DarkSoulsIII.exe"
     _lock = Lock()
 
-    def __init__(self):
+    def __init__(self, process_name: str):
         """Connect to the SpeedHack pipe.
 
         If the pipe is not yet open, inject the DLL into the game.
+
+        Args:
+            process_name: Name of the process to connect to.
         """
         self.pipe = None
+        self.target_name = process_name
         try:
             self.pipe = self._connect_pipe()
             logger.info("SpeedHack already enabled, skipping injection")
