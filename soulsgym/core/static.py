@@ -6,77 +6,150 @@ values for boss and player animations. These can be employed to fit one-hot enco
 names prior to learning.
 """
 from pathlib import Path
+from typing import Dict, Tuple
 
 import yaml
 import numpy as np
 
-root = Path(__file__).resolve().parent / "data"
+_games = {"DarkSoulsIII": "darksouls3", "EldenRing": "eldenring"}  # Game ID and location
 
-with open(root / "keys.yaml", "r") as f:
-    keys = yaml.load(f, Loader=yaml.SafeLoader)
+_data_paths = {
+    game: Path(__file__).resolve().parent / "data" / game_location
+    for game, game_location in _games.items()
+}
 
+
+def _load_keybindings_and_mapping() -> Tuple[Dict, Dict]:
+    keybindings, keymap = {}, {}
+    for game in _games:
+        with open(_data_paths[game] / "keys.yaml", "r") as f:
+            keys = yaml.load(f, Loader=yaml.SafeLoader)
+
+        keybindings[game] = keys["binding"]
+        keymap[game] = keys["keymap"]  # msdn.microsoft.com/en-us/library/dd375731
+    return keybindings, keymap
+
+
+def _load_actions() -> Dict:
+    actions = {}
+    for game in _games:
+        with open(_data_paths[game] / "actions.yaml", "r") as f:
+            actions[game] = yaml.load(f, Loader=yaml.SafeLoader)
+    return actions
+
+
+def _load_coordinates() -> Dict:
+    coordinates = {}
+    for game in _games:
+        with open(_data_paths[game] / "coordinates.yaml", "r") as f:
+            coords = yaml.load(f, Loader=yaml.SafeLoader)
+
+        for boss in coords.keys():  # Numpify all coordinates
+            for key in coords[boss].keys():
+                coords[boss][key] = np.array(coords[boss][key])
+
+        coordinates[game] = coords
+    return coordinates
+
+
+def _load_animations() -> Tuple[Dict, Dict, Dict]:
+    player_animations, critical_player_animations, boss_animations = {}, {}, {}
+    for game in _games:
+        with open(_data_paths[game] / "animations.yaml", "r") as f:
+            animations = yaml.load(f, Loader=yaml.SafeLoader)
+
+        _player_animations = animations["player"]["standard"]
+        for i, animation in enumerate(_player_animations):
+            _player_animations[animation] = {"timings": _player_animations[animation], "ID": i}
+
+        player_animations[game] = _player_animations
+        critical_player_animations[game] = animations["player"]["critical"]
+
+        _boss_animations = animations["boss"]
+        for _boss_animation in _boss_animations.values():
+            _boss_animation["all"] = {}
+            i = 0
+            for animation in _boss_animation["attacks"]:
+                _boss_animation["all"][animation] = {"ID": i, "type": "attacks"}
+                i += 1
+            for animation in _boss_animation["movement"]:
+                _boss_animation["all"][animation] = {"ID": i, "type": "movement"}
+                i += 1
+            for animation in _boss_animation["misc"]:
+                _boss_animation["all"][animation] = {"ID": i, "type": "misc"}
+                i += 1
+
+        boss_animations[game] = _boss_animations
+    return player_animations, critical_player_animations, boss_animations
+
+
+def _load_player_stats() -> Dict:
+    player_stats = {}
+    for game in _games:
+        with open(_data_paths[game] / "player_stats.yaml", "r") as f:
+            player_stats[game] = yaml.load(f, Loader=yaml.SafeLoader)
+    return player_stats
+
+
+def _load_bonfires() -> Dict:
+    bonfires = {}
+    for game in _games:
+        with open(_data_paths[game] / "bonfires.yaml", "r") as f:
+            bonfires[game] = yaml.load(f, Loader=yaml.SafeLoader)
+    return bonfires
+
+
+def _load_addresses() -> Tuple[Dict, Dict, Dict]:
+    address_bases, address_offsets, address_base_patterns = {}, {}, {}
+    for game in _games:
+        with open(_data_paths[game] / "addresses.yaml", "r") as f:
+            adresses = yaml.load(f, Loader=yaml.SafeLoader)
+
+        address_bases[game] = adresses["bases"]
+        address_offsets[game] = adresses["address_offsets"]
+        address_base_patterns[game] = adresses["bases_by_pattern"]
+    return address_bases, address_offsets, address_base_patterns
+
+
+# Initialize all static data dictionaries. Each dictionary is indexed by the game's name.
 #: Dictionary mapping of player actions to keyboard keys.
-keybindings = keys["binding"]
-
+keybindings = {}
 #: Dictionary mapping of keyboard keys to Windows virtual-key codes. See `virtual-key codes docs
 #: <https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes>`_.
-keymap = keys["keymap"]  # msdn.microsoft.com/en-us/library/dd375731
+keymap = {}
 
-with open(root / "actions.yaml", "r") as f:
-    #: Dictionary mapping of integers to action combinations.
-    actions = yaml.load(f, Loader=yaml.SafeLoader)
+keybindings, keymap = _load_keybindings_and_mapping()  # Load here to allow documentation
 
-with open(root / "coordinates.yaml", "r") as f:
-    #: Dictionary mapping of game coordinates for each boss fight.
-    coordinates = yaml.load(f, Loader=yaml.SafeLoader)
-# Numpify all coordinates
-for boss in coordinates.keys():
-    for key in coordinates[boss].keys():
-        coordinates[boss][key] = np.array(coordinates[boss][key])
+#: Dictionary mapping of integers to action combinations.
+actions = _load_actions()
 
-with open(root / "animations.yaml", "r") as f:
-    _animations = yaml.load(f, Loader=yaml.SafeLoader)
+#: Dictionary mapping of game coordinates for each boss fight.
+coordinates = _load_coordinates()
 
 #: Dictionary of player animations. All animations have an animation timing during which the player
 #: cannot take any action, and a unique ID.
-player_animations = _animations["player"]["standard"]
-for i, animation in enumerate(player_animations):
-    player_animations[animation] = {"timings": player_animations[animation], "ID": i}
-
+player_animations = {}
 #: ``critical`` animations should not occur during normal operation and can be disregarded by users.
 #: They require special recovery handling by the gym.
-critical_player_animations = _animations["player"]["critical"]
-
+critical_player_animations = {}
 #: Dictionary of boss animations. Each boss has its own dictionary accessed by its boss ID.
 #: Individual boss animations are separated into ``attacks``, ``movement`` and ``all``. ``all``
 #: animations have a unique ID.
-boss_animations = _animations["boss"]
-for _boss_animation in boss_animations.values():
-    _boss_animation["all"] = {}
-    i = 0
-    for animation in _boss_animation["attacks"]:
-        _boss_animation["all"][animation] = {"ID": i, "type": "attacks"}
-        i += 1
-    for animation in _boss_animation["movement"]:
-        _boss_animation["all"][animation] = {"ID": i, "type": "movement"}
-        i += 1
-    for animation in _boss_animation["misc"]:
-        _boss_animation["all"][animation] = {"ID": i, "type": "misc"}
-        i += 1
+boss_animations = {}
 
-with open(root / "player_stats.yaml", "r") as f:
-    #: Dictionary of player stats for each boss fight. Player stats are mapped by boss ID.
-    player_stats = yaml.load(f, Loader=yaml.SafeLoader)
+player_animations, critical_player_animations, boss_animations = _load_animations()
 
-with open(root / "bonfires.yaml", "r") as f:
-    #: Dictionary mapping of bonfire IDs to ingame integer IDs.
-    bonfires = yaml.load(f, Loader=yaml.SafeLoader)
+#: Dictionary of player stats for each boss fight. Player stats are mapped by boss ID.
+player_stats = _load_player_stats()
 
-with open(root / "addresses.yaml", "r") as f:
-    _addresses = yaml.load(f, Loader=yaml.SafeLoader)
-    #: Dictionary of recurring initial base address offset from the game's ``base_address``
-    address_bases = _addresses["bases"]
-    #: Dictionary of the list of address offsets for the pointer chain to each game property's
-    #: memory location
-    address_offsets = _addresses["address_offsets"]
-    address_base_patterns = _addresses["bases_by_pattern"]
+#: Dictionary mapping of bonfire IDs to ingame integer IDs.
+bonfires = _load_bonfires()
+
+#: Dictionary of recurring initial base address offset from the game's ``base_address``
+address_bases = {}
+#: Dictionary of address offsets for the pointer chain to each game property's memory location
+address_offsets = {}
+#: Dictionary of patterns that can be scanned by AOB modules to locate the base addresses
+address_base_patterns = {}
+
+address_bases, address_offsets, address_base_patterns = _load_addresses()

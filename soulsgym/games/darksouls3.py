@@ -11,15 +11,16 @@ from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.game_state import GameState
 from soulsgym.core.utils import wrap_to_pi
-from soulsgym.core.static import bonfires, address_bases, address_offsets
 from soulsgym.core.speedhack import SpeedHackConnector
-from soulsgym.core.games import Game
+from soulsgym.games import Game
 
 logger = logging.getLogger(__name__)
 
 
 class DarkSoulsIII(Game):
     """Dark Souls III game interface."""
+
+    game_id = "DarkSoulsIII"
 
     def __init__(self):
         """Initialize the :class:`.MemoryManipulator` and the :class:`.GameInput`.
@@ -30,9 +31,9 @@ class DarkSoulsIII(Game):
         """
         super().__init__()
         # Initialize helpers for game access and manipulation
-        self.mem = MemoryManipulator()
+        self.mem = MemoryManipulator(process_name="DarkSoulsIII.exe")
         self.mem.clear_cache()  # If the singleton already exists, clear the cache
-        self._game_input = GameInput()  # Necessary for camera control etc
+        self._game_input = GameInput("DarkSoulsIII")  # Necessary for camera control etc
         self._speed_hack_connector = SpeedHackConnector("DarkSoulsIII.exe")
         # Helper attributes
         self._game_flags = {}  # Cache game flags to restore them after a game reload
@@ -96,13 +97,13 @@ class DarkSoulsIII(Game):
             The player's current hit points.
         """
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerHP"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerHP"], base=base)
         return self.mem.read_int(address)
 
     @player_hp.setter
     def player_hp(self, hp: int):
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerHP"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerHP"], base=base)
         self.mem.write_int(address, hp)
 
     @property
@@ -113,13 +114,13 @@ class DarkSoulsIII(Game):
             The player's current stamina points.
         """
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerSP"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerSP"], base=base)
         return self.mem.read_int(address)
 
     @player_sp.setter
     def player_sp(self, sp: int):
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerSP"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerSP"], base=base)
         self.mem.write_int(address, sp)
 
     @property
@@ -130,7 +131,7 @@ class DarkSoulsIII(Game):
             The player's maximum hit points.
         """
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerMaxHP"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerMaxHP"], base=base)
         return self.mem.read_int(address)
 
     @player_max_hp.setter
@@ -145,7 +146,7 @@ class DarkSoulsIII(Game):
             The player's maximum stamina points.
         """
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerMaxSP"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerMaxSP"], base=base)
         return self.mem.read_int(address)
 
     @player_max_sp.setter
@@ -179,7 +180,7 @@ class DarkSoulsIII(Game):
             The current player pose as [x, y, z, a].
         """
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerA"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerA"], base=base)
         buff = self.mem.read_bytes(address, length=24)
         a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure.
         return np.array([x, y, z, a])
@@ -191,10 +192,10 @@ class DarkSoulsIII(Game):
         self.allow_player_death = False
         self.gravity = False
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        x_address = self.mem.resolve_address(address_offsets["PlayerX"], base=base)
-        y_address = self.mem.resolve_address(address_offsets["PlayerY"], base=base)
-        z_address = self.mem.resolve_address(address_offsets["PlayerZ"], base=base)
-        a_address = self.mem.resolve_address(address_offsets["PlayerA"], base=base)
+        x_address = self.mem.resolve_address(self.data.address_offsets["PlayerX"], base=base)
+        y_address = self.mem.resolve_address(self.data.address_offsets["PlayerY"], base=base)
+        z_address = self.mem.resolve_address(self.data.address_offsets["PlayerZ"], base=base)
+        a_address = self.mem.resolve_address(self.data.address_offsets["PlayerA"], base=base)
         self.mem.write_float(x_address, coordinates[0])
         self.mem.write_float(y_address, coordinates[1])
         self.mem.write_float(z_address, coordinates[2])
@@ -216,7 +217,7 @@ class DarkSoulsIII(Game):
         """
         # animation string has maximum of 20 chars (utf-16)
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerAnimation"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerAnimation"], base=base)
         return self.mem.read_string(address, 40, codec="utf-16")
 
     @player_animation.setter
@@ -234,7 +235,8 @@ class DarkSoulsIII(Game):
             The player's current animation time.
         """
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerAnimationTime"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerAnimationTime"],
+                                           base=base)
         return self.mem.read_float(address)
 
     @player_animation_time.setter
@@ -252,7 +254,8 @@ class DarkSoulsIII(Game):
             The player's current animation maximum duration.
         """
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["PlayerAnimationMaxTime"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerAnimationMaxTime"],
+                                           base=base)
         return self.mem.read_float(address)
 
     @player_animation_max_time.setter
@@ -280,16 +283,19 @@ class DarkSoulsIII(Game):
             A Tuple with all player attributes in the same order as in the game.
         """
         base = self.mem.base_address + self.mem.bases["GameDataMan"]
-        address_sl = self.mem.resolve_address(address_offsets["SoulLevel"], base=base)
-        address_vigor = self.mem.resolve_address(address_offsets["Vigor"], base=base)
-        address_att = self.mem.resolve_address(address_offsets["Attunement"], base=base)
-        address_endurance = self.mem.resolve_address(address_offsets["Endurance"], base=base)
-        address_vit = self.mem.resolve_address(address_offsets["Vitality"], base=base)
-        address_strength = self.mem.resolve_address(address_offsets["Strength"], base=base)
-        address_dex = self.mem.resolve_address(address_offsets["Dexterity"], base=base)
-        address_intell = self.mem.resolve_address(address_offsets["Intelligence"], base=base)
-        address_faith = self.mem.resolve_address(address_offsets["Faith"], base=base)
-        address_luck = self.mem.resolve_address(address_offsets["Luck"], base=base)
+        address_sl = self.mem.resolve_address(self.data.address_offsets["SoulLevel"], base=base)
+        address_vigor = self.mem.resolve_address(self.data.address_offsets["Vigor"], base=base)
+        address_att = self.mem.resolve_address(self.data.address_offsets["Attunement"], base=base)
+        address_endurance = self.mem.resolve_address(self.data.address_offsets["Endurance"],
+                                                     base=base)
+        address_vit = self.mem.resolve_address(self.data.address_offsets["Vitality"], base=base)
+        address_strength = self.mem.resolve_address(self.data.address_offsets["Strength"],
+                                                    base=base)
+        address_dex = self.mem.resolve_address(self.data.address_offsets["Dexterity"], base=base)
+        address_intell = self.mem.resolve_address(self.data.address_offsets["Intelligence"],
+                                                  base=base)
+        address_faith = self.mem.resolve_address(self.data.address_offsets["Faith"], base=base)
+        address_luck = self.mem.resolve_address(self.data.address_offsets["Luck"], base=base)
         sl = self.mem.read_int(address_sl)
         vigor = self.mem.read_int(address_vigor)
         att = self.mem.read_int(address_att)
@@ -306,16 +312,19 @@ class DarkSoulsIII(Game):
     def player_stats(self, stats: Tuple[int]):
         assert len(stats) == 10, "Stats tuple dimension does not match requirements"
         base = self.mem.base_address + self.mem.bases["GameDataMan"]
-        address_sl = self.mem.resolve_address(address_offsets["SoulLevel"], base=base)
-        address_vigor = self.mem.resolve_address(address_offsets["Vigor"], base=base)
-        address_att = self.mem.resolve_address(address_offsets["Attunement"], base=base)
-        address_endurance = self.mem.resolve_address(address_offsets["Endurance"], base=base)
-        address_vit = self.mem.resolve_address(address_offsets["Vitality"], base=base)
-        address_strength = self.mem.resolve_address(address_offsets["Strength"], base=base)
-        address_dex = self.mem.resolve_address(address_offsets["Dexterity"], base=base)
-        address_intell = self.mem.resolve_address(address_offsets["Intelligence"], base=base)
-        address_faith = self.mem.resolve_address(address_offsets["Faith"], base=base)
-        address_luck = self.mem.resolve_address(address_offsets["Luck"], base=base)
+        address_sl = self.mem.resolve_address(self.data.address_offsets["SoulLevel"], base=base)
+        address_vigor = self.mem.resolve_address(self.data.address_offsets["Vigor"], base=base)
+        address_att = self.mem.resolve_address(self.data.address_offsets["Attunement"], base=base)
+        address_endurance = self.mem.resolve_address(self.data.address_offsets["Endurance"],
+                                                     base=base)
+        address_vit = self.mem.resolve_address(self.data.address_offsets["Vitality"], base=base)
+        address_strength = self.mem.resolve_address(self.data.address_offsets["Strength"],
+                                                    base=base)
+        address_dex = self.mem.resolve_address(self.data.address_offsets["Dexterity"], base=base)
+        address_intell = self.mem.resolve_address(self.data.address_offsets["Intelligence"],
+                                                  base=base)
+        address_faith = self.mem.resolve_address(self.data.address_offsets["Faith"], base=base)
+        address_luck = self.mem.resolve_address(self.data.address_offsets["Luck"], base=base)
 
         self.mem.write_int(address_sl, stats[0])
         self.mem.write_int(address_vigor, stats[1])
@@ -373,7 +382,7 @@ class DarkSoulsIII(Game):
             True if all flags are correct, False otherwise.
         """
         base = self.mem.base_address + self.mem.bases["GameFlagData"]
-        address = self.mem.resolve_address(address_offsets["IudexDefeated"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["IudexDefeated"], base=base)
         buff = self.mem.read_int(address)
         # The leftmost 3 bits tell if iudex is defeated(7), encountered(6) and his sword is pulled
         # out (5). We need him encountered and his sword pulled out but not defeated, so shifting
@@ -386,7 +395,7 @@ class DarkSoulsIII(Game):
         flag = 1 if val else 0
         base = self.mem.base_address + self.mem.bases["GameFlagData"]
         # Encountered flag
-        address = self.mem.resolve_address(address_offsets["IudexDefeated"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["IudexDefeated"], base=base)
         self.mem.write_bit(address, 5, flag)
         # Sword pulled out flag
         self.mem.write_bit(address, 6, flag)
@@ -450,15 +459,15 @@ class DarkSoulsIII(Game):
         Returns:
             Iudex Gundyr's current hit points.
         """
-        base = self.mem.base_address + address_bases["Iudex"]
-        address = self.mem.resolve_address(address_offsets["IudexHP"], base=base)
+        base = self.mem.base_address + self.data.address_bases["Iudex"]
+        address = self.mem.resolve_address(self.data.address_offsets["IudexHP"], base=base)
         return self.mem.read_int(address)
 
     @iudex_hp.setter
     def iudex_hp(self, hp: int):
         assert 0 <= hp <= 1037  # Iudex HP has to lie in this range
-        base = self.mem.base_address + address_bases["Iudex"]
-        address = self.mem.resolve_address(address_offsets["IudexHP"], base=base)
+        base = self.mem.base_address + self.data.address_bases["Iudex"]
+        address = self.mem.resolve_address(self.data.address_offsets["IudexHP"], base=base)
         self.mem.write_int(address, hp)
 
     @property
@@ -509,8 +518,8 @@ class DarkSoulsIII(Game):
         Returns:
             Iudex Gundyr's pose.
         """
-        base = self.mem.base_address + address_bases["Iudex"]
-        address = self.mem.resolve_address(address_offsets["IudexPoseA"], base=base)
+        base = self.mem.base_address + self.data.address_bases["Iudex"]
+        address = self.mem.resolve_address(self.data.address_offsets["IudexPoseA"], base=base)
         buff = self.mem.read_bytes(address, length=24)
         a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure
         return np.array([x, y, z, a])
@@ -519,11 +528,11 @@ class DarkSoulsIII(Game):
     def iudex_pose(self, coordinates: Tuple[float]):
         game_speed = self.game_speed  # TODO: Verify this is necessary
         self.pause_game()
-        base = self.mem.base_address + address_bases["Iudex"]
-        x_addr = self.mem.resolve_address(address_offsets["IudexPoseX"], base=base)
-        y_addr = self.mem.resolve_address(address_offsets["IudexPoseY"], base=base)
-        z_addr = self.mem.resolve_address(address_offsets["IudexPoseZ"], base=base)
-        a_addr = self.mem.resolve_address(address_offsets["IudexPoseA"], base=base)
+        base = self.mem.base_address + self.data.address_bases["Iudex"]
+        x_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseX"], base=base)
+        y_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseY"], base=base)
+        z_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseZ"], base=base)
+        a_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseA"], base=base)
         self.mem.write_float(x_addr, coordinates[0])
         self.mem.write_float(y_addr, coordinates[1])
         self.mem.write_float(z_addr, coordinates[2])
@@ -578,8 +587,8 @@ class DarkSoulsIII(Game):
             Iudex Gundyr's current animation.
         """
         # Animation string has maximum of 20 chars (utf-16)
-        base = self.mem.base_address + address_bases["Iudex"]
-        address = self.mem.resolve_address(address_offsets["IudexAnimation"], base=base)
+        base = self.mem.base_address + self.data.address_bases["Iudex"]
+        address = self.mem.resolve_address(self.data.address_offsets["IudexAnimation"], base=base)
         animation = self.mem.read_string(address, 40, codec="utf-16")
         # Damage animations 'SABlend_xxx' overwrite the current animation for ~0.4s. This leads to
         # bad info since the boss' true animation cannot infered. We recover the true animation by
@@ -592,8 +601,9 @@ class DarkSoulsIII(Game):
         # is already finished but still lingers in animation.
         # In phase 2, bleed animations "Partxxx" are also possible.
         if "SABlend" in animation or "Attack" in animation or "Part" in animation:
-            base = self.mem.base_address + address_bases["Iudex"]
-            address = self.mem.resolve_address(address_offsets["IudexAttackID"], base=base)
+            base = self.mem.base_address + self.data.address_bases["Iudex"]
+            address = self.mem.resolve_address(self.data.address_offsets["IudexAttackID"],
+                                               base=base)
             attack_id = self.mem.read_int(address)
             if attack_id == -1:  # Read fallback register
                 address += 0x10
@@ -629,7 +639,8 @@ class DarkSoulsIII(Game):
             Iudex's current animation time.
         """
         base = self.mem.base_address + self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(address_offsets["IudexAnimationTime"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["IudexAnimationTime"],
+                                           base=base)
         return self.mem.read_float(address)
 
     @iudex_animation_time.setter
@@ -662,7 +673,8 @@ class DarkSoulsIII(Game):
             Iudex's current animation maximum duration.
         """
         base = self.mem.base_address + self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(address_offsets["IudexAnimationMaxTime"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["IudexAnimationMaxTime"],
+                                           base=base)
         return self.mem.read_float(address)
 
     @iudex_animation_max_time.setter
@@ -691,16 +703,16 @@ class DarkSoulsIII(Game):
         Returns:
             True if Iudex is allowed to attack, else False.
         """
-        base = self.mem.base_address + address_bases["Iudex"]
-        address = self.mem.resolve_address(address_offsets["IudexAttacks"], base=base)
+        base = self.mem.base_address + self.data.address_bases["Iudex"]
+        address = self.mem.resolve_address(self.data.address_offsets["IudexAttacks"], base=base)
         no_atk = self.mem.read_bytes(address, 1)  # Checks if attacks are forbidden
         return (no_atk[0] & 64) == 0  # Flag is saved in bit 6 (including 0)
 
     @iudex_attacks.setter
     def iudex_attacks(self, val: bool):
         flag = not val
-        base = self.mem.base_address + address_bases["Iudex"]
-        address = self.mem.resolve_address(address_offsets["IudexAttacks"], base=base)
+        base = self.mem.base_address + self.data.address_bases["Iudex"]
+        address = self.mem.resolve_address(self.data.address_offsets["IudexAttacks"], base=base)
         # Flag is saved in bit 6 (including 0)
         self.mem.write_bit(address, 6, flag)
 
@@ -715,8 +727,8 @@ class DarkSoulsIII(Game):
             The current camera rotation as normal vector and position as coordinates
             [x, y, z, nx, ny, nz].
         """
-        base = self.mem.base_address + address_bases["Cam"]
-        address = self.mem.resolve_address(address_offsets["CamQx"], base=base)
+        base = self.mem.base_address + self.data.address_bases["Cam"]
+        address = self.mem.resolve_address(self.data.address_offsets["CamQx"], base=base)
         buff = self.mem.read_bytes(address, length=28)
         # cam orientation seems to be given as a normal vector for the camera plane. As with the
         # position, the game switches y and z
@@ -762,19 +774,19 @@ class DarkSoulsIII(Game):
             The bonfire name.
         """
         base = self.mem.base_address + self.mem.bases["GameMan"]
-        address = self.mem.resolve_address(address_offsets["LastBonfire"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["LastBonfire"], base=base)
         buff = self.mem.read_bytes(address, 4)
         # Get the integer ID and look up the corresponding key to this value from the bonfires dict
         int_id = int.from_bytes(buff, byteorder="little")
-        str_id = list(bonfires.keys())[list(bonfires.values()).index(int_id)]
+        str_id = list(self.data.bonfires.keys())[list(self.data.bonfires.values()).index(int_id)]
         return str_id
 
     @last_bonfire.setter
     def last_bonfire(self, name: str):
-        assert name in bonfires.keys(), f"Unknown bonfire {name} specified!"
+        assert name in self.data.bonfires.keys(), f"Unknown bonfire {name} specified!"
         base = self.mem.base_address + self.mem.bases["GameMan"]
-        address = self.mem.resolve_address(address_offsets["LastBonfire"], base=base)
-        buff = (bonfires[name]).to_bytes(4, byteorder='little')
+        address = self.mem.resolve_address(self.data.address_offsets["LastBonfire"], base=base)
+        buff = (self.data.bonfires[name]).to_bytes(4, byteorder='little')
         self.mem.write_bytes(address, buff)
 
     @property
@@ -868,7 +880,7 @@ class DarkSoulsIII(Game):
             True if the player is currently locked on a target, else False.
         """
         base = self.mem.base_address + self.mem.bases["LockTgtMan"]
-        address = self.mem.resolve_address(address_offsets["LockOn"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["LockOn"], base=base)
         buff = self.mem.read_bytes(address, 1)
         return struct.unpack("?", buff)[0]  # Interpret buff as boolean
 
@@ -883,7 +895,7 @@ class DarkSoulsIII(Game):
             The current maximum bonus lock on range.
         """
         base = self.mem.base_address + self.mem.bases["LockTgtMan"]
-        address = self.mem.resolve_address(address_offsets["LockOnBonusRange"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["LockOnBonusRange"], base=base)
         dist = self.mem.read_float(address)
         return dist
 
@@ -891,7 +903,7 @@ class DarkSoulsIII(Game):
     def lock_on_bonus_range(self, val: float):
         assert val >= 0, "Bonus lock on range must be greater or equal to 0"
         base = self.mem.base_address + self.mem.bases["LockTgtMan"]
-        address = self.mem.resolve_address(address_offsets["LockOnBonusRange"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["LockOnBonusRange"], base=base)
         self.mem.write_float(address, val)
 
     @property
@@ -905,13 +917,13 @@ class DarkSoulsIII(Game):
             The current line of sight lock on deactivate time.
         """
         base = self.mem.base_address + self.mem.bases["LockTgtMan"]
-        address = self.mem.resolve_address(address_offsets["LoSLockOnTime"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["LoSLockOnTime"], base=base)
         return self.mem.read_float(address)
 
     @los_lock_on_deactivate_time.setter
     def los_lock_on_deactivate_time(self, val: float):
         base = self.mem.base_address + self.mem.bases["LockTgtMan"]
-        address = self.mem.resolve_address(address_offsets["LoSLockOnTime"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["LoSLockOnTime"], base=base)
         self.mem.write_float(address, val)
 
     @property
@@ -930,14 +942,14 @@ class DarkSoulsIII(Game):
             The current game time.
         """
         base = self.mem.base_address + self.mem.bases["GameDataMan"]
-        address = self.mem.resolve_address(address_offsets["Time"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["Time"], base=base)
         return self.mem.read_int(address)
 
     @time.setter
     def time(self, val: int):
         assert isinstance(val, int)
         base = self.mem.base_address + self.mem.bases["GameDataMan"]
-        address = self.mem.resolve_address(address_offsets["Time"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["Time"], base=base)
         self.mem.write_int(address, val)
 
     @staticmethod
@@ -1017,14 +1029,14 @@ class DarkSoulsIII(Game):
             True if gravity is active, else False.
         """
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["noGravity"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["noGravity"], base=base)
         buff = self.mem.read_int(address)
         return buff & 64 == 0  # Gravity disabled flag is saved at bit 6 (including 0)
 
     @gravity.setter
     def gravity(self, flag: bool):
         base = self.mem.base_address + self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(address_offsets["noGravity"], base=base)
+        address = self.mem.resolve_address(self.data.address_offsets["noGravity"], base=base)
         bit = 0 if flag else 1
         self.mem.write_bit(address, 6, bit)
 

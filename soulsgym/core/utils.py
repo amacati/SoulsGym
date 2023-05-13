@@ -28,20 +28,22 @@ def get_window_id(app_name: str) -> int:
     raise RuntimeError(f"It appears {app_name} is not open. Please launch the game!")
 
 
-def get_pid(app_name: str) -> int:
-    """Get an application process ID.
+def get_pid(process_name: str) -> int:
+    """Get the ID of a process.
 
     Args:
-        app_name: The name of the application.
+        process_name: The name of the process.
 
     Returns:
-        The application's process ID.
+        The process ID.
+
+    Raises:
+        RuntimeError: No process with name ``process_name`` currently open.
     """
-    _app_name = app_name.lower().replace(" ", "")
     for proc in psutil.process_iter():
-        if proc.name().lower().rstrip(".exe") == _app_name:
+        if proc.name() == process_name:
             return proc.pid
-    raise RuntimeError(f"It appears {app_name} is not open. Please launch the game!")
+    raise RuntimeError(f"Process {process_name} not open")
 
 
 def wrap_to_pi(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:

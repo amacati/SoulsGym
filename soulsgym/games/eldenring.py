@@ -1,4 +1,4 @@
-from soulsgym.core.games import Game
+from soulsgym.games import Game
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.speedhack import SpeedHackConnector
@@ -7,9 +7,9 @@ from soulsgym.core.speedhack import SpeedHackConnector
 class EldenRing(Game):
 
     def __init__(self):
-        # self.mem = MemoryManipulator("eldenring.exe")
-        # self.mem.clear_cache()  # If the singleton already exists, clear the cache
-        self._game_input = GameInput()  # Necessary for camera control etc
+        self.mem = MemoryManipulator("eldenring.exe")
+        self.mem.clear_cache()  # If the singleton already exists, clear the cache
+        self._game_input = GameInput("EldenRing")  # Necessary for camera control etc
         self._game_flags = {}  # Cache game flags to restore them after a game reload
         self._speed_hack_connector = SpeedHackConnector("eldenring.exe")
         self._game_speed = 1.0

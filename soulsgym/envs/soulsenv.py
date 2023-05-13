@@ -19,11 +19,9 @@ import numpy as np
 
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.game_state import GameState
-from soulsgym.core.games import game_factory
-from soulsgym.core.static import coordinates, actions, player_animations, player_stats
-from soulsgym.core.static import critical_player_animations, boss_animations
-from soulsgym.core.utils import get_pid, wrap_to_pi
+from soulsgym.core.utils import wrap_to_pi
 from soulsgym.core.game_window import GameWindow
+from soulsgym.games import game_factory
 from soulsgym.exception import GameStateError, ResetNeeded, InvalidPlayerStateError
 
 logger = logging.getLogger(__name__)
@@ -69,10 +67,9 @@ class SoulsEnv(gymnasium.Env, ABC):
         """
         super().__init__()
         assert game_speed > 0, "Game speed must be positive!"
-        self._game_check()  # Check if the game is running, otherwise we can't initialize
         # Initialize game managers
         self.game = game_factory(self.game_id)
-        self._game_input = GameInput()
+        self._game_input = GameInput(self.game_id)
         self._game_window = GameWindow(self.game_id)
         # Check if the player has loaded into the game
         if not self.game.is_ingame:
@@ -191,7 +188,8 @@ class SoulsEnv(gymnasium.Env, ABC):
         if self._internal_state is None:
             return []
         player_animation = self._internal_state.player_animation
-        durations = player_animations.get(player_animation, {"timings": [0., 0., 0.]})["timings"]
+        durations = self.game.data.player_animations.get(player_animation,
+                                                         {"timings": [0., 0., 0.]})["timings"]
         current_duration = self._internal_state.player_animation_duration
         player_sp = self._internal_state.player_sp
         # Movement actions (duration index 2) do not require SP
@@ -229,10 +227,6 @@ class SoulsEnv(gymnasium.Env, ABC):
         """
         logger.warning("Rendering the environment is useless, game has to be open anyways.")
 
-    def _game_check(self):
-        """Check if the game is currently running."""
-        get_pid(self.game_id)  # Raises an error if the game is not open
-
     def _load_env_args(self) -> Namespace:
         """Load the configuration parameters for the environment.
 
@@ -247,7 +241,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         self.game.lock_on_bonus_range = 45  # Increase lock on range for bosses
         self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
         self.game.last_bonfire = self.env_args.bonfire
-        self.game.player_stats = player_stats[self.ENV_ID]
+        self.game.player_stats = self.game.data.player_stats[self.ENV_ID]
         self.game.allow_moves = True
         self.game.allow_attacks = True
         self.game.allow_hits = True
@@ -272,7 +266,7 @@ class SoulsEnv(gymnasium.Env, ABC):
             action: The action that is applied during this step.
         """
         if action in self.current_valid_actions():
-            self._game_input.add_actions(actions[action])
+            self._game_input.add_actions(self.game.data.actions[action])
         # We always call the update because it includes actions added by _lock_on for camera control
         # If no action was queued, the update is equivalent to a reset.
         self._game_input.update_input()
@@ -369,15 +363,15 @@ class SoulsEnv(gymnasium.Env, ABC):
             logger.error(game_state)
             raise InvalidPlayerStateError("Player outside of arena bounds")
         # Critical animations need special recovery routines
-        if game_state.player_animation in critical_player_animations:
+        if game_state.player_animation in self.game.data.critical_player_animations:
             return False
         # Fall detection by lower state space bound on z coordinate
         if self.env_args.coordinate_box_low[2] > game_state.player_pose[2]:
             return False
         # Unknown player animation. Shouldn't happen, add animation to tables!
-        if game_state.player_animation not in player_animations:
+        if game_state.player_animation not in self.game.data.player_animations:
             logger.warning(f"_step: Unknown player animation {game_state.player_animation}")
-        if game_state.boss_animation not in boss_animations[self.ENV_ID]["all"]:
+        if game_state.boss_animation not in self.game.data.boss_animations[self.ENV_ID]["all"]:
             logger.warning(f"_step: Unknown boss animation {game_state.boss_animation}")
         return True
 
@@ -432,8 +426,8 @@ class SoulsEnv(gymnasium.Env, ABC):
             self._update_internal_game_state(game_state, self.step_size, self.step_size)
             self.game.reset_player_hp()
             self.game.reset_boss_hp(self.ENV_ID)
-            self.game.player_pose = coordinates[self.ENV_ID]["player_init_pose"]
-        if game_state.player_animation in critical_player_animations:
+            self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
+        if game_state.player_animation in self.game.data.critical_player_animations:
             game_state.player_hp = 0
             self._update_internal_game_state(game_state, self.step_size, self.step_size)
 

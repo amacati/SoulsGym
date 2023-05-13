@@ -23,7 +23,6 @@ from gymnasium.error import RetriesExceededError
 from soulsgym.envs.soulsenv import SoulsEnv, SoulsEnvDemo
 from soulsgym.core.game_state import GameState
 from soulsgym.exception import GameStateError, InvalidPlayerStateError
-from soulsgym.core.static import boss_animations, player_animations, coordinates, actions
 
 logger = logging.getLogger(__name__)
 
@@ -60,6 +59,8 @@ class IudexEnv(SoulsEnv):
         cam_box_low = np.array(self.env_args.coordinate_box_low[:3] + [-1, -1, -1],
                                dtype=np.float32)
         cam_box_high = np.array(self.env_args.coordinate_box_high[:3] + [1, 1, 1], dtype=np.float32)
+        player_animations = self.game.data.player_animations
+        boss_animations = self.game.data.boss_animations[self.ENV_ID]["all"]
         self.observation_space = spaces.Dict({
             "phase": spaces.Discrete(2, start=1),
             "player_hp": spaces.Box(0, self.env_args.player_max_hp),
@@ -73,11 +74,11 @@ class IudexEnv(SoulsEnv):
             "camera_pose": spaces.Box(cam_box_low, cam_box_high, dtype=np.float32),
             "player_animation": spaces.Discrete(len(player_animations) + 1, start=-1),
             "player_animation_duration": spaces.Box(0., 10.),
-            "boss_animation": spaces.Discrete(len(boss_animations["iudex"]["all"]) + 1, start=-1),
+            "boss_animation": spaces.Discrete(len(boss_animations) + 1, start=-1),
             "boss_animation_duration": spaces.Box(0., 10.),
             "lock_on": spaces.Discrete(2)
         })
-        self.action_space = spaces.Discrete(len(actions))
+        self.action_space = spaces.Discrete(len(player_animations))
         assert phase in (1, 2)
         self.phase = phase
         self._phase_init = False
@@ -85,7 +86,7 @@ class IudexEnv(SoulsEnv):
 
     @property
     def game_id(self):
-        return "Dark Souls III"
+        return "DarkSoulsIII"
 
     @property
     def obs(self) -> Dict:
@@ -99,9 +100,10 @@ class IudexEnv(SoulsEnv):
         obs["player_sp"] = np.array([obs["player_sp"]], dtype=np.float32)
         obs["boss_hp"] = np.array([obs["boss_hp"]], dtype=np.float32)
         # Default animation ID for unknown animations is -1
-        obs["player_animation"] = player_animations.get(obs["player_animation"], {"ID": -1})["ID"]
-        obs["boss_animation"] = boss_animations["iudex"]["all"].get(obs["boss_animation"],
-                                                                    {"ID": -1})["ID"]
+        _player_animations = self.game.data.player_animations
+        obs["player_animation"] = _player_animations.get(obs["player_animation"], {"ID": -1})["ID"]
+        _boss_animations = self.game.data.boss_animations[self.ENV_ID]["all"]
+        obs["boss_animation"] = _boss_animations.get(obs["boss_animation"], {"ID": -1})["ID"]
         obs["player_animation_duration"] = np.array([obs["player_animation_duration"]],
                                                     dtype=np.float32)
         obs["boss_animation_duration"] = np.array([obs["boss_animation_duration"]],
@@ -168,9 +170,10 @@ class IudexEnv(SoulsEnv):
         self.game.game_speed = 3  # Speed up recovery
         if self._init_pose_randomization:
             # Sample player pose uniformly at random around Iudex
-            player_pose = random.choice(coordinates["iudex"]["player_init_poses_random"])
+            player_pose = random.choice(
+                self.game.data.coordinates[self.ENV_ID]["player_init_poses_random"])
         else:
-            player_pose = coordinates["iudex"]["player_init_pose"]
+            player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
         # When the arena is reset in between episodes, the player is possibly locked on to Iudex or
         # a unit outside the arena. This changes the player's orientation and prevents the
         # successful teleport to the initial pose. We therefore have to release lock on
@@ -179,7 +182,7 @@ class IudexEnv(SoulsEnv):
         tstart = time.time()
         while not self._reset_check(player_pose):
             self.game.player_pose = player_pose
-            self.game.iudex_pose = coordinates["iudex"]["boss_init_pose"]
+            self.game.iudex_pose = self.game.data.coordinates[self.ENV_ID]["boss_init_pose"]
             # On rare occasions, the player can still get stuck with log ons outside the arena, or
             # races lead to unexpected bugs. In that case, we completely reset the environment
             if not self._reset_inner_check() or time.time() - tstart > 10:
@@ -210,7 +213,8 @@ class IudexEnv(SoulsEnv):
         # Make sure to start around the bonfire. Also, in case the player has entered the arena on a
         # previous try, Iudex has to deaggro before the player can enter the arena again. This
         # forces us to reload
-        if np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["bonfire"][:3]) > 10:
+        d_pos = self.game.player_pose[:3] - self.game.data.coordinates[self.ENV_ID]["bonfire"][:3]
+        if np.linalg.norm(d_pos) > 10:
             logger.debug("_iudex_setup: Reload due to incorrect player position")
             self.game.reload()
             logger.debug("_iudex_setup: Player respawn success")
@@ -223,9 +227,10 @@ class IudexEnv(SoulsEnv):
             logger.debug("_iudex_setup: Reload due to unexpected player animation")
             self.game.reload()
             logger.debug("_iudex_setup: Player respawn success")
-        self.game.player_pose = coordinates["iudex"]["fog_wall"]
+        self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["fog_wall"]
         self.game.sleep(0.2)
-        if np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["fog_wall"][:3]) > 0.1:
+        d_pos = self.game.player_pose[:3] - self.game.data.coordinates[self.ENV_ID]["fog_wall"][:3]
+        if np.linalg.norm(d_pos) > 0.1:
             logger.debug("_iudex_setup: Teleport failed. Retrying")
             self.game.reload()
             return self._iudex_setup()
@@ -255,8 +260,8 @@ class IudexEnv(SoulsEnv):
             if self.game.player_animation == "Idle":
                 break
             self.game.sleep(0.1)
-        dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"][:3])
-        if dist > 0.1:
+        fog_wall_pos = self.game.data.coordinates[self.ENV_ID]["post_fog_wall"][:3]
+        if np.linalg.norm(self.game.player_pose[:3] - fog_wall_pos) > 0.1:
             return  # Player has not entered the fog wall, abort early
         logger.debug("_enter_fog_gate: Done")
 
@@ -295,8 +300,8 @@ class IudexEnv(SoulsEnv):
         dist = np.linalg.norm(self.game.player_pose[:3] - player_pose[:3])
         if dist > 1:
             return False
-        dist = np.linalg.norm(self.game.iudex_pose[:3] - coordinates["iudex"]["boss_init_pose"][:3])
-        if dist > 2:
+        boss_init_pos = self.game.data.coordinates[self.ENV_ID]["boss_init_pose"][:3]
+        if np.linalg.norm(self.game.iudex_pose[:3] - boss_init_pos) > 2:
             return False
         boss_animation = self.game.iudex_animation
         if not any([a in boss_animation for a in ("Walk", "Idle")]) and boss_animation != "":
@@ -362,8 +367,8 @@ class IudexEnv(SoulsEnv):
         Returns:
             True if all conditions are met, else False.
         """
-        dist = np.linalg.norm(self.game.player_pose[:3] - coordinates["iudex"]["post_fog_wall"][:3])
-        if dist > 0.2:
+        post_fog_wall_pos = self.game.data.coordinates[self.ENV_ID]["post_fog_wall"][:3]
+        if np.linalg.norm(self.game.player_pose[:3] - post_fog_wall_pos) > 0.2:
             logger.debug("_env_setup_check failed: Player pose out of tolerances")
             return False
         if self.game.player_hp == 0:

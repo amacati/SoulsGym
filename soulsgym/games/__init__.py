@@ -1,6 +1,6 @@
-from soulsgym.core.games.game import Game
-from soulsgym.core.games.darksouls3 import DarkSoulsIII
-from soulsgym.core.games.eldenring import EldenRing
+from soulsgym.games.game import Game
+from soulsgym.games.darksouls3 import DarkSoulsIII
+from soulsgym.games.eldenring import EldenRing
 
 
 def game_factory(game_id: str) -> Game:
@@ -12,9 +12,9 @@ def game_factory(game_id: str) -> Game:
     Returns:
         The game interface.
     """
-    match game_id.lower().replace(" ", ""):
-        case "darksoulsiii":
+    match game_id:
+        case "DarkSoulsIII":
             return DarkSoulsIII()
-        case "eldenring":
+        case "EldenRing":
             return EldenRing()
     raise ValueError(f"Unknown game: {game_id}")

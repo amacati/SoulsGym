@@ -24,14 +24,13 @@ have taken effect in the game when you write to these memory locations.
 from __future__ import annotations
 from typing import List
 
-import psutil
 import win32process
 import win32api
 import win32con
 import pymem as pym
 from pymem import Pymem
 
-from soulsgym.core.utils import Singleton
+from soulsgym.core.utils import Singleton, get_pid
 from soulsgym.core.static import address_base_patterns, address_bases
 
 
@@ -53,7 +52,7 @@ class MemoryManipulator(metaclass=Singleton):
         """
         if not hasattr(self, "is_init"):
             self.process_name = process_name
-            self.pid = self.get_pid(self.process_name)
+            self.pid = get_pid(self.process_name)
             # Get the base address
             self.process_handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, False, self.pid)
             modules = win32process.EnumProcessModules(self.process_handle)
@@ -66,18 +65,7 @@ class MemoryManipulator(metaclass=Singleton):
             # pymems AOB scan functions
             self.ds_module = pym.process.module_from_name(self.pymem.process_handle,
                                                           self.process_name)
-            self.bases = address_bases.copy()
-            for base in address_base_patterns:
-                pattern = bytes(address_base_patterns[base]["pattern"], "ASCII")
-                addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.ds_module,
-                                                       pattern)
-                if not addr:
-                    raise RuntimeError(f'Pattern "{base}" could not be resolved!')
-                # Conversion logic from TGA cheat table for Dark Souls III v. 3.1.2
-                if "offset" in address_base_patterns[base]:
-                    addr += address_base_patterns[base]["offset"]
-                addr = addr + self.pymem.read_long(addr + 3) + 7
-                self.bases[base] = addr - self.base_address
+            self.bases = self._load_bases(process_name)
 
     def clear_cache(self):
         """Clear the reference look-up cache of the memory manipulator.
@@ -93,24 +81,6 @@ class MemoryManipulator(metaclass=Singleton):
             responsibility to clear the cache on reload!
         """
         self.address_cache = {}
-
-    @staticmethod
-    def get_pid(process_name: str) -> int:
-        """Fetch the process PID of a process identified by a given name.
-
-        Args:
-            process_name: The name of the process to get the PID from.
-
-        Returns:
-            The process PID.
-
-        Raises:
-            RuntimeError: No process with name ``process_name`` currently open.
-        """
-        for proc in psutil.process_iter():
-            if proc.name() == process_name:
-                return proc.pid
-        raise RuntimeError(f"Process {process_name} not open")
 
     def resolve_address(self, addr_offsets: List[int], base: int) -> int:
         """Resolve an address by its offsets and a base.
@@ -272,3 +242,25 @@ class MemoryManipulator(metaclass=Singleton):
             pym.exception.MemoryWriteError: An error with the memory write occured.
         """
         pym.memory.write_bytes(self.pymem.process_handle, address, buffer, len(buffer))
+
+    def _load_bases(self, process_name):
+        match process_name:
+            case "DarkSoulsIII.exe":
+                game = "DarkSoulsIII"
+            case "eldenring.exe":  # Not an error, eldenring.exe isn't capitalized
+                game = "EldenRing"
+            case _:
+                raise ValueError(f"Process name '{process_name}' not supported!")
+        bases = address_bases[game].copy()
+        for base in address_base_patterns[game]:
+            pattern = bytes(address_base_patterns[game][base]["pattern"], "ASCII")
+            addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.ds_module,
+                                                   pattern)
+            if not addr:
+                raise RuntimeError(f"Pattern '{base}' could not be resolved!")
+            # Conversion logic from TGA cheat table for Dark Souls III v. 3.1.2
+            if "offset" in address_base_patterns[game][base]:
+                addr += address_base_patterns[game][base]["offset"]
+            addr = addr + self.pymem.read_long(addr + 3) + 7
+            bases[base] = addr - self.base_address
+        return bases

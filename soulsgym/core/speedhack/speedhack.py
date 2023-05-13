@@ -20,7 +20,6 @@ from pathlib import Path
 from multiprocessing import Lock
 import logging
 
-import psutil
 import win32api
 import win32process
 import win32event
@@ -28,7 +27,7 @@ import win32file
 import pywintypes
 
 from soulsgym.exception import InjectionFailure
-from soulsgym.core.utils import Singleton
+from soulsgym.core.utils import Singleton, get_pid
 
 logger = logging.getLogger(__name__)
 
@@ -50,30 +49,15 @@ def inject_dll(process_name: str, dll_path: Path):
         process_name: Target process name.
         dll_path: Path to the DLL file.
     """
-    pid = _get_process_id_by_name(process_name)
+    try:
+        pid = get_pid(process_name)
+    except RuntimeError:
+        raise InjectionFailure(f"Process {process_name} not found.")
     p_handle = win32api.OpenProcess(PROCESS_ALL_ACCESS, 0, pid)
     mem_addr = _write_dll_to_process(p_handle, dll_path)
     t_handle = _create_remote_thread(p_handle, mem_addr)
     win32event.WaitForSingleObject(t_handle, 5_000)
     _injection_cleanup(p_handle, t_handle, mem_addr)
-
-
-def _get_process_id_by_name(process_name: str) -> int:
-    """Get the process ID by name.
-
-    Args:
-        process_name: Target process name.
-
-    Returns:
-        The process ID.
-
-    Raises:
-        InjectionFailure: The process was not found.
-    """
-    for proc in psutil.process_iter():
-        if proc.name() == process_name:
-            return proc.pid
-    raise InjectionFailure(f"Process {process_name} not found.")
 
 
 def _write_dll_to_process(p_handle: int, dll_path: Path) -> int:

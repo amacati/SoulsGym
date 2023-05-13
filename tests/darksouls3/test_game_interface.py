@@ -3,8 +3,8 @@ from typing import NewType
 
 import pytest
 
-from soulsgym.core.games.darksouls3 import DarkSoulsIII
 from soulsgym.core.utils import get_pid
+from soulsgym.games.darksouls3 import DarkSoulsIII
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +40,7 @@ def test_game_interface_attributes(attr):
 
 def game_is_open():
     try:
-        get_pid("DarkSoulsIII")
+        get_pid("DarkSoulsIII.exe")
         return True
     except RuntimeError:
         return False

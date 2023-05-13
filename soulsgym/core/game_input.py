@@ -53,9 +53,15 @@ class GameInput:
 
     press_and_release_actions = ("roll", "lightattack", "heavyattack", "parry")
 
-    def __init__(self):
-        """Initialize the key state dictionary."""
-        self.state = {key: False for key in keybindings.keys()}
+    def __init__(self, game_id: str):
+        """Initialize the key state dictionary.
+
+        Args:
+            game_id: The name of the game.
+        """
+        self.keybindings = keybindings[game_id]
+        self.keymap = keymap[game_id]
+        self.state = {key: False for key in self.keybindings.keys()}
         self.queued_actions = []
 
     def add_action(self, action: str):
@@ -101,11 +107,11 @@ class GameInput:
             # key was not pressed before
             if not self.state[action]:
                 self.state[action] = True
-                self._press_key(keymap[keybindings[action]])
+                self._press_key(self.keymap[self.keybindings[action]])
             # key was pressed before
             elif self.state[action]:
                 self.state[action] = False
-                self._release_key(keymap[keybindings[action]])
+                self._release_key(self.keymap[self.keybindings[action]])
         # Process roll / hit / parry actions with blocking sleep
         for action in self.press_and_release_actions:
             if action in self.queued_actions:
@@ -116,7 +122,7 @@ class GameInput:
         """Release all keys and set the press state to False."""
         for action in self.state:
             if self.state[action]:
-                self._release_key(keymap[keybindings[action]])
+                self._release_key(self.keymap[self.keybindings[action]])
                 self.state[action] = False
         self.queued_actions.clear()
 
@@ -127,9 +133,9 @@ class GameInput:
             action: The action to trigger (see :data:`.static.keybindings`).
             press_time: The duration of the key press.
         """
-        self._press_key(keymap[keybindings[action]])
+        self._press_key(self.keymap[self.keybindings[action]])
         time.sleep(press_time)
-        self._release_key(keymap[keybindings[action]])
+        self._release_key(self.keymap[self.keybindings[action]])
 
     @staticmethod
     def _press_key(key_hex_code: int):
