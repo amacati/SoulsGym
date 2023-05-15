@@ -40,6 +40,10 @@ Homepage = "https://github.com/amacati/SoulsGym"
 Documentation = "https://soulsgym.readthedocs.io/en/latest/"
 Repository = "https://github.com/amacati/SoulsGym"
 
+[tool.setuptools.packages]
+find = {}
+
+
 [tool.setuptools.package-data]
 soulsgym = [
     "soulsgym/core/data/*.yaml",

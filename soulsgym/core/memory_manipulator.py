@@ -22,7 +22,7 @@ writes in the game loop (e.g. coordinates). Be sure to include checks if writes 
 have taken effect in the game when you write to these memory locations.
 """
 from __future__ import annotations
-from typing import List
+from typing import List, Dict
 
 import win32process
 import win32api
@@ -63,8 +63,8 @@ class MemoryManipulator(metaclass=Singleton):
             self.address_cache = {}
             # Find the base addresses. Use static addresses where nothing else available. Else use
             # pymems AOB scan functions
-            self.ds_module = pym.process.module_from_name(self.pymem.process_handle,
-                                                          self.process_name)
+            self.process_module = pym.process.module_from_name(self.pymem.process_handle,
+                                                               self.process_name)
             self.bases = self._load_bases(process_name)
 
     def clear_cache(self):
@@ -106,13 +106,13 @@ class MemoryManipulator(metaclass=Singleton):
         if u_id in self.address_cache:
             return self.address_cache[u_id]
         # When no cache hit: resolve by following the pointer chain until its last link
-        helper = self.pymem.read_longlong(base)
+        address = base
         for o in addr_offsets[:-1]:
-            helper = self.pymem.read_longlong(helper + o)
-        helper += addr_offsets[-1]
+            address = self.pymem.read_longlong(address + o)
+        address += addr_offsets[-1]
         # Add to cache
-        self.address_cache[u_id] = helper
-        return helper
+        self.address_cache[u_id] = address
+        return address
 
     def read_int(self, address: int) -> int:
         """Read an integer from memory.
@@ -243,7 +243,7 @@ class MemoryManipulator(metaclass=Singleton):
         """
         pym.memory.write_bytes(self.pymem.process_handle, address, buffer, len(buffer))
 
-    def _load_bases(self, process_name):
+    def _load_bases(self, process_name: str) -> Dict:
         match process_name:
             case "DarkSoulsIII.exe":
                 game = "DarkSoulsIII"
@@ -251,16 +251,26 @@ class MemoryManipulator(metaclass=Singleton):
                 game = "EldenRing"
             case _:
                 raise ValueError(f"Process name '{process_name}' not supported!")
-        bases = address_bases[game].copy()
-        for base in address_base_patterns[game]:
-            pattern = bytes(address_base_patterns[game][base]["pattern"], "ASCII")
-            addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.ds_module,
+        if address_bases[game] is None:
+            bases = {}
+        else:
+            bases = {name: self.pymem.read_longlong(addr + self.base_address)
+                     for name, addr in address_bases[game].items()}
+        for base_key, base in address_base_patterns[game].items():
+            pattern = bytes(base["pattern"], "ASCII")
+            addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.process_module,
                                                    pattern)
             if not addr:
-                raise RuntimeError(f"Pattern '{base}' could not be resolved!")
+                raise RuntimeError(f"Pattern for '{base_key}' could not be resolved!")
             # Conversion logic from TGA cheat table for Dark Souls III v. 3.1.2
-            if "offset" in address_base_patterns[game][base]:
-                addr += address_base_patterns[game][base]["offset"]
+            # More recent versions use CE disassembler. Address is read from asm commands, e.g.
+            # rbx,[address]
+            # TODO: If possible, replace with own disassembler
+            if "offset" in base:
+                addr += base["offset"]
             addr = addr + self.pymem.read_long(addr + 3) + 7
-            bases[base] = addr - self.base_address
+            if "no_resolve" in base:
+                bases[base_key] = addr
+            else:
+                bases[base_key] = self.pymem.read_longlong(addr)
         return bases

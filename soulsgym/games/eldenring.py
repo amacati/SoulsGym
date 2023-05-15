@@ -6,7 +6,10 @@ from soulsgym.core.speedhack import SpeedHackConnector
 
 class EldenRing(Game):
 
+    game_id = "EldenRing"
+
     def __init__(self):
+        super().__init__()
         self.mem = MemoryManipulator("eldenring.exe")
         self.mem.clear_cache()  # If the singleton already exists, clear the cache
         self._game_input = GameInput("EldenRing")  # Necessary for camera control etc
@@ -14,6 +17,26 @@ class EldenRing(Game):
         self._speed_hack_connector = SpeedHackConnector("eldenring.exe")
         self._game_speed = 1.0
         self.game_speed = 1.0
+
+    def get_state(self):
+        ...
+
+    @property
+    def player_hp(self) -> int:
+        """The player's current hit points.
+
+        Returns:
+            The player's current hit points.
+        """
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerHP"], base=base)
+        return self.mem.read_int(address)
+
+    @player_hp.setter
+    def player_hp(self, hp: int):
+        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerHP"], base=base)
+        self.mem.write_int(address, hp)
 
     @property
     def game_speed(self) -> float:
