@@ -28,13 +28,13 @@ class EldenRing(Game):
         Returns:
             The player's current hit points.
         """
-        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
+        base = self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(self.data.address_offsets["PlayerHP"], base=base)
         return self.mem.read_int(address)
 
     @player_hp.setter
     def player_hp(self, hp: int):
-        base = self.mem.base_address + self.mem.bases["WorldChrMan"]
+        base = self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(self.data.address_offsets["PlayerHP"], base=base)
         self.mem.write_int(address, hp)
 
