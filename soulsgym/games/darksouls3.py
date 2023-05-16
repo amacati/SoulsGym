@@ -85,10 +85,6 @@ class DarkSoulsIII(Game):
         game_state.player_sp = self.player_sp
         return game_state.copy()
 
-    def clear_game_state_cache(self):
-        """Clear the cached game states from all contexts."""
-        self._game_state_cache = {}
-
     @property
     def player_hp(self) -> int:
         """The player's current hit points.
@@ -1068,6 +1064,10 @@ class DarkSoulsIII(Game):
             :meth:`.MemoryManipulator.clear_cache` for detailed information.
         """
         self.mem.clear_cache()
+
+    def clear_game_state_cache(self):
+        """Clear the cached game states from all contexts."""
+        self._game_state_cache = {}
 
     def _save_game_flags(self):
         """Save game flags to the game flags cache."""

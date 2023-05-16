@@ -16,7 +16,6 @@ bases_by_pattern:
   # DebugFlags
   WorldChrManDbg_Flags:
     pattern: \x4C\x8D\x05....\x48\x8D\x15....\x48\x8B\xCB\xE8....\x48\x83\x3D....\x00
-    no_resolve:
   LockTgtMan:
     pattern: \x48\x8B\x0D....\xE8....\x48\x8B\xD8\x48\x85\xC0\x0F\x84....\xC7
 

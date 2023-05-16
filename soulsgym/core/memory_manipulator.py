@@ -106,7 +106,7 @@ class MemoryManipulator(metaclass=Singleton):
         if u_id in self.address_cache:
             return self.address_cache[u_id]
         # When no cache hit: resolve by following the pointer chain until its last link
-        address = base
+        address = self.pymem.read_longlong(base)
         for o in addr_offsets[:-1]:
             address = self.pymem.read_longlong(address + o)
         address += addr_offsets[-1]
@@ -254,7 +254,7 @@ class MemoryManipulator(metaclass=Singleton):
         if address_bases[game] is None:
             bases = {}
         else:
-            bases = {name: self.pymem.read_longlong(addr + self.base_address)
+            bases = {name: addr + self.base_address
                      for name, addr in address_bases[game].items()}
         for base_key, base in address_base_patterns[game].items():
             pattern = bytes(base["pattern"], "ASCII")
@@ -268,9 +268,5 @@ class MemoryManipulator(metaclass=Singleton):
             # TODO: If possible, replace with own disassembler
             if "offset" in base:
                 addr += base["offset"]
-            addr = addr + self.pymem.read_long(addr + 3) + 7
-            if "no_resolve" in base:
-                bases[base_key] = addr
-            else:
-                bases[base_key] = self.pymem.read_longlong(addr)
+            bases[base_key] = addr + self.pymem.read_long(addr + 3) + 7
         return bases
