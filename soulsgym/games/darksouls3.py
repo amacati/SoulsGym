@@ -771,9 +771,8 @@ class DarkSoulsIII(Game):
         """
         base = self.mem.bases["GameMan"]
         address = self.mem.resolve_address(self.data.address_offsets["LastBonfire"], base=base)
-        buff = self.mem.read_bytes(address, 4)
         # Get the integer ID and look up the corresponding key to this value from the bonfires dict
-        int_id = int.from_bytes(buff, byteorder="little")
+        int_id = self.mem.read_int(address)
         str_id = list(self.data.bonfires.keys())[list(self.data.bonfires.values()).index(int_id)]
         return str_id
 
@@ -782,8 +781,7 @@ class DarkSoulsIII(Game):
         assert name in self.data.bonfires.keys(), f"Unknown bonfire {name} specified!"
         base = self.mem.bases["GameMan"]
         address = self.mem.resolve_address(self.data.address_offsets["LastBonfire"], base=base)
-        buff = (self.data.bonfires[name]).to_bytes(4, byteorder='little')
-        self.mem.write_bytes(address, buff)
+        self.mem.write_int(address, self.data.bonfires[name])
 
     @property
     def allow_attacks(self) -> bool:
