@@ -54,9 +54,8 @@ class MemoryManipulator(metaclass=Singleton):
             self.process_name = process_name
             self.pid = get_pid(self.process_name)
             # Get the base address
-            self.process_handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, False, self.pid)
-            modules = win32process.EnumProcessModules(self.process_handle)
-            self.base_address = modules[0]
+            process_handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, False, self.pid)
+            self.base_address = win32process.EnumProcessModules(process_handle)[0]
             # Create Pymem object once, this has a relative long initialziation
             self.pymem = Pymem()
             self.pymem.open_process_from_id(self.pid)

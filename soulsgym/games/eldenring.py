@@ -10,6 +10,7 @@ from soulsgym.games import Game
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.speedhack import SpeedHackConnector
+from soulsgym.core.utils import wrap_to_pi
 
 logger = logging.getLogger(__name__)
 
@@ -158,14 +159,34 @@ class EldenRing(Game):
             The current player pose as [x, y, z, a].
         """
         base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.address_offsets["PlayerX"], base=base)
-        buff = self.mem.read_bytes(address, length=16)
-        x, z, y, a = struct.unpack('ffff', buff)  # Order as in the memory structure.
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerXYZA"], base=base)
+        x, z, y, a = struct.unpack('ffff', self.mem.read_bytes(address, length=16))
         return np.array([x, y, z, a])
 
     @player_pose.setter
     def player_pose(self, coordinates: Tuple[float]):
-        raise NotImplementedError
+        # Player coordinates have to be set in the local frame. Therefore, we first have to
+        # 1) Read global coordinates
+        # 2) Calculate difference to target coordinates
+        # 3) Read local coordinates
+        # 4) Write local coordinates + difference to memory
+        assert -np.pi <= coordinates[3] <= np.pi, "Player angle must be in [-pi, pi]"
+        allow_player_death = self.allow_player_death
+        self.allow_player_death = False
+        # Read global coordinates, calculate the difference to the target coordinates
+        delta = np.array(coordinates[:3]) - self.player_pose[:3]
+        # Read local coords, add the difference and write the new local coords
+        base = self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerLocalXYZ"], base=base)
+        x, z, y = struct.unpack('fff', self.mem.read_bytes(address, length=12))
+        self.mem.write_bytes(address, struct.pack('fff', x + delta[0], z + delta[2], y + delta[1]))
+        # TODO: Rotation is currently not working
+        # address = self.mem.resolve_address(self.data.address_offsets["PlayerLocalQ"], base=base)
+        # See https://www.euclideanspace.com/maths/geometry/rotations/conversions/index.htm
+        # qw, qx, qz, qy = np.cos(coordinates[3] / 2), 0, np.sin(coordinates[3] / 2), 0
+        # Order in the memory structure is qw qx qz qy
+        # self.mem.write_bytes(address, struct.pack('ffff', qw, qx, qz, qy))
+        self.allow_player_death = allow_player_death
 
     @property
     def player_animation(self) -> int:
@@ -261,6 +282,58 @@ class EldenRing(Game):
         self.mem.write_int(address_arcane, stats[8])
 
     @property
+    def camera_pose(self) -> np.ndarray:
+        """Read the camera's current position and rotation.
+
+        The camera orientation is specified as the normal of the camera plane. Since the plane never
+        rotates around this normal the camera pose is fully specified by this 3D vector.
+
+        Returns:
+            The current camera rotation as normal vector and position as coordinates
+            [x, y, z, nx, ny, nz].
+        """
+        base = self.mem.bases["FieldArea"]
+        address = self.mem.resolve_address(self.data.address_offsets["LocalCam"], base=base)
+        buff = self.mem.read_bytes(address, length=28)
+        # cam orientation seems to be given as a normal vector for the camera plane. As with the
+        # position, the game switches y and z
+        nx, nz, ny, x, z, y = struct.unpack('fff' + 4 * 'x' + 'fff', buff)
+        # In Elden Ring, the xyz coordinates use chunks -> We have to add the current chunk values
+        address = self.mem.resolve_address(self.data.address_offsets["ChunkCamXYZ"], base=base)
+        buff = self.mem.read_bytes(address, length=12)
+        cx, cz, cy = struct.unpack('fff', buff)
+        return np.array([x - cx, y - cy, z - cz, nx, ny, nz])
+
+    @camera_pose.setter
+    def camera_pose(self, normal: Tuple[float]):
+        assert len(normal) == 3, "Normal vector must have 3 elements"
+        assert self.game_speed > 0, "Camera cannot move while the game is paused"
+        normal = np.array(normal, dtype=np.float64)
+        normal /= np.linalg.norm(normal)
+        normal_angle = np.arctan2(*normal[:2])
+        cpose = self.camera_pose
+        dz = cpose[5] - normal[2]  # Camera pose is [x, y, z, nx, ny, nz], we need nz
+        d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
+        t = 0
+        # If lock on is already established and target is out of tolerances, the cam can't move. We
+        # limit camera rotations to 50 actions to not run into an infinite loop where the camera
+        # tries to move but can't because lock on prevents it from actually moving
+        while (abs(dz) > 0.1 or abs(d_angle) > 0.1) and t < 50:
+            if abs(dz) > 0.1:
+                self._game_input.add_action("cameradown" if dz > 0 else "cameraup")
+            if abs(d_angle) > 0.1:
+                self._game_input.add_action("cameraleft" if d_angle > 0 else "cameraright")
+            self._game_input.update_input()
+            time.sleep(0.01)
+            cpose = self.camera_pose
+            dz = cpose[5] - normal[2]
+            d_angle = wrap_to_pi(np.arctan2(cpose[3], cpose[4]) - normal_angle)
+            t += 1
+            # Sometimes the initial cam key presses get "lost" and the cam does not move while the
+            # buttons remain pressed. Resetting the game input on each iteration avoids this issue
+            self._game_input.reset()
+
+    @property
     def is_ingame(self) -> bool:
         """Flag that checks if the player is currently loaded into the game.
 
@@ -321,6 +394,19 @@ class EldenRing(Game):
         address = self.mem.resolve_address(self.data.address_offsets["PlayerGravity"], base=base)
         buff = self.mem.read_int(address)
         return buff & 1 == 0  # Gravity disabled flag is saved at bit 6 (including 0)
+
+    @property
+    def allow_weapon_durability_dmg(self) -> bool:
+        """Legacy parameter to comply with souls games that have weapon durability models.
+
+        Returns:
+            Always false.
+        """
+        return False
+
+    @allow_weapon_durability_dmg.setter
+    def allow_weapon_durability_dmg(self, _: bool):
+        ...
 
     @gravity.setter
     def gravity(self, flag: bool):

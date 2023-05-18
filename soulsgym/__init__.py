@@ -20,38 +20,14 @@ environment for :mod:`~.envs` or are trying to contribute, this module can safel
 environments you follow the usual pattern of OpenAI's ``gym.make``. A list of all available
 environments is available at ``soulsgym.available_envs``.
 """
-from pathlib import Path
 import logging
 import sys
 
 from gymnasium.envs.registration import register
-if sys.platform == "win32":
-    on_windows = True
-    import win32api
-else:
-    on_windows = False
+if not sys.platform == "win32":
+    raise NotImplementedError("SoulsGym is only available on Windows platforms.")
 
 logger = logging.getLogger(__name__)
-
-
-def _check_ds3_path() -> bool:
-    # DarkSoulsIII is not registered in Window's registry, therefore we look for the path itself
-    ds3path = Path()
-    drives = win32api.GetLogicalDriveStrings().split('\000')[:-1]
-    steam_path = Path("Program Files (x86)") / "Steam" / "steamapps" / "common" / "DARK SOULS III" \
-        / "Game" / "DarkSoulsIII.exe"
-    for drive in drives:
-        ds3path = Path(drive) / steam_path
-        if ds3path.is_file():
-            return True
-    return False
-
-
-if on_windows:
-    if not _check_ds3_path():
-        logger.warning("Could not find Dark Souls III executable. Continuing for now...")
-else:
-    logger.info("Running SoulsGym on a non-Windows platform. Most features are not available.")
 
 
 def set_log_level(level: int):

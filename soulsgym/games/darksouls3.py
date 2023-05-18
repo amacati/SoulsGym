@@ -183,7 +183,6 @@ class DarkSoulsIII(Game):
 
     @player_pose.setter
     def player_pose(self, coordinates: Tuple[float]):
-        game_speed = self.game_speed
         buff_death = self.allow_player_death
         self.allow_player_death = False
         self.gravity = False
@@ -199,7 +198,6 @@ class DarkSoulsIII(Game):
         self.gravity = True
         self.allow_player_death = buff_death
         self.player_hp = self.player_max_hp
-        self.game_speed = game_speed
 
     @property
     def player_animation(self) -> str:
