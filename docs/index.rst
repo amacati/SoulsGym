@@ -9,9 +9,11 @@ SoulsGym documentation
 .. figure:: img/soulsgym_banner.png
    :align: center
 
-SoulsGym is an extension of the OpenAI Gym module for Reinforcement Learning in Python.
+SoulsGym is an extension of the `Gymnasium`_ module, the successor of OpenAI's gym for Reinforcement Learning in Python.
 With SoulsGym you can train Reinforcement Learning algorithms on Dark Souls III bosses using the Gym API.
 The video shows an example of an agent training against Iudex Gundyr. The game runs at 3x speed to accelerate training.
+
+.. _Gymnasium: https://farama.org/Announcing-The-Farama-Foundation
 
 .. raw:: html
 

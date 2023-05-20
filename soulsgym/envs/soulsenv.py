@@ -191,31 +191,10 @@ class SoulsEnv(gym.Env, ABC):
         movement_ids + roll_ids + attack_ids + [19]
         return movement_ids + roll_ids + attack_ids + [19]
 
-    def seed(seed: Any) -> List[int]:
-        """Set the random seed for the environment.
-
-        Since we cannot control the randomness of the game and can't precisely control the game,
-        loop, this function does not have any effect.
-
-        Note:
-            Setting the seed will **not** lead to reproducible results!
-
-        Args:
-            seed: Random seed.
-
-        Returns:
-            A list with 0 to comply with OpenAI's function signature.
-        """
-        logger.warning("Trying to set the seed, but SoulsGym can't control randomness in the game")
-        return [0]
-
-    def render(mode: str = "human"):
+    def render():
         """Render the environment.
 
         This is a no-op since we can't render the environment and the game has to be open anyways.
-
-        Args:
-            mode: Rendering mode. Supported to comply with OpenAI's function signature.
         """
         logger.warning("Rendering the environment is not supported. Game has to be open anyways.")
 

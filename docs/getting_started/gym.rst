@@ -8,24 +8,24 @@ After you installed SoulsGym, you are now ready to begin using the environments.
     Please make sure you followed all the steps in the :ref:`setup <setup>`
     section to prevent bans for cheat detection! Also make sure to delete your game save afterwards!
 
-SoulsGym follows the API of OpenAI's Gym. Here is an implementation of a random agent playing against
+SoulsGym follows the API of Farama's gymnasium. Here is an implementation of a random agent playing against
 Iudex Gundyr:
 
 .. code-block:: python
 
-    import gymnasium as gym
+    import gymnasium
     import soulsgym
 
 
     if __name__ == "__main__":
-        env = gym.make("SoulsGymIudex-v0")
+        env = gymnasium.make("SoulsGymIudex-v0")
         obs, info = env.reset()
         terminated = False
         while not terminated:
             next_obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
         env.close()
 
-It is important to import soulsgym because it can only register the environments to the gym module 
+It is important to import soulsgym because it can only register the environments to the gymnasium module 
 during runtime.
 
 .. note::

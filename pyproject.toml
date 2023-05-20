@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "soulsgym"
-version = "1.0.0"
-description = "OpenAI gym extension for DarkSouls III"
+version = "1.0.1"
+description = "Gymnasium extension for DarkSouls III"
 readme = "README.md"
 authors = [{ name = "Martin Schuck", email = "real.amacati@gmail.com" }]
 license = { file = "LICENSE" }
