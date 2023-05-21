@@ -1,17 +1,14 @@
 """This module contains the game interface for Dark Souls III."""
 import struct
-from typing import Tuple
+from typing import Tuple, Any
 import logging
 import time
 
 import numpy as np
 from pymem.exception import MemoryReadError
 
-from soulsgym.core.memory_manipulator import MemoryManipulator
-from soulsgym.core.game_input import GameInput
 from soulsgym.core.game_state import GameState
 from soulsgym.core.utils import wrap_to_pi
-from soulsgym.core.speedhack import SpeedHackConnector
 from soulsgym.games import Game
 
 logger = logging.getLogger(__name__)
@@ -21,6 +18,7 @@ class DarkSoulsIII(Game):
     """Dark Souls III game interface."""
 
     game_id = "DarkSoulsIII"
+    process_name = "DarkSoulsIII.exe"
 
     def __init__(self):
         """Initialize the :class:`.MemoryManipulator` and the :class:`.GameInput`.
@@ -29,12 +27,7 @@ class DarkSoulsIII(Game):
             The game has to run at initialization, otherwise the initialization of the
             ``MemoryManipulator`` will fail.
         """
-        super().__init__()
-        # Initialize helpers for game access and manipulation
-        self.mem = MemoryManipulator(process_name="DarkSoulsIII.exe")
-        self.mem.clear_cache()  # If the singleton already exists, clear the cache
-        self._game_input = GameInput("DarkSoulsIII")  # Necessary for camera control etc
-        self._speed_hack_connector = SpeedHackConnector("DarkSoulsIII.exe")
+        super().__init__()  # Initialize helpers for game access and manipulation
         # Helper attributes
         self._game_flags = {}  # Cache game flags to restore them after a game reload
         self._game_state_cache = {}  # Partially cache game states to reduce the number of reads
@@ -84,6 +77,18 @@ class DarkSoulsIII(Game):
         game_state.player_hp = self.player_hp
         game_state.player_sp = self.player_sp
         return game_state.copy()
+
+    @property
+    def img(self) -> np.ndarray:
+        """Get the current game image as numpy array.
+
+        Images have a shape of [90, 160, 3] with RGB channels.
+        """
+        return self._game_window.screenshot()
+
+    @img.setter
+    def img(self, _: Any):
+        raise RuntimeError("Game image can't be set!")
 
     @property
     def player_hp(self) -> int:

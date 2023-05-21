@@ -16,6 +16,10 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict
 
+from soulsgym.core.memory_manipulator import MemoryManipulator
+from soulsgym.core.game_input import GameInput
+from soulsgym.core.game_window import GameWindow
+from soulsgym.core.speedhack import SpeedHackConnector
 from soulsgym.core.game_state import GameState
 from soulsgym.core.static import keybindings, keymap, actions, coordinates, player_animations
 from soulsgym.core.static import critical_player_animations, boss_animations, player_stats
@@ -74,6 +78,11 @@ class Game(ABC):
         super().__init__()
         # Load the static data for the specific game
         self.data = StaticGameData(self.game_id)
+        self.mem = MemoryManipulator(process_name=self.process_name)
+        self.mem.clear_cache()  # If the singleton already exists, clear the cache
+        self._game_window = GameWindow(self.game_id)
+        self._game_input = GameInput(self.game_id)  # Necessary for camera control etc
+        self._speed_hack_connector = SpeedHackConnector(self.process_name)
 
     @property
     @abstractmethod
@@ -82,6 +91,15 @@ class Game(ABC):
 
         Returns:
             The game ID.
+        """
+
+    @property
+    @abstractmethod
+    def process_name(self) -> str:
+        """The game process name.
+
+        Returns:
+            The game process name.
         """
 
     @abstractmethod

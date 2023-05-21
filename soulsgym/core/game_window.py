@@ -4,23 +4,14 @@ It also allows us to focus the Dark Souls III application on gym start. We do no
 as observation output as we deem training on the images as too complex for now. Screen capturing
 also puts unnecessary additional load on the gym. We note however that the ``GameWindow`` is fully
 capable if desired to provide a visual game observation.
-
-Note:
-    ``mss`` refers to the `PyPI package <https://pypi.org/project/mss/>`_, **not** the conda-forge
-    package! To install with conda, use ``python-mss``.
 """
-import time
 from typing import Callable
 
 import numpy as np
-import mss
 import win32gui
-import win32api
+import win32ui
 import win32con
-import win32com
-import win32com.client
-
-from soulsgym.core.utils import get_window_id
+import cv2
 
 
 class GameWindow:
@@ -30,8 +21,13 @@ class GameWindow:
     larger game window directly corresponds to larger images and more required computational power
     for processing.
     """
+    window_ids = {"DarkSoulsIII": "DARK SOULS III", "EldenRing": "ELDEN RING™"}
 
-    def __init__(self, game_id: str, processing: Callable | None = None):
+    def __init__(self,
+                 game_id: str,
+                 processing: Callable | None = None,
+                 img_height: int | None = None,
+                 img_width: int | None = None):
         """Initialize the monitor and screen frame grab.
 
         We offer an optional ``processing`` callable which can be used to transform images from the
@@ -41,13 +37,24 @@ class GameWindow:
             game_id: The name of the game.
             processing: Optional function for raw image processing.
         """
-        self._app_id = get_window_id(game_id)
-        self._monitor = self._get_monitor()
-        self._sct = mss.mss()
+        self.hwnd = win32gui.FindWindow(None, self.window_ids[game_id])
+        if not self.hwnd:
+            raise Exception('Window not found: {}'.format(game_id))
+        # get the window size
+        window_rect = win32gui.GetWindowRect(self.hwnd)
+        self.w = window_rect[2] - window_rect[0]
+        self.h = window_rect[3] - window_rect[1]
+        # account for the window border and titlebar and cut them off
+        self.cropped_x = 8  # Border pixels
+        self.cropped_y = 31  # Title bar pixels
+        self.w -= self.cropped_x * 2
+        self.h -= self.cropped_y + self.cropped_x
         self._process_fn = processing or self._default_processing
+        self.img_height = img_height or 90
+        self.img_width = img_width or 160
 
     def screenshot(self, return_raw: bool = False) -> np.ndarray:
-        """Fetch the current screen.
+        """Fetch the current image from the targeted application.
 
         Args:
             return_raw: Option to get the unprocessed frame.
@@ -55,44 +62,43 @@ class GameWindow:
         Returns:
             The current game screenshot.
         """
-        raw = np.array(self._sct.grab(self._monitor))
+        window_device_context = win32gui.GetWindowDC(self.hwnd)
+        device_context = win32ui.CreateDCFromHandle(window_device_context)
+        c_device_context = device_context.CreateCompatibleDC()
+        data_bit_map = win32ui.CreateBitmap()
+        data_bit_map.CreateCompatibleBitmap(device_context, self.w, self.h)
+        c_device_context.SelectObject(data_bit_map)
+        c_device_context.BitBlt((0, 0), (self.w, self.h), device_context,
+                                (self.cropped_x, self.cropped_y), win32con.SRCCOPY)
+        img_buffer = data_bit_map.GetBitmapBits(True)
+        img = np.frombuffer(img_buffer, dtype='uint8').reshape((self.h, self.w, 4))
+        img = img[..., [2, 1, 0]]
+        # Free resources
+        device_context.DeleteDC()
+        c_device_context.DeleteDC()
+        win32gui.ReleaseDC(self.hwnd, window_device_context)
+        win32gui.DeleteObject(data_bit_map.GetHandle())
+        img = np.ascontiguousarray(img)
         if return_raw:
-            return raw
-        return self._process_fn(raw)
+            return img
+        return self._process_fn(img)
 
     def focus_application(self):
         """Shift the application focus of Windows to the game application.
 
         Also sets the cursor within the game window.
         """
-        shell = win32com.client.Dispatch("WScript.Shell")
-        shell.SendKeys('%')  # Bug fix for shell use with SetForegroundWindow.
-        win32gui.SetForegroundWindow(self._app_id)
-        time.sleep(0.1)
-        left, top, _, _ = win32gui.GetWindowRect(self._app_id)
-        win32api.SetCursorPos((left + 100, top + 100))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, left + 100, top + 5, 0, 0)
+        win32gui.SetForegroundWindow(self.hwnd)
 
-    def _get_monitor(self) -> dict:
-        """Get the window pixel positions.
+    def _default_processing(self, img: np.ndarray) -> np.ndarray:
+        """Default processing function.
 
-        Returns:
-            A dictionary containing the pixel coordinates of `top`, `left`, `width`, `height`.
-        """
-        left, top, right, bottom = win32gui.GetWindowRect(self._app_id)
-        width = right - left
-        height = bottom - top
-        monitor = {"top": top + 46, "left": left + 11, "width": width - 22, "height": height - 56}
-        return monitor
-
-    @staticmethod
-    def _default_processing(raw: np.ndarray) -> np.ndarray:
-        """Identity processing function.
+        Resizes the input to (img_width, img_heigth).
 
         Args:
-            raw: Raw input image.
+            img: Input image.
 
         Returns:
-            The unprocessed input image.
+            The processed input image.
         """
-        return raw
+        return cv2.resize(img, (self.img_width, self.img_height), interpolation=cv2.INTER_AREA)

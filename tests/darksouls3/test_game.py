@@ -54,7 +54,8 @@ game_attributes = {"player_hp": {"type": int, ">": 0},
                    "game_speed": {"type": float, ">=": 0},
                    "gravity": {"type": bool},
                    "player_animation_time": {"type": float, ">=": 0},
-                   "player_animation_max_time": {"type": float, ">=": 0}
+                   "player_animation_max_time": {"type": float, ">=": 0},
+                   "img": {"type": np.ndarray, "shape": (90, 160, 3)}
                    }
 
 

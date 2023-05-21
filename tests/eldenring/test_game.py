@@ -50,10 +50,11 @@ game_attributes = {"player_hp": {"type": int, ">": 0},
                    "time": {"type": int, ">=": 0},
                    "game_speed": {"type": float, ">=": 0},
                    "gravity": {"type": bool},
+                   "img": {"type": np.ndarray, "shape": (90, 160, 3)}
                    }
 
 
-@pytest.mark.skipif(game_not_open(), reason="Dark Souls III is not running.")
+@pytest.mark.skipif(game_not_open(), reason="Elden Ring is not running.")
 @pytest.mark.parametrize("attr_name, attr_info", game_attributes.items())
 def test_game_attributes(game, attr_name, attr_info):
     attr = getattr(game, attr_name)

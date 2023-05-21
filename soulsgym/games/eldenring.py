@@ -1,15 +1,12 @@
 import logging
 import struct
-from typing import Tuple
+from typing import Tuple, Any
 import time
 
 from pymem.exception import MemoryReadError
 import numpy as np
 
 from soulsgym.games import Game
-from soulsgym.core.game_input import GameInput
-from soulsgym.core.memory_manipulator import MemoryManipulator
-from soulsgym.core.speedhack import SpeedHackConnector
 from soulsgym.core.utils import wrap_to_pi
 
 logger = logging.getLogger(__name__)
@@ -18,19 +15,28 @@ logger = logging.getLogger(__name__)
 class EldenRing(Game):
 
     game_id = "EldenRing"
+    process_name = "eldenring.exe"
 
     def __init__(self):
         super().__init__()
-        self.mem = MemoryManipulator("eldenring.exe")
-        self.mem.clear_cache()  # If the singleton already exists, clear the cache
-        self._game_input = GameInput("EldenRing")  # Necessary for camera control etc
         self._game_flags = {}  # Cache game flags to restore them after a game reload
-        self._speed_hack_connector = SpeedHackConnector("eldenring.exe")
         self._game_speed = 1.0
         self.game_speed = 1.0
 
     def get_state(self):
         ...
+
+    @property
+    def img(self) -> np.ndarray:
+        """Get the current game image as numpy array.
+
+        Images have a shape of [90, 160, 3] with RGB channels.
+        """
+        return self._game_window.screenshot()
+
+    @img.setter
+    def img(self, _: Any):
+        raise RuntimeError("Game image can't be set!")
 
     @property
     def player_hp(self) -> int:
@@ -417,24 +423,25 @@ class EldenRing(Game):
 
     def reload(self):
         """Kill the player, clear the address cache and wait for the player to respawn."""
-        self.player_hp = 0
-        self._save_game_flags()
-        if self.game_speed == 0:
-            self.resume_game()  # For safety, player might never change animation otherwise
-        self.clear_cache()
-        self.sleep(0.5)  # Give the game time to register player death and change animation
-        while True:
-            try:
-                # Break on player resurrection animation. If missed, also break on Idle
-                if self.player_animation in ("Event63000", "Idle"):
-                    break
-            except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
-                pass
-            self.clear_cache()
-            self.sleep(0.05)
-        while self.player_animation != "Idle":  # Wait for the player to reach a safe "Idle" state
-            self.sleep(0.05)
-        self._restore_game_flags()
+        raise NotImplementedError("Respawn animations need to be checked!")
+        # self.player_hp = 0
+        # self._save_game_flags()
+        # if self.game_speed == 0:
+        #    self.resume_game()  # For safety, player might never change animation otherwise
+        # self.clear_cache()
+        # self.sleep(0.5)  # Give the game time to register player death and change animation
+        # while True:
+        #    try:
+        # Break on player resurrection animation. If missed, also break on Idle
+        #        if self.player_animation in ("Event63000", "Idle"):
+        #            break
+        #    except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
+        #        pass
+        #    self.clear_cache()
+        #    self.sleep(0.05)
+        # while self.player_animation != "Idle":  # Wait for the player to reach a safe "Idle" state
+        #     self.sleep(0.05)
+        # self._restore_game_flags()
 
     @property
     def time(self) -> int:
