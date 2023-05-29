@@ -30,13 +30,35 @@ class EldenRing(Game):
     def img(self) -> np.ndarray:
         """Get the current game image as numpy array.
 
+        Warning:
+            If the game was paused (i.e. ``game_speed = 0``) before the current ```Game`` instance
+            has been created, this method won't return. The game needs to be unpaused at least once
+            before invoking this method.
+
         Images have a shape of [90, 160, 3] with RGB channels.
         """
-        return self._game_window.screenshot()
+        return self._game_window.get_img()
 
     @img.setter
     def img(self, _: Any):
         raise RuntimeError("Game image can't be set!")
+
+    @property
+    def img_resolution(self) -> Tuple[int, int]:
+        """The game image resolution.
+
+        Note:
+            This is NOT the game resolution. The game image resolution is the resolution of the
+            image returned by `:meth:.EldenRing.img`.
+
+        Returns:
+            The game resolution.
+        """
+        return self._game_window.resolution
+
+    @img_resolution.setter
+    def img_resolution(self, resolution: Tuple[int, int]):
+        self._game_window.img_resolution = resolution
 
     @property
     def player_hp(self) -> int:
