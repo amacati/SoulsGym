@@ -21,6 +21,7 @@
 #include <atomic>
 #include <vector>
 #include <stdexcept>
+#include <mutex>
 
 // D3D
 #include <d3d11_4.h>
