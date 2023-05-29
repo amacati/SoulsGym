@@ -119,8 +119,8 @@ class GameWindow:
             raise InvalidGameSettings("Desired resolution too big: {}x{} vs {}x{}".format(
                 img.shape[0], img.shape[1], resolution[0], resolution[1]))
         self._crop_height = [img.shape[0] - resolution[0], img.shape[0]]
-        if self._crop_height[0] >= 2:  # Usually the bottom border is 2 pixels wide
-            self._crop_height = [self._crop_height[0] - 2, self._crop_height[1] - 2]
+        if self._crop_height[0] >= 2:  # Usually the bottom border is 1-2 pixels wide
+            self._crop_height = [self._crop_height[0] - 1, self._crop_height[1] - 1]
         # Crop both sides of the window equally
         dw = img.shape[1] - resolution[1]
         self._crop_widths = [round(dw / 2), img.shape[1] - (dw - round(dw / 2))]
