@@ -90,7 +90,7 @@ and set your keys to these values:
      - L
      - ---
    * - Strong attack (right hand)
-     - Z
+     - H
      - 
    * - Attack (left hand)
      - ---
