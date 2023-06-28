@@ -210,17 +210,19 @@ class DarkSoulsIII(Game):
 
     @player_pose.setter
     def player_pose(self, coordinates: Tuple[float]):
+        # If we write the x coordinate and the game loop updates the player's position immediately
+        # after, we teleport before setting the other coordinates. In order to minimize these races
+        # between coordinates, we pack xzy into a byte package and write it in one call. We can't
+        # include `a` because of the memory layout, but this is less important as the orientation
+        # can still be updated after a tick delay.
         buff_death = self.allow_player_death
         self.allow_player_death = False
         self.gravity = False
         base = self.mem.bases["WorldChrMan"]
         x_address = self.mem.resolve_address(self.data.address_offsets["PlayerX"], base=base)
-        y_address = self.mem.resolve_address(self.data.address_offsets["PlayerY"], base=base)
-        z_address = self.mem.resolve_address(self.data.address_offsets["PlayerZ"], base=base)
         a_address = self.mem.resolve_address(self.data.address_offsets["PlayerA"], base=base)
-        self.mem.write_float(x_address, coordinates[0])
-        self.mem.write_float(y_address, coordinates[1])
-        self.mem.write_float(z_address, coordinates[2])
+        xzy = struct.pack('fff', coordinates[0], coordinates[2], coordinates[1])  # Swap y z order
+        self.mem.write_bytes(x_address, xzy)
         self.mem.write_float(a_address, coordinates[3])
         self.gravity = True
         self.allow_player_death = buff_death
@@ -551,12 +553,9 @@ class DarkSoulsIII(Game):
         self.pause_game()
         base = self.mem.bases["Iudex"]
         x_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseX"], base=base)
-        y_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseY"], base=base)
-        z_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseZ"], base=base)
         a_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseA"], base=base)
-        self.mem.write_float(x_addr, coordinates[0])
-        self.mem.write_float(y_addr, coordinates[1])
-        self.mem.write_float(z_addr, coordinates[2])
+        xzy = struct.pack("fff", coordinates[0], coordinates[2], coordinates[1])  # Swap y z order
+        self.mem.write_bytes(x_addr, xzy)
         self.mem.write_float(a_addr, coordinates[3])
         self.game_speed = game_speed
 
