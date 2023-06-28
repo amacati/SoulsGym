@@ -57,7 +57,7 @@ class SoulsEnv(gymnasium.Env, ABC):
 
     metadata = {'render_modes': []}
     ENV_ID = ""  # Each SoulsGym has to define its own ID and name the config files accordingly
-    step_size = 0.1
+    step_size = 0.1  # Seconds between each step
 
     def __init__(self, game_speed: int = 1.):
         """Initialize the game managers, load the environment config and set the game properties.
@@ -293,6 +293,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         # so that this sleep is accounted for in the total step time.
         self._apply_action(action)
         # Offset of 0.01s to account for processing time of the loop
+        t_loop = self.game.time
         while self.game.timed(self.game.time, t_start) < (max(self.step_size - 0.01, 1e-4)):
             boss_animation = self.game.get_boss_animation(self.ENV_ID)
             if boss_animation != previous_boss_animation:
@@ -496,21 +497,15 @@ class SoulsEnvDemo(SoulsEnv):
         if self._internal_state is None or self.terminated:
             logger.error("_update_internal_game_state: SoulsEnv.step() called before reset")
             raise ResetNeeded("SoulsEnv.step() called before reset")
-        # Save animation duration and HP
+        # If the animation has not changed, add the previous duration to the time delta
         if game_state.player_animation == self._internal_state.player_animation:
-            player_animation_duration = self._internal_state.player_animation_duration
-            player_animation_duration += player_animation_td
-        else:
-            player_animation_duration = player_animation_td
+            player_animation_td += self._internal_state.player_animation_duration
         if game_state.boss_animation == self._internal_state.boss_animation:
-            boss_animation_duration = self._internal_state.boss_animation_duration
-            boss_animation_duration += boss_animation_td
-        else:
-            boss_animation_duration = boss_animation_td
+            boss_animation_td += self._internal_state.boss_animation_duration
         # Update animation count and HP
         self._internal_state = game_state
-        self._internal_state.player_animation_duration = player_animation_duration
-        self._internal_state.boss_animation_duration = boss_animation_duration
+        self._internal_state.player_animation_duration = player_animation_td
+        self._internal_state.boss_animation_duration = boss_animation_td
         if self._internal_state.player_hp < 0:
             self._internal_state.player_hp = 0
         if self._internal_state.boss_hp < 0:

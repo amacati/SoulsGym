@@ -21,11 +21,8 @@ environments you follow the usual pattern of OpenAI's ``gym.make``. A list of al
 environments is available at ``soulsgym.available_envs``.
 """
 import logging
-import sys
 
 from gymnasium.envs.registration import register
-if not sys.platform == "win32":
-    raise NotImplementedError("SoulsGym is only available on Windows platforms.")
 
 logger = logging.getLogger(__name__)
 

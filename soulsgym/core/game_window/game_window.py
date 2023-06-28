@@ -4,10 +4,13 @@ Window capture itself is implemented in C++ to enable fast and efficient screen 
 ``GameWindow`` also allows us to focus the Dark Souls III application on gym start.
 """
 from typing import Callable
+import time
 
 import numpy as np
-import win32gui
 import cv2
+import win32gui
+import win32api
+import win32con
 
 from soulsgym.core.game_window.window_capture import WindowCapture
 from soulsgym.exception import InvalidGameSettings
@@ -84,6 +87,10 @@ class GameWindow:
         Also sets the cursor within the game window.
         """
         win32gui.SetForegroundWindow(self.hwnd)
+        time.sleep(0.1)
+        left, top, _, _ = win32gui.GetWindowRect(self.hwnd)
+        win32api.SetCursorPos((left + 100, top + 100))
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, left + 100, top + 5, 0, 0)
 
     def _default_processing(self, img: np.ndarray) -> np.ndarray:
         """Default processing function.
