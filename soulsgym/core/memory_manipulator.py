@@ -23,10 +23,13 @@ have taken effect in the game when you write to these memory locations.
 """
 from __future__ import annotations
 from typing import List, Dict
+import platform
 
-import win32process
-import win32api
-import win32con
+if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
+    import win32process
+    import win32api
+    import win32con
+
 import pymem as pym
 from pymem import Pymem
 

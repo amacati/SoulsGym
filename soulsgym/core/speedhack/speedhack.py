@@ -19,12 +19,14 @@ import struct
 from pathlib import Path
 from multiprocessing import Lock
 import logging
+import platform
 
-import win32api
-import win32process
-import win32event
-import win32file
-import pywintypes
+if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
+    import win32api
+    import win32process
+    import win32event
+    import win32file
+    import pywintypes
 
 from soulsgym.exception import InjectionFailure
 from soulsgym.core.utils import Singleton, get_pid

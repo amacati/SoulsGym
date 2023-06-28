@@ -5,12 +5,15 @@ Window capture itself is implemented in C++ to enable fast and efficient screen 
 """
 from typing import Callable
 import time
+import platform
 
 import numpy as np
 import cv2
-import win32gui
-import win32api
-import win32con
+
+if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
+    import win32gui
+    import win32api
+    import win32con
 
 from soulsgym.core.game_window.window_capture import WindowCapture
 from soulsgym.exception import InvalidGameSettings
