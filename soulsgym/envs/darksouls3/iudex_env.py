@@ -22,7 +22,7 @@ from gymnasium.error import RetriesExceededError
 
 from soulsgym.envs.soulsenv import SoulsEnv, SoulsEnvDemo
 from soulsgym.core.game_state import GameState
-from soulsgym.exception import GameStateError, InvalidPlayerStateError
+from soulsgym.exception import GameStateError
 
 logger = logging.getLogger(__name__)
 
@@ -78,7 +78,7 @@ class IudexEnv(SoulsEnv):
             "boss_animation_duration": spaces.Box(0., 10.),
             "lock_on": spaces.Discrete(2)
         })
-        self.action_space = spaces.Discrete(len(player_animations))
+        self.action_space = spaces.Discrete(len(self.game.data.actions))
         assert phase in (1, 2)
         self.phase = phase
         self._phase_init = False
@@ -358,8 +358,7 @@ class IudexEnv(SoulsEnv):
             logger.error("_env_setup_init_check failed: Player does not seem to be ingame")
             raise GameStateError("Player does not seem to be ingame")
         if game_state.player_animation != "Idle":
-            logger.error("_env_setup_init_check failed: Player is not idle")
-            raise InvalidPlayerStateError("Player is not idle")
+            self.game.reload()
 
     def _env_setup_check(self) -> bool:
         """Check if the environment setup was successful.
@@ -380,6 +379,18 @@ class IudexEnv(SoulsEnv):
         if self.game.player_animation != "Idle":
             logger.debug(f"_env_setup_check: Unexpected animation {self.game.player_animation}")
         return True
+
+
+class IudexImgEnv(IudexEnv):
+
+    def __init__(self, game_speed: int = 1., phase: int = 1, init_pose_randomization: bool = False):
+        super().__init__(game_speed, phase, init_pose_randomization)
+        self.observation_space = spaces.Box(low=0, high=255, shape=(90, 160, 3), dtype=np.uint8)
+
+    @property
+    def obs(self) -> np.ndarray:
+        """Return the current observation."""
+        return self.game.img
 
 
 class IudexEnvDemo(SoulsEnvDemo, IudexEnv):

@@ -69,7 +69,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         assert game_speed > 0, "Game speed must be positive!"
         # Initialize game managers
         self.game = game_factory(self.game_id)
-        self._game_input = GameInput(self.game_id)
+        self._game_input = GameInput(self.game_id, game_speed=game_speed)
         self._game_window = GameWindow(self.game_id)
         # Check if the player has loaded into the game
         if not self.game.is_ingame:
