@@ -45,7 +45,7 @@ class IudexEnv(SoulsEnv):
         # The state space consists of multiple spaces. These represent:
         # 1)      Boss phase. Either 1 or 2 for Iudex
         # 2 - 7)  Player and boss stats. In order: Player HP, player max HP, player SP, player max
-        #         HP, boss HP, boss max HP
+        #         SP, boss HP, boss max HP
         # 8 - 10) Player, boss and camera poses. In order: Player x, y, z, a, boss x, y, z, a,
         #         camera x, y, z, nx, ny, nz, where a represents the orientation and [nx ny nz]
         #         the camera plane normal
@@ -391,6 +391,18 @@ class IudexImgEnv(IudexEnv):
     def obs(self) -> np.ndarray:
         """Return the current observation."""
         return self.game.img
+
+    @property
+    def info(self) -> Dict:
+        """Info property of the environment.
+
+        Returns:
+            The current info dict of the environment.
+        """
+        return {
+            "allowed_actions": self.current_valid_actions(),
+            "boss_hp": self._internal_state.boss_hp
+        }
 
 
 class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
