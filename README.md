@@ -8,8 +8,8 @@ SoulsGym uses the games as simulations that are modified at runtime by reading a
 - [Installation](#installation)
 - [API](#api)
 - [Getting Started](#getting-started)
-- [Documentation](#documentation)
 - [Roadmap](#roadmap)
+- [Documentation](#documentation)
 - [Contributing](#contributing)
 
 ## Requirements
@@ -45,8 +45,6 @@ while not terminated:
 env.close()
 ```
 > **Note:** Dark Souls III has to be running with the correct settings when executing the script. See [requirements](#requirements).
-## Documentation
-For details on the `soulsgym` package see our [official docs](https://soulsgym.readthedocs.io/en/latest/index.html).
 
 ## Roadmap
 This roadmap describes the planned future expansions and possible avenues for contributions. The project is designed to offer an extensive collection of boss fights across Souls games as gymnasium environments. However, as of this moment, only Iudex Gundyr from Dark Souls III is implemented and has been solved with a 45% winrate.
@@ -69,6 +67,9 @@ Initially, `soulsgym` was planned as a Dark Souls III RL extension only. However
 
 ### Increasing the number of environments
 This one goes without saying. Having more bosses implemented is just better. There is not much focus on this though as long as we are transitioning to image observations, since the change of observation space also impacts how the environments have to be implemented.
+
+## Documentation
+For details on the `soulsgym` package see our [official docs](https://soulsgym.readthedocs.io/en/latest/index.html).
 
 ## Contributing
 If you'd like to contribute, feel free to reach out to me. In addition, have a look at the roadmap, the documentation and try to understand how the gym works.  
