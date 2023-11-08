@@ -10,10 +10,12 @@ Note:
     Phase 2 of the boss fight is available by setting the environment keyword argument ``phase``.
     See :mod:`~.envs` for details.
 """
+from __future__ import annotations
+
 import logging
 import random
 import time
-from typing import Any, Tuple, Dict
+from typing import Any, Tuple, Dict, TYPE_CHECKING
 
 from pymem.exception import MemoryReadError
 import numpy as np
@@ -21,19 +23,27 @@ from gymnasium import spaces
 from gymnasium.error import RetriesExceededError
 
 from soulsgym.envs.soulsenv import SoulsEnv, SoulsEnvDemo
-from soulsgym.core.game_state import GameState
 from soulsgym.exception import GameStateError
+
+if TYPE_CHECKING:
+    from soulsgym.core.game_state import GameState
 
 logger = logging.getLogger(__name__)
 
 
 class IudexEnv(SoulsEnv):
-    """``IudexEnv`` implements the environment of the Iudex Gundyr boss fight."""
+    """Gymnasium environment class for the Iudex Gundyr bossfight.
+
+    The environment uses the ground truth information from the game as observation space.
+    """
 
     ENV_ID = "iudex"
 
-    def __init__(self, game_speed: int = 1., phase: int = 1, init_pose_randomization: bool = False):
-        """Define the state space.
+    def __init__(self,
+                 game_speed: float = 1.,
+                 phase: int = 1,
+                 init_pose_randomization: bool = False):
+        """Initialize the observation and action spaces.
 
         Args:
             game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
@@ -85,7 +95,12 @@ class IudexEnv(SoulsEnv):
         self._init_pose_randomization = init_pose_randomization
 
     @property
-    def game_id(self):
+    def game_id(self) -> str:
+        """Return the ID of the souls game that is required to run for this environment.
+
+        Returns:
+            The game ID.
+        """
         return "DarkSoulsIII"
 
     @property
@@ -382,8 +397,20 @@ class IudexEnv(SoulsEnv):
 
 
 class IudexImgEnv(IudexEnv):
+    """Gymnasium environment class for the Iudex Gundyr bossfight.
+
+    The environment uses the ground truth information from the game as observation space. The boss
+    HP are available in the info dict.
+    """
 
     def __init__(self, game_speed: int = 1., phase: int = 1, init_pose_randomization: bool = False):
+        """Overwrite the observation space to use the game image.
+
+        Args:
+            game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
+            phase: Set the boss phase. Either 1 or 2 for Iudex.
+            init_pose_randomization: Flag to randomize the player pose on reset.
+        """
         super().__init__(game_speed, phase, init_pose_randomization)
         self.observation_space = spaces.Box(low=0, high=255, shape=(90, 160, 3), dtype=np.uint8)
 
