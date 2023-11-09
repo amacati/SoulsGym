@@ -7,8 +7,10 @@ In addition, we also provide a :class:`~.SoulsEnvDemo` base class for demo envir
 to the training environments, demos cover all phases of a boss fight and allow to demonstrate the
 agent's abilities in a setting that is as close to the real game as possible.
 """
+from __future__ import annotations
+
 import logging
-from typing import Tuple, List, Any, Dict
+from typing import Tuple, List, Any, Dict, TYPE_CHECKING
 from pathlib import Path
 from abc import ABC, abstractmethod
 from argparse import Namespace
@@ -18,11 +20,13 @@ import yaml
 import numpy as np
 
 from soulsgym.core.game_input import GameInput
-from soulsgym.core.game_state import GameState
 from soulsgym.core.utils import wrap_to_pi
 from soulsgym.core.game_window import GameWindow
 from soulsgym.games import game_factory
 from soulsgym.exception import GameStateError, ResetNeeded, InvalidPlayerStateError
+
+if TYPE_CHECKING:
+    from soulsgym.core.game_state import GameState
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +63,7 @@ class SoulsEnv(gymnasium.Env, ABC):
     ENV_ID = ""  # Each SoulsGym has to define its own ID and name the config files accordingly
     step_size = 0.1  # Seconds between each step
 
-    def __init__(self, game_speed: int = 1.):
+    def __init__(self, game_speed: float = 1.):
         """Initialize the game managers, load the environment config and set the game properties.
 
         Args:
@@ -484,7 +488,7 @@ class SoulsEnvDemo(SoulsEnv):
     or the boss has been defeated.
     """
 
-    def __init__(self, game_speed: int = 1.):
+    def __init__(self, game_speed: float = 1.):
         """Initialize the demo environment.
 
         Args:
@@ -520,7 +524,7 @@ class SoulsEnvDemo(SoulsEnv):
         super()._set_game_properties()
         self.game.allow_deaths = True
 
-    def _step(self, action):
+    def _step(self, action: int):
         """Continue the game after finishing the demo."""
         super()._step(action)
         if self.terminated:

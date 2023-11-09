@@ -6,6 +6,7 @@ Window capture itself is implemented in C++ to enable fast and efficient screen 
 from typing import Callable
 import time
 import platform
+from itertools import groupby
 
 import numpy as np
 import cv2
@@ -16,7 +17,6 @@ if platform.system() == "Windows":  # Windows imports, ignore for unix to make i
     import win32con
 
 from soulsgym.core.game_window.window_capture import WindowCapture
-from soulsgym.exception import InvalidGameSettings
 
 
 class GameWindow:
@@ -53,10 +53,10 @@ class GameWindow:
             raise Exception('Window not found: {}'.format(game_id))
         self._window_capture = WindowCapture()
         self._window_capture.open(self.hwnd)
-        # Check if the game has the expected resolution
-        self._crop_height = None
-        self._crop_width = None
-        self._check_resolution()  # Also sets the crop height and width
+        # The image we get from the game capture module game window initially does not match the
+        # desired resolution. We therefore determine the necessary crop indices to remove the image
+        # padding. See function docs for more details.
+        self._crop_heights, self._crop_widths = self._determine_image_crop()
 
     @property
     def img_resolution(self) -> tuple[int, int]:
@@ -115,31 +115,51 @@ class GameWindow:
         Returns:
             The processed input image.
         """
-        img = img[self._crop_height[0]:self._crop_height[1],
+        img = img[self._crop_heights[0]:self._crop_heights[1],
                   self._crop_widths[0]:self._crop_widths[1]]
         if img.shape == (self.img_height, self.img_width, 3):
             return img
         return cv2.resize(img, (self.img_width, self.img_height), interpolation=cv2.INTER_AREA)
 
-    def _check_resolution(self):
-        """Check if the game has the expected resolution.
+    def _determine_image_crop(self) -> tuple[np.ndarray, np.ndarray]:
+        """Determine the necessary crop to remove the image padding and title bar.
+
+        The image we get from the game capture module game window initially does not match the
+        desired resolution. Windows adds a border to the window as well as a title bar we need to
+        crop. This border and title bar vary for each user and can be of different sizes. Therefore,
+        we need to determine the cropping of the image at runtime for preprocessing.
 
         Raises:
-            InvalidGameSettings: If the game has not the expected resolution.
+            RuntimeError: If the crop detection fails due to unexpected window or crop sizes.
         """
         img = self.get_img(return_raw=True)
-        resolution = self.game_resolution[self.game_id][::-1]  # Numpy img dimensions are reversed
-        # The resolution can differ by a few pixels due to the window border. Height deviates more
-        # because of the title bar.
-        if img.shape[0] - resolution[0] > 50 or img.shape[1] - resolution[1] > 20:
-            raise InvalidGameSettings("Game resolution does not match: {}x{} vs {}x{}".format(
-                img.shape[0], img.shape[1], resolution[0], resolution[1]))
-        if img.shape[0] < resolution[0] or img.shape[1] < resolution[1]:
-            raise InvalidGameSettings("Desired resolution too big: {}x{} vs {}x{}".format(
-                img.shape[0], img.shape[1], resolution[0], resolution[1]))
-        self._crop_height = [img.shape[0] - resolution[0], img.shape[0]]
-        if self._crop_height[0] >= 2:  # Usually the bottom border is 1-2 pixels wide
-            self._crop_height = [self._crop_height[0] - 1, self._crop_height[1] - 1]
-        # Crop both sides of the window equally
-        dw = img.shape[1] - resolution[1]
-        self._crop_widths = [round(dw / 2), img.shape[1] - (dw - round(dw / 2))]
+        desired_resolution = self.game_resolution[self.game_id][::-1]
+        # Detect all rows and columns in the image that are completely black
+        black_pixels = np.all(img == 0, axis=2)
+        black_rows, black_columns = np.all(black_pixels == 1, axis=0), np.all(black_pixels == 1,
+                                                                              axis=1)
+        # Generate a list of the lengths of the black pixel rows and columns
+        img_column_paddings = [len(list(v)) for k, v in groupby(black_columns) if k == 1]
+        img_row_paddings = [len(list(v)) for k, v in groupby(black_rows) if k == 1]
+        # The initial values for the crop remove the black padding around the borders of the image
+        top_crop = 0 if not black_rows[0] else img_column_paddings[0]
+        bottom_crop = img.shape[0] if not black_rows[-1] else img.shape[0] - img_column_paddings[-1]
+        left_crop = 0 if not black_columns[0] else img_row_paddings[0]
+        right_crop = img.shape[1] if not black_columns[-1] else img.shape[1] - img_row_paddings[-1]
+        # Check if the image resolution can still be cropped to the desired resolution and
+        res_diff = np.array([bottom_crop - top_crop, right_crop - left_crop]) - desired_resolution
+        if np.any(res_diff < 0):
+            raise RuntimeError(("Image autocrop failed: Resolution differences are below zero "
+                                f"({res_diff}). Please set the game resolution to 800x450."))
+        if res_diff[0] > 50 or res_diff[1] > 10:
+            raise RuntimeError((f"Image resolution difference is too great {res_diff}."
+                                "Please set the game resolution to 800x450."))
+        # Finally, crop the image to the desired resolution. The side difference is distributed
+        # equally to the left and right side of the image. The top difference is assigned most of
+        # the difference, since it still contains the window title bar that needs to be cropped out.
+        left_crop = left_crop + res_diff[1] // 2
+        right_crop = right_crop - (res_diff[1] - res_diff[1] // 2)
+        if res_diff[1] > 0:
+            bottom_crop = bottom_crop - 1
+            top_crop = top_crop + res_diff[0] - 1
+        return np.array([top_crop, bottom_crop]), np.array([left_crop, right_crop])

@@ -18,6 +18,8 @@ bases_by_pattern:
     pattern: \x4C\x8D\x05....\x48\x8D\x15....\x48\x8B\xCB\xE8....\x48\x83\x3D....\x00
   LockTgtMan:
     pattern: \x48\x8B\x0D....\xE8....\x48\x8B\xD8\x48\x85\xC0\x0F\x84....\xC7
+  CSWindow:
+    pattern: \x48\x8B\x0D....\x48\x85\xC9\x74.\x48\x83\xC1.\x48\x8D\x45
 
 bases:
   Cam: 0x04796298
@@ -85,3 +87,6 @@ address_offsets:
   PlayerDeathCount: [0x98]
   Time: [0xA4]
   GlobalSpeed: [0x80, 0x1F90, 0x28, 0xA58]
+  WindowScreenWidth: [0xB0]
+  WindowScreenHeight: [0xB4]
+  ScreenMode: [0xC0]

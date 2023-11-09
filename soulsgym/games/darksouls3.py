@@ -100,17 +100,69 @@ class DarkSoulsIII(Game):
         """The game image resolution.
 
         Note:
-            This is NOT the game resolution. The game image resolution is the resolution of the
-            image returned by `:meth:.EldenRing.img`.
+            This is NOT the game window resolution. The game window resolution is the resolution the
+            game is rendered in. ``img_resolution`` is the resolution of the image returned by
+            `:meth:.DarkSoulsIII.img`. Depending on the game window resolution, the image is either
+            downscaled or upscaled.
 
         Returns:
-            The game resolution.
+            The game image resolution.
         """
-        return self._game_window.resolution
+        return self._game_window.img_resolution
 
     @img_resolution.setter
     def img_resolution(self, resolution: Tuple[int, int]):
         self._game_window.img_resolution = resolution
+
+    @property
+    def window_resolution(self) -> Tuple[int, int]:
+        """The game window resolution.
+
+        Note:
+            This is NOT the image resolution. See :meth:`.DarkSoulsIII.img_resolution` for more
+            details.
+
+        Returns:
+            The game window resolution.
+        """
+        base = self.mem.bases["CSWindow"]
+        address = self.mem.resolve_address(self.data.address_offsets["WindowScreenWidth"],
+                                           base=base)
+        width = self.mem.read_int(address)
+        address = self.mem.resolve_address(self.data.address_offsets["WindowScreenHeight"],
+                                           base=base)
+        height = self.mem.read_int(address)
+        return (width, height)
+
+    @window_resolution.setter
+    def window_resolution(self, resolution: Tuple[int, int]):
+        base = self.mem.bases["CSWindow"]
+        address = self.mem.resolve_address(self.data.address_offsets["WindowScreenWidth"],
+                                           base=base)
+        self.mem.write_int(address, resolution[0])
+        address = self.mem.resolve_address(self.data.address_offsets["WindowScreenWidth"],
+                                           base=base)
+        self.mem.write_int(address, resolution[1])
+
+    @property
+    def screen_mode(self) -> str:
+        """The game screen mode.
+
+        Returns:
+            The game screen mode. Either 'window' or 'fullscreen'.
+        """
+        base = self.mem.bases["CSWindow"]
+        address = self.mem.resolve_address(self.data.address_offsets["ScreenMode"], base=base)
+        mode = "window" if self.mem.read_int(address) == 0 else "fullscreen"
+        return mode
+
+    @screen_mode.setter
+    def screen_mode(self, mode: str):
+        mode = mode.lower()
+        assert mode in ["window", "fullscreen"], "Screen mode must be 'window' or 'fullscreen'"
+        base = self.mem.bases["CSWindow"]
+        address = self.mem.resolve_address(self.data.address_offsets["ScreenMode"], base=base)
+        self.mem.write_int(address, 0 if mode == "window" else 1)
 
     @property
     def player_hp(self) -> int:
