@@ -195,6 +195,8 @@ class IudexEnv(SoulsEnv):
             self._game_input.update_input()
             self.game.sleep(0.01)
             self._game_input.reset()  # Prevent getting stuck if initial press is missed
+            if not self._game_window.focused:
+                self._game_window.focus_application()
         self.game.pause_game()
         self.game.allow_attacks = True
         self.game.allow_hits = True
@@ -276,16 +278,16 @@ class IudexEnv(SoulsEnv):
         Returns:
             The reward for the provided game states.
         """
-        boss_reward = (game_state.boss_hp - next_game_state.boss_hp) / game_state.boss_max_hp * 100.
+        boss_reward = (game_state.boss_hp - next_game_state.boss_hp) / game_state.boss_max_hp
         player_hp_diff = (next_game_state.player_hp - game_state.player_hp)
-        player_reward = player_hp_diff / game_state.player_max_hp * 100.
+        player_reward = player_hp_diff / game_state.player_max_hp
         if next_game_state.boss_hp == 0 or next_game_state.player_hp == 0:
-            base_reward = 10 if next_game_state.boss_hp == 0 else -10
+            base_reward = 1 if next_game_state.boss_hp == 0 else -1
         else:
             # Experimental: Reward for moving towards the arena center, no reward within 4m distance
             d_center_now = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
             d_center_prev = np.linalg.norm(game_state.player_pose[:2] - np.array([139., 596.]))
-            base_reward = -0.1 + 10 * (d_center_prev - d_center_now) * (d_center_now > 4)
+            base_reward = 0.01 * (d_center_prev - d_center_now) * (d_center_now > 4)
         return boss_reward + player_reward + base_reward
 
     def _reset_check(self, player_pose: np.ndarray) -> bool:

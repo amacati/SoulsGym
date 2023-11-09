@@ -70,6 +70,15 @@ class GameWindow:
         assert 0 < resolution[1] <= game_height, f"Image height must be in (0, {game_height}]."
         self.img_height, self.img_width = resolution
 
+    @property
+    def focused(self) -> bool:
+        """Check if the game window is currently focused.
+
+        Returns:
+            True if the game window is currently focused, False otherwise.
+        """
+        return win32gui.GetForegroundWindow() == self.hwnd
+
     def get_img(self, return_raw: bool = False) -> np.ndarray:
         """Fetch the current image from the targeted application.
 
