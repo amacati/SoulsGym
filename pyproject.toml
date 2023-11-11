@@ -25,9 +25,10 @@ dependencies = [
     "gymnasium >= 0.27.0",
     "numpy >= 1.21.0",
     "psutil >= 5.9.0",
-    "Pymem >= 1.10.0; platform_system=='Windows'",
+    "Pymem >= 1.10.0",
     "pywin32 >= 305.0; platform_system=='Windows'",
     "PyYAML >= 6.0",
+    "opencv-python >= 4.0.0",
 ]
 # Caused by window capture. TODO: Move window capture to own package and relax requirements
 # random.choice does not work with numpy on 3.11.0/1 (https://github.com/python/cpython/issues/100805)
