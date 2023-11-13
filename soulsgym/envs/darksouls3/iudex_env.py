@@ -27,6 +27,7 @@ from soulsgym.exception import GameStateError
 
 if TYPE_CHECKING:
     from soulsgym.core.game_state import GameState
+    from soulsgym.games import DarkSoulsIII
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +65,7 @@ class IudexEnv(SoulsEnv):
         # 13)     Boss animation. -1 denotes unknown or critical animations.
         # 14)     Boss animation duration. We assume no animation takes longer than 10s.
         # 15)     Lock on flag. Either true or false.
+        self.game: DarkSoulsIII  # Type hint only
         pose_box_low = np.array(self.env_args.coordinate_box_low, dtype=np.float32)
         pose_box_high = np.array(self.env_args.coordinate_box_high, dtype=np.float32)
         cam_box_low = np.array(self.env_args.coordinate_box_low[:3] + [-1, -1, -1],
@@ -93,6 +95,11 @@ class IudexEnv(SoulsEnv):
         self.phase = phase
         self._phase_init = False
         self._init_pose_randomization = init_pose_randomization
+        # We keep track of the last time the environment has been reset completely. After several
+        # hours of gameplay, the game input starts to lag and the agent's actions are not executed
+        # properly anymore. We therefore reset the environment every 15 minutes to avoid an
+        # unintended performance degradation
+        self._last_hard_reset = 0
 
     @property
     def game_id(self) -> str:
@@ -154,6 +161,7 @@ class IudexEnv(SoulsEnv):
             init_retries -= 1
             self._iudex_setup()
         self._is_init = True
+        self._last_hard_reset = time.time()
         self.game.pause_game()
 
     def reset(self, seed: int | None = None, options: Any | None = None) -> Tuple[dict, dict]:
@@ -168,8 +176,13 @@ class IudexEnv(SoulsEnv):
         """
         if not self._is_init:
             self._env_setup()
-        self.terminated = False
+        # Reset the environment every 15 minutes to avoid performance degradation. See `__init__`
+        # for details
         self._game_input.reset()
+        if time.time() - self._last_hard_reset > 900:
+            self.game.reload()
+            self._env_setup()
+        self.terminated = False
         self.game.pause_game()
         self.game.allow_attacks = False
         self.game.allow_hits = False
@@ -297,7 +310,7 @@ class IudexEnv(SoulsEnv):
         player_hp_diff = (next_game_state.player_hp - game_state.player_hp)
         player_reward = player_hp_diff / game_state.player_max_hp
         if next_game_state.boss_hp == 0 or next_game_state.player_hp == 0:
-            base_reward = 1 if next_game_state.boss_hp == 0 else -1
+            base_reward = 0.1 if next_game_state.boss_hp == 0 else -0.1
         else:
             # Experimental: Reward for moving towards the arena center, no reward within 4m distance
             d_center_now = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
