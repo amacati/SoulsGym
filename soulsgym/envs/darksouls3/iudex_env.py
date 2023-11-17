@@ -161,6 +161,7 @@ class IudexEnv(SoulsEnv):
             init_retries -= 1
             self._iudex_setup()
         self._is_init = True
+        self._phase_init = False  # When we reload, the phase is automatically reset to 1
         self._last_hard_reset = time.time()
         self.game.pause_game()
 
@@ -388,6 +389,7 @@ class IudexEnv(SoulsEnv):
             logger.error("_env_setup_init_check failed: Player does not seem to be ingame")
             raise GameStateError("Player does not seem to be ingame")
         if game_state.player_animation != "Idle":
+            self._game_input.reset()
             self.game.reload()
 
     def _env_setup_check(self) -> bool:
