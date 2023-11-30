@@ -6,7 +6,7 @@ soulsgym.envs
 .. toctree::
 
     soulsgym
-    iudex_env
+    iudex
 
 Game speed
 ~~~~~~~~~~
