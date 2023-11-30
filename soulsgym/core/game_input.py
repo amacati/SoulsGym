@@ -52,6 +52,7 @@ class GameInput:
     """Trigger keystrokes by calling the Windows user32 API."""
 
     press_and_release_actions = ("roll", "lightattack", "heavyattack", "parry")
+    DEFAULT_PRESS_TIME = 0.015
 
     def __init__(self, game_id: str, game_speed: float = 1.0):
         """Initialize the key state dictionary.
@@ -66,7 +67,7 @@ class GameInput:
         self.keymap = keymap[game_id]
         self.state = {key: False for key in self.keybindings.keys()}
         self.queued_actions = []
-        self.press_duration = 0.015 / game_speed
+        self.press_duration = self.DEFAULT_PRESS_TIME / game_speed
 
     def add_action(self, action: str):
         """Queue a single action for the next game input.
