@@ -33,6 +33,7 @@ def run_env(env_name: str, kwargs: dict | None = None):
         env.game.reload()
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(game_not_open(), reason="Dark Souls III is not running.")
 @pytest.mark.parametrize("kwargs", [{}, {"game_speed": 2, "init_pose_randomization": True}])
 def test_iudex(kwargs: dict | None):
