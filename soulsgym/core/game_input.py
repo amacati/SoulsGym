@@ -3,7 +3,7 @@ import ctypes
 from ctypes import wintypes
 from typing import Any, List
 import time
-import sys
+import platform
 
 from soulsgym.core.static import keybindings, keymap
 
@@ -13,7 +13,7 @@ KEYEVENTF_KEYUP = 0x0002
 KEYEVENTF_UNICODE = 0x0004
 MAPVK_VK_TO_VSC = 0
 
-if sys.platform == "win32":  # Guard to prevent WinDLL to load on non-Windows systems
+if platform.system() == "Windows":  # Guard to prevent WinDLL to load on non-Windows systems
     USER32 = ctypes.WinDLL('user32', use_last_error=True)
 
 wintypes.ULONG_PTR = wintypes.WPARAM
@@ -52,11 +52,22 @@ class GameInput:
     """Trigger keystrokes by calling the Windows user32 API."""
 
     press_and_release_actions = ("roll", "lightattack", "heavyattack", "parry")
+    DEFAULT_PRESS_TIME = 0.015
 
-    def __init__(self):
-        """Initialize the key state dictionary."""
-        self.state = {key: False for key in keybindings.keys()}
+    def __init__(self, game_id: str, game_speed: float = 1.0):
+        """Initialize the key state dictionary.
+
+        Args:
+            game_id: The name of the game.
+            game_speed: The speed of the game. We need to adapt the duration of a key press to the
+                game speed, because the game recognizes a key press only if it is held for a certain
+                amount of in-game time.
+        """
+        self.keybindings = keybindings[game_id]
+        self.keymap = keymap[game_id]
+        self.state = {key: False for key in self.keybindings.keys()}
         self.queued_actions = []
+        self.press_duration = self.DEFAULT_PRESS_TIME / game_speed
 
     def add_action(self, action: str):
         """Queue a single action for the next game input.
@@ -101,22 +112,22 @@ class GameInput:
             # key was not pressed before
             if not self.state[action]:
                 self.state[action] = True
-                self._press_key(keymap[keybindings[action]])
+                self._press_key(self.keymap[self.keybindings[action]])
             # key was pressed before
             elif self.state[action]:
                 self.state[action] = False
-                self._release_key(keymap[keybindings[action]])
+                self._release_key(self.keymap[self.keybindings[action]])
         # Process roll / hit / parry actions with blocking sleep
         for action in self.press_and_release_actions:
             if action in self.queued_actions:
-                self.single_action(action, press_time=0.005)
+                self.single_action(action, press_time=self.press_duration)
         self.queued_actions.clear()
 
     def reset(self):
         """Release all keys and set the press state to False."""
         for action in self.state:
             if self.state[action]:
-                self._release_key(keymap[keybindings[action]])
+                self._release_key(self.keymap[self.keybindings[action]])
                 self.state[action] = False
         self.queued_actions.clear()
 
@@ -127,9 +138,9 @@ class GameInput:
             action: The action to trigger (see :data:`.static.keybindings`).
             press_time: The duration of the key press.
         """
-        self._press_key(keymap[keybindings[action]])
+        self._press_key(self.keymap[self.keybindings[action]])
         time.sleep(press_time)
-        self._release_key(keymap[keybindings[action]])
+        self._release_key(self.keymap[self.keybindings[action]])
 
     @staticmethod
     def _press_key(key_hex_code: int):

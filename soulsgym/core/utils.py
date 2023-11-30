@@ -3,8 +3,27 @@ from __future__ import annotations
 from typing import Union, Any
 from threading import Lock
 from weakref import WeakValueDictionary
+import psutil
 
 import numpy as np
+
+
+def get_pid(process_name: str) -> int:
+    """Get the ID of a process.
+
+    Args:
+        process_name: The name of the process.
+
+    Returns:
+        The process ID.
+
+    Raises:
+        RuntimeError: No process with name ``process_name`` currently open.
+    """
+    for proc in psutil.process_iter():
+        if proc.name() == process_name:
+            return proc.pid
+    raise RuntimeError(f"Process {process_name} not open")
 
 
 def wrap_to_pi(x: Union[float, np.ndarray]) -> Union[float, np.ndarray]:

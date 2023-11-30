@@ -17,7 +17,8 @@ The soulsgym package can be installed with pip:
     pip install soulsgym
 
 .. note::
-    You need at least Python 3.10 to run soulsgym!
+    You need at least Python 3.11.2 to run soulsgym! See the project's pyproject.toml for more 
+    details.
 
 Setup
 ~~~~~
@@ -125,4 +126,4 @@ the graphic settings to
    * - Screenmode
      - Windowed (mandatory)
    * - Resolution
-     - 800x450 (optional)
+     - 800x450 (highly recommended, mandatory if using image observations)

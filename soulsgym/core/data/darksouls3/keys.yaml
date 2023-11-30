@@ -1,0 +1,39 @@
+binding:
+  forward: w
+  backward: s
+  left: a
+  right: d
+  lightattack: l
+  roll: ' '
+  useitem: r
+  lockon: q
+  interact: e
+  cameraup: j
+  cameradown: k
+  cameraleft: o
+  cameraright: p
+  heavyattack: h
+  parry: m
+
+keymap:
+  e: 0x45
+  w: 0x57
+  s: 0x53
+  ' ': 0x20
+  a: 0x41
+  d: 0x44
+  e: 0x45
+  l: 0x4C
+  ' ': 0x20
+  r: 0x52
+  o: 0x4F
+  p: 0x50
+  s: 0x53
+  q: 0x51
+  r: 0x52
+  w: 0x57
+  j: 0x4A
+  k: 0x4B
+  h: 0x48
+  y: 0x59
+  m: 0x4D

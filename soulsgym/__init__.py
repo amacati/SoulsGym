@@ -20,38 +20,11 @@ environment for :mod:`~.envs` or are trying to contribute, this module can safel
 environments you follow the usual pattern of ``gymnasium.make``. A list of all available
 environments is available at ``soulsgym.available_envs``.
 """
-from pathlib import Path
 import logging
-import sys
 
 from gymnasium.envs.registration import register
-if sys.platform == "win32":
-    on_windows = True
-    import win32api
-else:
-    on_windows = False
 
 logger = logging.getLogger(__name__)
-
-
-def _check_ds3_path() -> bool:
-    # DarkSoulsIII is not registered in Window's registry, therefore we look for the path itself
-    ds3path = Path()
-    drives = win32api.GetLogicalDriveStrings().split('\000')[:-1]
-    steam_path = Path("Program Files (x86)") / "Steam" / "steamapps" / "common" / "DARK SOULS III" \
-        / "Game" / "DarkSoulsIII.exe"
-    for drive in drives:
-        ds3path = Path(drive) / steam_path
-        if ds3path.is_file():
-            return True
-    return False
-
-
-if on_windows:
-    if not _check_ds3_path():
-        logger.warning("Could not find Dark Souls III executable. Continuing for now...")
-else:
-    logger.info("Running SoulsGym on a non-Windows platform. Most features are not available.")
 
 
 def set_log_level(level: int):
@@ -67,10 +40,14 @@ available_envs = ["SoulsGymIudex-v0", "SoulsGymIudexDemo-v0"]
 
 # Register environments in gymnasium
 register(id="SoulsGymIudex-v0",
-         entry_point='soulsgym.envs.iudex_env:IudexEnv',
+         entry_point='soulsgym.envs.darksouls3.iudex:IudexEnv',
+         max_episode_steps=3000,
+         nondeterministic=True)
+register(id="SoulsGymIudexImg-v0",
+         entry_point='soulsgym.envs.darksouls3.iudex:IudexImgEnv',
          max_episode_steps=3000,
          nondeterministic=True)
 register(id="SoulsGymIudexDemo-v0",
-         entry_point="soulsgym.envs.iudex_env:IudexEnvDemo",
+         entry_point="soulsgym.envs.darksouls3.iudex:IudexEnvDemo",
          max_episode_steps=3000,
          nondeterministic=True)

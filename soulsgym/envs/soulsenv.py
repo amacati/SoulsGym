@@ -7,31 +7,31 @@ In addition, we also provide a :class:`~.SoulsEnvDemo` base class for demo envir
 to the training environments, demos cover all phases of a boss fight and allow to demonstrate the
 agent's abilities in a setting that is as close to the real game as possible.
 """
+from __future__ import annotations
+
 import logging
-from typing import Tuple, List, Any
+from typing import Tuple, List, Any, Dict, TYPE_CHECKING
 from pathlib import Path
 from abc import ABC, abstractmethod
 from argparse import Namespace
 
-import gymnasium as gym
+import gymnasium
 import yaml
 import numpy as np
-from pymem.exception import MemoryReadError
 
 from soulsgym.core.game_input import GameInput
-from soulsgym.core.logger import Logger
-from soulsgym.core.game_state import GameState
-from soulsgym.core.game_interface import Game
-from soulsgym.core.static import coordinates, actions, player_animations, player_stats
-from soulsgym.core.static import critical_player_animations, boss_animations
 from soulsgym.core.utils import wrap_to_pi
 from soulsgym.core.game_window import GameWindow
+from soulsgym.games import game_factory
 from soulsgym.exception import GameStateError, ResetNeeded, InvalidPlayerStateError
+
+if TYPE_CHECKING:
+    from soulsgym.core.game_state import GameState
 
 logger = logging.getLogger(__name__)
 
 
-class SoulsEnv(gym.Env, ABC):
+class SoulsEnv(gymnasium.Env, ABC):
     """Abstract base class for ``soulsgym`` environments.
 
     Each ``SoulsEnv`` initializes a :class:`.GameInput`, a :class:`.GameWindow`, a :class:`.Game`
@@ -51,7 +51,7 @@ class SoulsEnv(gym.Env, ABC):
         image data as well.
 
     Warning:
-        Dark Souls III has to be running at the initialization of :class:`SoulsEnv`.
+        The target game has to be running at the initialization of :class:`SoulsEnv`.
 
     Warning:
         Setting ``game_speed`` too high might result in unstable behaviour. The maximal value is
@@ -61,38 +61,43 @@ class SoulsEnv(gym.Env, ABC):
 
     metadata = {'render_modes': []}
     ENV_ID = ""  # Each SoulsGym has to define its own ID and name the config files accordingly
-    step_size = 0.1
+    step_size = 0.1  # Seconds between each step
 
-    def __init__(self, game_speed: int = 1.):
+    def __init__(self, game_speed: float = 1.):
         """Initialize the game managers, load the environment config and set the game properties.
 
         Args:
             game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
         """
         super().__init__()
-        assert game_speed > 0
-        self.game_speed = game_speed
-        self.action_space = gym.spaces.Discrete(len(actions))
+        assert game_speed > 0, "Game speed must be positive!"
+        # Initialize game managers
+        self.game = game_factory(self.game_id)
+        self._game_input = GameInput(self.game_id, game_speed=game_speed)
+        self._game_window = GameWindow(self.game_id)
+        # Check if the player has loaded into the game
+        if not self.game.is_ingame:
+            logger.error("Player is not loaded into the game")
+            raise GameStateError("Player is not loaded into the game")
+        # Initialize helper variables
+        self._game_speed = game_speed
         self._internal_state = None
         self._last_player_animation_time = 0
         self._last_boss_animation_time = 0
-        self._lock_on_timer = 0  # Steps until lock on press is allowed
+        self._lock_on_timer = 0  # Steps until "lock on" press is allowed
+        self._is_init = False
         self.terminated = False
-        self._game_input = GameInput()
-        self._game_window = GameWindow()
-        self._game_check()
-        self.game = Game()
-        try:
-            self._game_logger = Logger(self.ENV_ID)
-        except MemoryReadError:
-            logger.error("__init__: Player is not loaded into the game")
-            raise GameStateError("Player is not loaded into the game")
+        # Load environment config
         self.config_path = Path(__file__).parent / "config"
         self.env_args = self._load_env_args()
         self._set_game_properties()
-        self._is_init = False
         logger.info(self.env_args.init_msg)
         logger.debug("Env init complete")
+
+    @property
+    @abstractmethod
+    def game_id(self):
+        """Every Souls game has to define the base game (e.g. DarkSoulsIII, EldenRing, ...)."""
 
     @abstractmethod
     def reset(self, seed: int | None = None, options: Any | None = None) -> Tuple[dict, dict]:
@@ -123,6 +128,16 @@ class SoulsEnv(gym.Env, ABC):
             The reward for the provided game states.
         """
 
+    @property
+    @abstractmethod
+    def obs(self) -> Dict:
+        """Return the current observation of the environment."""
+
+    @property
+    @abstractmethod
+    def info(self) -> Dict:
+        """Return the current info dict of the environment."""
+
     def step(self, action: int) -> Tuple[dict, float, bool, dict]:
         """Perform a step forward in the environment with a given action.
 
@@ -140,15 +155,14 @@ class SoulsEnv(gym.Env, ABC):
             ResetNeeded: `step()` was called after the episode was already finished.
         """
         if self.terminated:
-            logger.error("step: Environment step called after environment was terminated")
+            logger.error("Environment step called after environment was terminated")
             raise ResetNeeded("Environment step called after environment was terminated")
         previous_game_state = self._internal_state.copy()
         self._step(action)
         reward = self.compute_reward(previous_game_state, self._internal_state)
         if self.terminated:
-            logger.debug("step: Episode finished")
-        info = {"allowed_actions": self.current_valid_actions()}
-        return self._gamestate2obs(self._internal_state), reward, self.terminated, False, info
+            logger.debug("Episode finished")
+        return self.obs, reward, self.terminated, False, self.info
 
     def close(self):
         """Unpause the game, reset altered game properties and reload.
@@ -178,7 +192,8 @@ class SoulsEnv(gym.Env, ABC):
         if self._internal_state is None:
             return []
         player_animation = self._internal_state.player_animation
-        durations = player_animations.get(player_animation, {"timings": [0., 0., 0.]})["timings"]
+        durations = self.game.data.player_animations.get(player_animation,
+                                                         {"timings": [0., 0., 0.]})["timings"]
         current_duration = self._internal_state.player_animation_duration
         player_sp = self._internal_state.player_sp
         # Movement actions (duration index 2) do not require SP
@@ -191,16 +206,30 @@ class SoulsEnv(gym.Env, ABC):
         movement_ids + roll_ids + attack_ids + [19]
         return movement_ids + roll_ids + attack_ids + [19]
 
-    def render():
+    def seed(seed: Any) -> List[int]:
+        """Set the random seed for the environment.
+
+        Since we cannot control the randomness of the game and can't precisely control the game,
+        loop, this function does not have any effect.
+
+        Note:
+            Setting the seed will **not** lead to reproducible results!
+
+        Args:
+            seed: Random seed.
+
+        Returns:
+            A list with 0 to comply with OpenAI's function signature.
+        """
+        logger.warning("Trying to set the seed, but SoulsGym can't control randomness in the game")
+        return [0]
+
+    def render(self):
         """Render the environment.
 
         This is a no-op since we can't render the environment and the game has to be open anyways.
         """
-        logger.warning("Rendering the environment is not supported. Game has to be open anyways.")
-
-    def _game_check(self):
-        """Check if the game is currently running."""
-        self._game_window._get_ds_app_id()  # Raises an error if Dark Souls III is not open
+        logger.warning("Rendering the environment is useless, game has to be open anyways.")
 
     def _load_env_args(self) -> Namespace:
         """Load the configuration parameters for the environment.
@@ -216,13 +245,13 @@ class SoulsEnv(gym.Env, ABC):
         self.game.lock_on_bonus_range = 45  # Increase lock on range for bosses
         self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
         self.game.last_bonfire = self.env_args.bonfire
-        self.game.player_stats = player_stats[self.ENV_ID]
-        self.game.resume_game()
+        self.game.player_stats = self.game.data.player_stats[self.ENV_ID]
         self.game.allow_moves = True
         self.game.allow_attacks = True
         self.game.allow_hits = True
         self.game.allow_deaths = False
         self.game.allow_weapon_durability_dmg = False  # Weapons mustn't break during long sessions
+        self.game.resume_game()
 
     def _apply_action(self, action: int):
         """Apply an action to the environment.
@@ -241,7 +270,7 @@ class SoulsEnv(gym.Env, ABC):
             action: The action that is applied during this step.
         """
         if action in self.current_valid_actions():
-            self._game_input.add_actions(actions[action])
+            self._game_input.add_actions(self.game.data.actions[action])
         # We always call the update because it includes actions added by _lock_on for camera control
         # If no action was queued, the update is equivalent to a reset.
         self._game_input.update_input()
@@ -257,7 +286,7 @@ class SoulsEnv(gym.Env, ABC):
         Args:
             action: The action that is applied during this step.
         """
-        self.game.game_speed = self.game_speed
+        self.game.game_speed = self._game_speed
         t_start = self.game.time
         previous_player_animation = self._internal_state.player_animation
         previous_boss_animation = self._internal_state.boss_animation
@@ -268,6 +297,7 @@ class SoulsEnv(gym.Env, ABC):
         # so that this sleep is accounted for in the total step time.
         self._apply_action(action)
         # Offset of 0.01s to account for processing time of the loop
+        t_loop = self.game.time
         while self.game.timed(self.game.time, t_start) < (max(self.step_size - 0.01, 1e-4)):
             boss_animation = self.game.get_boss_animation(self.ENV_ID)
             if boss_animation != previous_boss_animation:
@@ -284,7 +314,7 @@ class SoulsEnv(gym.Env, ABC):
             # time.sleep(self.step_size / 1000.)
         self.game.pause_game()
         t_end = self.game.time
-        game_state = self._game_logger.log()
+        game_state = self.game.get_state(self.ENV_ID, use_cache=True)
         # The animations might change between the last loop iteration and the game_state snapshot.
         # We therefore have to check one last time and update the animation durations accordingly
         if game_state.boss_animation != previous_boss_animation:
@@ -338,15 +368,15 @@ class SoulsEnv(gym.Env, ABC):
             logger.error(game_state)
             raise InvalidPlayerStateError("Player outside of arena bounds")
         # Critical animations need special recovery routines
-        if game_state.player_animation in critical_player_animations:
+        if game_state.player_animation in self.game.data.critical_player_animations:
             return False
         # Fall detection by lower state space bound on z coordinate
         if self.env_args.coordinate_box_low[2] > game_state.player_pose[2]:
             return False
         # Unknown player animation. Shouldn't happen, add animation to tables!
-        if game_state.player_animation not in player_animations:
+        if game_state.player_animation not in self.game.data.player_animations:
             logger.warning(f"_step: Unknown player animation {game_state.player_animation}")
-        if game_state.boss_animation not in boss_animations[self.ENV_ID]["all"]:
+        if game_state.boss_animation not in self.game.data.boss_animations[self.ENV_ID]["all"]:
             logger.warning(f"_step: Unknown boss animation {game_state.boss_animation}")
         return True
 
@@ -401,37 +431,10 @@ class SoulsEnv(gym.Env, ABC):
             self._update_internal_game_state(game_state, self.step_size, self.step_size)
             self.game.reset_player_hp()
             self.game.reset_boss_hp(self.ENV_ID)
-            self.game.player_pose = coordinates[self.ENV_ID]["player_init_pose"]
-        if game_state.player_animation in critical_player_animations:
+            self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
+        if game_state.player_animation in self.game.data.critical_player_animations:
             game_state.player_hp = 0
             self._update_internal_game_state(game_state, self.step_size, self.step_size)
-
-    @staticmethod
-    def _gamestate2obs(game_state: GameState) -> dict:
-        """Convert a gamestate to an observation.
-
-        Args:
-            game_state: The game state.
-
-        Returns:
-            The observation dictionary.
-        """
-        obs = game_state.as_dict()
-        obs["player_hp"] = np.array([obs["player_hp"]], dtype=np.float32)
-        obs["player_sp"] = np.array([obs["player_sp"]], dtype=np.float32)
-        obs["boss_hp"] = np.array([obs["boss_hp"]], dtype=np.float32)
-        # Default animation ID for unknown animations is -1
-        obs["player_animation"] = player_animations.get(obs["player_animation"], {"ID": -1})["ID"]
-        obs["boss_animation"] = boss_animations["iudex"]["all"].get(obs["boss_animation"],
-                                                                    {"ID": -1})["ID"]
-        obs["player_animation_duration"] = np.array([obs["player_animation_duration"]],
-                                                    dtype=np.float32)
-        obs["boss_animation_duration"] = np.array([obs["boss_animation_duration"]],
-                                                  dtype=np.float32)
-        obs["player_pose"] = obs["player_pose"].astype(np.float32)
-        obs["boss_pose"] = obs["boss_pose"].astype(np.float32)
-        obs["camera_pose"] = obs["camera_pose"].astype(np.float32)
-        return obs
 
     def _lock_on(self, target_pose: np.ndarray | None = None):
         """Reestablish lock on by orienting the camera towards the boss and pressing lock on.
@@ -485,7 +488,7 @@ class SoulsEnvDemo(SoulsEnv):
     or the boss has been defeated.
     """
 
-    def __init__(self, game_speed: int = 1.):
+    def __init__(self, game_speed: float = 1.):
         """Initialize the demo environment.
 
         Args:
@@ -498,21 +501,15 @@ class SoulsEnvDemo(SoulsEnv):
         if self._internal_state is None or self.terminated:
             logger.error("_update_internal_game_state: SoulsEnv.step() called before reset")
             raise ResetNeeded("SoulsEnv.step() called before reset")
-        # Save animation duration and HP
+        # If the animation has not changed, add the previous duration to the time delta
         if game_state.player_animation == self._internal_state.player_animation:
-            player_animation_duration = self._internal_state.player_animation_duration
-            player_animation_duration += player_animation_td
-        else:
-            player_animation_duration = player_animation_td
+            player_animation_td += self._internal_state.player_animation_duration
         if game_state.boss_animation == self._internal_state.boss_animation:
-            boss_animation_duration = self._internal_state.boss_animation_duration
-            boss_animation_duration += boss_animation_td
-        else:
-            boss_animation_duration = boss_animation_td
+            boss_animation_td += self._internal_state.boss_animation_duration
         # Update animation count and HP
         self._internal_state = game_state
-        self._internal_state.player_animation_duration = player_animation_duration
-        self._internal_state.boss_animation_duration = boss_animation_duration
+        self._internal_state.player_animation_duration = player_animation_td
+        self._internal_state.boss_animation_duration = boss_animation_td
         if self._internal_state.player_hp < 0:
             self._internal_state.player_hp = 0
         if self._internal_state.boss_hp < 0:
@@ -527,7 +524,7 @@ class SoulsEnvDemo(SoulsEnv):
         super()._set_game_properties()
         self.game.allow_deaths = True
 
-    def _step(self, action):
+    def _step(self, action: int):
         """Continue the game after finishing the demo."""
         super()._step(action)
         if self.terminated:

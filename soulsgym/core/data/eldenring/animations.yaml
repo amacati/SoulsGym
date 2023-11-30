@@ -1,0 +1,15 @@
+player:
+  standard:
+    Idle: [0., 0., 0.]
+  critical:
+
+boss:
+  dummy:
+    attacks:
+      - Dummy
+    movement:
+      - Dummy
+    misc:
+      - Dummy
+    unused:
+      - Dummy
