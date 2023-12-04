@@ -14,7 +14,6 @@ Warning:
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict
 
 from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.game_input import GameInput
@@ -32,18 +31,18 @@ class StaticGameData:
 
     Only loads the static data required for the specific game to not clutter the game interface.
     """
-    keybindings: Dict
-    keymap: Dict
-    actions: Dict
-    coordinates: Dict
-    player_animations: Dict
-    critical_player_animations: Dict
-    boss_animations: Dict
-    player_stats: Dict
-    bonfires: Dict
-    address_bases: Dict
-    address_offsets: Dict
-    address_base_patterns: Dict
+    keybindings: dict
+    keymap: dict
+    actions: dict
+    coordinates: dict
+    player_animations: dict
+    critical_player_animations: dict
+    boss_animations: dict
+    player_stats: dict
+    bonfires: dict
+    address_bases: dict
+    address_offsets: dict
+    address_base_patterns: dict
 
     def __init__(self, game_id: str):
         """Load the static data for the specific game.

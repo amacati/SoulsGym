@@ -15,7 +15,7 @@ from __future__ import annotations
 import logging
 import random
 import time
-from typing import Any, Tuple, Dict, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from pymem.exception import MemoryReadError
 import numpy as np
@@ -111,7 +111,7 @@ class IudexEnv(SoulsEnv):
         return "DarkSoulsIII"
 
     @property
-    def obs(self) -> Dict:
+    def obs(self) -> dict:
         """Observation property of the environment.
 
         Returns:
@@ -136,7 +136,7 @@ class IudexEnv(SoulsEnv):
         return obs
 
     @property
-    def info(self) -> Dict:
+    def info(self) -> dict:
         """Info property of the environment.
 
         Returns:
@@ -165,7 +165,7 @@ class IudexEnv(SoulsEnv):
         self._last_hard_reset = time.time()
         self.game.pause_game()
 
-    def reset(self, seed: int | None = None, options: Any | None = None) -> Tuple[dict, dict]:
+    def reset(self, seed: int | None = None, options: Any | None = None) -> tuple[dict, dict]:
         """Reset the environment to the beginning of an episode.
 
         Args:
@@ -437,7 +437,7 @@ class IudexImgEnv(IudexEnv):
         return self.game.img
 
     @property
-    def info(self) -> Dict:
+    def info(self) -> dict:
         """Info property of the environment.
 
         Returns:
@@ -467,7 +467,7 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
         self._init_pose_randomization = init_pose_randomization
         self.phase = 1
 
-    def reset(self, seed: int | None = None, options: Any | None = None) -> Tuple[dict, dict]:
+    def reset(self, seed: int | None = None, options: Any | None = None) -> tuple[dict, dict]:
         """Reset the environment to the beginning of an episode.
 
         Args:
@@ -483,7 +483,7 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
         self.phase = 1
         return super().reset()
 
-    def step(self, action: int) -> Tuple[dict, float, bool, dict]:
+    def step(self, action: int) -> tuple[dict, float, bool, dict]:
         """Perform a step forward in the environment with a given action.
 
         Each step advances the ingame time by `step_size` seconds. The game is paused before and

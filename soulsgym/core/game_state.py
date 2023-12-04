@@ -5,7 +5,6 @@ representation of the gym.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict
 import copy
 
 import numpy as np
@@ -39,7 +38,7 @@ class GameState:
         """
         return GameState(**self.__dict__)
 
-    def as_dict(self, deepcopy: bool = True) -> Dict:
+    def as_dict(self, deepcopy: bool = True) -> dict:
         """Create a dictionary from the data members.
 
         Args:
@@ -52,7 +51,7 @@ class GameState:
             return copy.deepcopy(self.__dict__)
         return self.__dict__.copy()
 
-    def as_json(self) -> Dict:
+    def as_json(self) -> dict:
         """JSON encode the ``GameState`` class.
 
         Returns:
@@ -65,7 +64,7 @@ class GameState:
         return json_dict
 
     @staticmethod
-    def from_dict(data_dict: Dict) -> GameState:
+    def from_dict(data_dict: dict) -> GameState:
         """Create a ``GameState`` object from a dictionary.
 
         Args:

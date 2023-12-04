@@ -10,7 +10,7 @@ agent's abilities in a setting that is as close to the real game as possible.
 from __future__ import annotations
 
 import logging
-from typing import Tuple, List, Any, Dict, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 from pathlib import Path
 from abc import ABC, abstractmethod
 from argparse import Namespace
@@ -100,7 +100,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         """Every Souls game has to define the base game (e.g. DarkSoulsIII, EldenRing, ...)."""
 
     @abstractmethod
-    def reset(self, seed: int | None = None, options: Any | None = None) -> Tuple[dict, dict]:
+    def reset(self, seed: int | None = None, options: Any | None = None) -> tuple[dict, dict]:
         """Reset the environment to the beginning of an episode.
 
         Args:
@@ -130,15 +130,15 @@ class SoulsEnv(gymnasium.Env, ABC):
 
     @property
     @abstractmethod
-    def obs(self) -> Dict:
+    def obs(self) -> dict:
         """Return the current observation of the environment."""
 
     @property
     @abstractmethod
-    def info(self) -> Dict:
+    def info(self) -> dict:
         """Return the current info dict of the environment."""
 
-    def step(self, action: int) -> Tuple[dict, float, bool, dict]:
+    def step(self, action: int) -> tuple[dict, float, bool, dict]:
         """Perform a step forward in the environment with a given action.
 
         Each step advances the ingame time by `step_size` seconds. The game is paused before and
@@ -183,7 +183,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         self.game.player_hp = 0  # Kill player to force game reload. Don't wait for completion
         logger.debug("SoulsEnv close successful")
 
-    def current_valid_actions(self) -> List[int]:
+    def current_valid_actions(self) -> list[int]:
         """Get the set of currently valid actions.
 
         Returns:
@@ -206,7 +206,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         movement_ids + roll_ids + attack_ids + [19]
         return movement_ids + roll_ids + attack_ids + [19]
 
-    def seed(seed: Any) -> List[int]:
+    def seed(seed: Any) -> list[int]:
         """Set the random seed for the environment.
 
         Since we cannot control the randomness of the game and can't precisely control the game,

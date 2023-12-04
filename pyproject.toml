@@ -48,8 +48,9 @@ find = {}
 
 [tool.setuptools.package-data]
 soulsgym = [
-    "soulsgym/core/data/*.yaml",
+    "soulsgym/core/data/**/*.yaml",
     "soulsgym/core/speedhack/_C/*.dll",
+    "soulsgym/core/game_window/_C/window_capture.pyd",
     "soulsgym/envs/config/*.yaml",
 ]
 

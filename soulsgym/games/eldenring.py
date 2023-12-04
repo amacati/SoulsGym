@@ -1,6 +1,6 @@
 import logging
 import struct
-from typing import Tuple, Any
+from typing import Any
 import time
 
 from pymem.exception import MemoryReadError
@@ -44,7 +44,7 @@ class EldenRing(Game):
         raise RuntimeError("Game image can't be set!")
 
     @property
-    def img_resolution(self) -> Tuple[int, int]:
+    def img_resolution(self) -> tuple[int, int]:
         """The game image resolution.
 
         Note:
@@ -57,7 +57,7 @@ class EldenRing(Game):
         return self._game_window.resolution
 
     @img_resolution.setter
-    def img_resolution(self, resolution: Tuple[int, int]):
+    def img_resolution(self, resolution: tuple[int, int]):
         self._game_window.img_resolution = resolution
 
     @property
@@ -192,7 +192,7 @@ class EldenRing(Game):
         return np.array([x, y, z, a])
 
     @player_pose.setter
-    def player_pose(self, coordinates: Tuple[float]):
+    def player_pose(self, coordinates: list[float]):
         # Player coordinates have to be set in the local frame. Therefore, we first have to
         # 1) Read global coordinates
         # 2) Calculate difference to target coordinates
@@ -250,13 +250,13 @@ class EldenRing(Game):
         self.mem.write_bit(address, 0, bit)
 
     @property
-    def player_stats(self) -> Tuple[int]:
+    def player_stats(self) -> tuple[int]:
         """The current player stats from the game.
 
         The stats can be overwritten by a tuple of matching dimension (9) and order.
 
         Returns:
-            A Tuple with all player attributes in the same order as in the game.
+            A tuple with all player attributes in the same order as in the game.
         """
         base = self.mem.bases["GameDataMan"]
         address_sl = self.mem.resolve_address(self.data.address_offsets["SoulLevel"], base=base)
@@ -283,7 +283,7 @@ class EldenRing(Game):
         return (sl, vigor, mind, endurance, strength, dex, intelligence, faith, arcane)
 
     @player_stats.setter
-    def player_stats(self, stats: Tuple[int]):
+    def player_stats(self, stats: list[int]):
         assert len(stats) == 9, "Stats tuple dimension does not match requirements"
         base = self.mem.bases["GameDataMan"]
         address_sl = self.mem.resolve_address(self.data.address_offsets["SoulLevel"], base=base)
@@ -333,7 +333,7 @@ class EldenRing(Game):
         return np.array([x - cx, y - cy, z - cz, nx, ny, nz])
 
     @camera_pose.setter
-    def camera_pose(self, normal: Tuple[float]):
+    def camera_pose(self, normal: list[float]):
         assert len(normal) == 3, "Normal vector must have 3 elements"
         assert self.game_speed > 0, "Camera cannot move while the game is paused"
         normal = np.array(normal, dtype=np.float64)

@@ -22,7 +22,7 @@ writes in the game loop (e.g. coordinates). Be sure to include checks if writes 
 have taken effect in the game when you write to these memory locations.
 """
 from __future__ import annotations
-from typing import List, Dict
+
 import platform
 
 if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
@@ -84,7 +84,7 @@ class MemoryManipulator(metaclass=Singleton):
         """
         self.address_cache = {}
 
-    def resolve_address(self, addr_offsets: List[int], base: int) -> int:
+    def resolve_address(self, addr_offsets: list[int], base: int) -> int:
         """Resolve an address by its offsets and a base.
 
         Looks up the address cache first.
@@ -245,7 +245,7 @@ class MemoryManipulator(metaclass=Singleton):
         """
         pym.memory.write_bytes(self.pymem.process_handle, address, buffer, len(buffer))
 
-    def _load_bases(self, process_name: str) -> Dict:
+    def _load_bases(self, process_name: str) -> dict:
         match process_name:
             case "DarkSoulsIII.exe":
                 game = "DarkSoulsIII"

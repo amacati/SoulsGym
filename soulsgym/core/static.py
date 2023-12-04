@@ -6,7 +6,6 @@ values for boss and player animations. These can be employed to fit one-hot enco
 names prior to learning.
 """
 from pathlib import Path
-from typing import Dict, Tuple
 
 import yaml
 import numpy as np
@@ -19,7 +18,7 @@ _data_paths = {
 }
 
 
-def _load_keybindings_and_mapping() -> Tuple[Dict, Dict]:
+def _load_keybindings_and_mapping() -> tuple[dict, dict]:
     keybindings, keymap = {}, {}
     for game in _games:
         with open(_data_paths[game] / "keys.yaml", "r") as f:
@@ -30,7 +29,7 @@ def _load_keybindings_and_mapping() -> Tuple[Dict, Dict]:
     return keybindings, keymap
 
 
-def _load_actions() -> Dict:
+def _load_actions() -> dict:
     actions = {}
     for game in _games:
         with open(_data_paths[game] / "actions.yaml", "r") as f:
@@ -38,7 +37,7 @@ def _load_actions() -> Dict:
     return actions
 
 
-def _load_coordinates() -> Dict:
+def _load_coordinates() -> dict:
     coordinates = {}
     for game in _games:
         with open(_data_paths[game] / "coordinates.yaml", "r") as f:
@@ -52,7 +51,7 @@ def _load_coordinates() -> Dict:
     return coordinates
 
 
-def _load_animations() -> Tuple[Dict, Dict, Dict]:
+def _load_animations() -> tuple[dict, dict, dict]:
     player_animations, critical_player_animations, boss_animations = {}, {}, {}
     for game in _games:
         with open(_data_paths[game] / "animations.yaml", "r") as f:
@@ -83,7 +82,7 @@ def _load_animations() -> Tuple[Dict, Dict, Dict]:
     return player_animations, critical_player_animations, boss_animations
 
 
-def _load_player_stats() -> Dict:
+def _load_player_stats() -> dict:
     player_stats = {}
     for game in _games:
         with open(_data_paths[game] / "player_stats.yaml", "r") as f:
@@ -91,7 +90,7 @@ def _load_player_stats() -> Dict:
     return player_stats
 
 
-def _load_bonfires() -> Dict:
+def _load_bonfires() -> dict:
     bonfires = {}
     for game in _games:
         with open(_data_paths[game] / "bonfires.yaml", "r") as f:
@@ -99,7 +98,7 @@ def _load_bonfires() -> Dict:
     return bonfires
 
 
-def _load_addresses() -> Tuple[Dict, Dict, Dict]:
+def _load_addresses() -> tuple[dict, dict, dict]:
     address_bases, address_offsets, address_base_patterns = {}, {}, {}
     for game in _games:
         with open(_data_paths[game] / "addresses.yaml", "r") as f:

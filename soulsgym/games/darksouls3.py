@@ -1,6 +1,6 @@
 """This module contains the game interface for Dark Souls III."""
 import struct
-from typing import Tuple, Any
+from typing import Any
 import logging
 import time
 
@@ -96,7 +96,7 @@ class DarkSoulsIII(Game):
         raise RuntimeError("Game image can't be set!")
 
     @property
-    def img_resolution(self) -> Tuple[int, int]:
+    def img_resolution(self) -> tuple[int, int]:
         """The game image resolution.
 
         Note:
@@ -111,11 +111,11 @@ class DarkSoulsIII(Game):
         return self._game_window.img_resolution
 
     @img_resolution.setter
-    def img_resolution(self, resolution: Tuple[int, int]):
+    def img_resolution(self, resolution: tuple[int, int]):
         self._game_window.img_resolution = resolution
 
     @property
-    def window_resolution(self) -> Tuple[int, int]:
+    def window_resolution(self) -> tuple[int, int]:
         """The game window resolution.
 
         Note:
@@ -135,7 +135,7 @@ class DarkSoulsIII(Game):
         return (width, height)
 
     @window_resolution.setter
-    def window_resolution(self, resolution: Tuple[int, int]):
+    def window_resolution(self, resolution: tuple[int, int]):
         base = self.mem.bases["CSWindow"]
         address = self.mem.resolve_address(self.data.address_offsets["WindowScreenWidth"],
                                            base=base)
@@ -261,7 +261,7 @@ class DarkSoulsIII(Game):
         return np.array([x, y, z, a])
 
     @player_pose.setter
-    def player_pose(self, coordinates: Tuple[float]):
+    def player_pose(self, coordinates: tuple[float]):
         # If we write the x coordinate and the game loop updates the player's position immediately
         # after, we teleport before setting the other coordinates. In order to minimize these races
         # between coordinates, we pack xzy into a byte package and write it in one call. We can't
@@ -349,13 +349,13 @@ class DarkSoulsIII(Game):
         self.mem.write_bytes(address, struct.pack('B', not flag))
 
     @property
-    def player_stats(self) -> Tuple[int]:
+    def player_stats(self) -> tuple[int]:
         """The current player stats from the game.
 
         The stats can be overwritten by a tuple of matching dimension (10) and order.
 
         Returns:
-            A Tuple with all player attributes in the same order as in the game.
+            A tuple with all player attributes in the same order as in the game.
         """
         base = self.mem.bases["GameDataMan"]
         address_sl = self.mem.resolve_address(self.data.address_offsets["SoulLevel"], base=base)
@@ -384,7 +384,7 @@ class DarkSoulsIII(Game):
         return (sl, vigor, att, endurance, vit, strength, dex, intelligence, faith, luck)
 
     @player_stats.setter
-    def player_stats(self, stats: Tuple[int]):
+    def player_stats(self, stats: tuple[int]):
         assert len(stats) == 10, "Stats tuple dimension does not match requirements"
         base = self.mem.bases["GameDataMan"]
         address_sl = self.mem.resolve_address(self.data.address_offsets["SoulLevel"], base=base)
@@ -600,7 +600,7 @@ class DarkSoulsIII(Game):
         return np.array([x, y, z, a])
 
     @iudex_pose.setter
-    def iudex_pose(self, coordinates: Tuple[float]):
+    def iudex_pose(self, coordinates: tuple[float]):
         game_speed = self.game_speed  # TODO: Verify this is necessary
         self.pause_game()
         base = self.mem.bases["Iudex"]
@@ -808,7 +808,7 @@ class DarkSoulsIII(Game):
         return np.array([x, y, z, nx, ny, nz])
 
     @camera_pose.setter
-    def camera_pose(self, normal: Tuple[float]):
+    def camera_pose(self, normal: tuple[float]):
         assert len(normal) == 3, "Normal vector must have 3 elements"
         assert self.game_speed > 0, "Camera cannot move while the game is paused"
         normal = np.array(normal, dtype=np.float64)

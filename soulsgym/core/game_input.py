@@ -1,7 +1,7 @@
 """The ``game_input`` module provides an interface to trigger keystrokes from within the gym."""
 import ctypes
 from ctypes import wintypes
-from typing import Any, List
+from typing import Any
 import time
 import platform
 
@@ -80,7 +80,7 @@ class GameInput:
         assert action in self.state.keys()
         self.queued_actions.append(action)
 
-    def add_actions(self, actions: List[str]):
+    def add_actions(self, actions: list[str]):
         """Queue multiple actions for the next game input.
 
         Action strings have to be contained in :data:`.static.keybindings`.
