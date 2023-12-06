@@ -1,5 +1,6 @@
 """Utility module for ``soulsgym``."""
 from __future__ import annotations
+
 from typing import Union, Any
 from threading import Lock
 from weakref import WeakValueDictionary

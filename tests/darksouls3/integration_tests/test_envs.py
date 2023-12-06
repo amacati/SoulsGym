@@ -30,7 +30,7 @@ def run_env(env_name: str, kwargs: dict | None = None):
             _, _, terminated, truncated, _ = env.step(env.action_space.sample())
     finally:
         env.close()
-        env.game.reload()
+        env.unwrapped.game.reload()
 
 
 @pytest.mark.integration

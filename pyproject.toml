@@ -42,16 +42,16 @@ Homepage = "https://github.com/amacati/SoulsGym"
 Documentation = "https://soulsgym.readthedocs.io/en/latest/"
 Repository = "https://github.com/amacati/SoulsGym"
 
-[tool.setuptools.packages]
-find = {}
-
+[tool.setuptools.packages.find]
+namespaces = true
 
 [tool.setuptools.package-data]
 soulsgym = [
-    "soulsgym/core/data/**/*.yaml",
-    "soulsgym/core/speedhack/_C/*.dll",
-    "soulsgym/core/game_window/_C/window_capture.pyd",
-    "soulsgym/envs/config/*.yaml",
+    "core/data/darksouls3/*.yaml",
+    "core/data/eldenring/*.yaml",
+    "core/speedhack/_C/*.dll",
+    "core/game_window/_C/window_capture.pyd",
+    "envs/config/*.yaml",
 ]
 
 [tool.yapf]
