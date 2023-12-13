@@ -6,7 +6,7 @@ binding:
   lightattack: l
   roll: ' '
   useitem: q
-  lockon: r
+  lock_on: r
   interact: e
   cameraup: j
   cameradown: k

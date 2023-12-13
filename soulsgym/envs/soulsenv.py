@@ -111,10 +111,6 @@ class SoulsEnv(gymnasium.Env, ABC):
             A tuple of the first game state and the info dict after the reset.
         """
 
-    @abstractmethod
-    def _env_setup(self):
-        """Execute the setup sequence for the boss fight."""
-
     @staticmethod
     @abstractmethod
     def compute_reward(game_state: GameState, next_game_state: GameState) -> float:
@@ -467,7 +463,7 @@ class SoulsEnv(gymnasium.Env, ABC):
                 if np.dot(cpose[3:], normal) > 0.8 and self._lock_on_timer <= 0:
                     # Lock on is established on "button down", so we press once per 3 steps to make
                     # sure we don't get stuck after one bad press
-                    self._game_input.add_action("lockon")
+                    self._game_input.add_action("lock_on")
                     self._lock_on_timer = 3
                     return
                 self._lock_on_timer -= 1

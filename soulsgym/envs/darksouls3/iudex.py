@@ -207,7 +207,7 @@ class IudexEnv(SoulsEnv):
         # a unit outside the arena. This changes the player's orientation and prevents the
         # successful teleport to the initial pose. We therefore have to release lock on
         if self.game.lock_on:
-            self._game_input.single_action("lockon", 0.005)
+            self._game_input.single_action("lock_on", 0.005)
         tstart = time.time()
         while not self._reset_check(player_pose):
             self.game.player_pose = player_pose
@@ -287,9 +287,7 @@ class IudexEnv(SoulsEnv):
         """Enter the fog gate."""
         self.game.camera_pose = self.env_args.cam_setup_orient
         self._game_input.single_action("interact")
-        while True:
-            if self.game.player_animation == "Idle":
-                break
+        while not self.game.player_animation == "Idle":
             self.game.sleep(0.1)
         fog_wall_pos = self.game.data.coordinates[self.ENV_ID]["post_fog_wall"][:3]
         if np.linalg.norm(self.game.player_pose[:3] - fog_wall_pos) > 0.1:

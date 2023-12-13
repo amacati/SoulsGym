@@ -34,6 +34,24 @@ class DarkSoulsIII(Game):
         self._game_speed = 1.0
         self.game_speed = 1.0
 
+    def requires_boss_support(fn):
+        """Decorator to report unsupported boss IDs.
+
+        Args:
+            fn: The function to decorate.
+
+        Returns:
+            The decorated function.
+        """
+
+        def requires_boss_support_wrapper(self, boss_id: str, *args, **kwargs):
+            try:
+                return fn(self, boss_id, *args, **kwargs)
+            except AttributeError as e:
+                raise NotImplementedError(f"Support for boss {boss_id} is not implemented.") from e
+
+        return requires_boss_support_wrapper
+
     def get_state(self, boss_id: str, use_cache: bool = False):
         """Get the current state of the game.
 
@@ -412,6 +430,7 @@ class DarkSoulsIII(Game):
         self.mem.write_int(address_faith, stats[8])
         self.mem.write_int(address_luck, stats[9])
 
+    @requires_boss_support
     def check_boss_flags(self, boss_id: str) -> bool:
         """Check if the boss flags are correct for starting the boss fight.
 
@@ -420,15 +439,10 @@ class DarkSoulsIII(Game):
 
         Returns:
             True if all boss flags are correct else False.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            return self.iudex_flags
-        logger.error(f"Boss name {boss_id} currently not supported")
-        raise KeyError(f"Boss name {boss_id} currently not supported")
+        return getattr(self, boss_id + "_flags")
 
+    @requires_boss_support
     def set_boss_flags(self, boss_id: str, flag: bool):
         """Set the boss flags of a boss to enable the boss fight.
 
@@ -439,23 +453,38 @@ class DarkSoulsIII(Game):
         Raises:
             KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            self.iudex_flags = flag
-        else:
-            logger.error(f"Boss name {boss_id} currently not supported")
-            raise KeyError(f"Boss name {boss_id} currently not supported")
+        setattr(self, boss_id + "_flags", flag)
 
     @property
     def iudex_flags(self) -> bool:
         """Iudex boss fight flags.
 
         True means the Iudex flags are set to "encountered", "sword pulled out" and "not defeated".
-        All other configurations are False. When the flag is set to False, the "encountered",
-        "sword pulled out" and "defeated" flags are set to False.
+        In addition, the "Untended Graves" flag is set to False (0x0). All other configurations are
+        False. When the flag is set to False, the "encountered", "sword pulled out" and "defeated"
+        flags are set to False. The "Untended Graves" flag remains untouched.
+
+        Note:
+            Iudex Gundyr and Champion Gundyr share the exact same area in the game. Which level is
+            loaded depends on the "Untended Graves" flag. If the flag is set to False, the
+            "Cemetery of Ash" version of the level loads. If it is set to True (0xA), the "Untended 
+            Graves" version loads. The flag is set by the game whenever the player advances past
+            Firelink Shrine. Warping from bonfires loads the correct level, but setting the last
+            bonfire and respawning will not. Therefore, the "Untended Graves" flag has to be set to
+            False when we want to spawn in "Cemetery of Ash".
+
+        Note:
+            The "Untended Graves" flag is known in the CheatEngine community as "ceremony" flag.
+            Additional infos can be found in inuNorii's warp script in the grand archives cheat
+            table.
 
         Returns:
             True if all flags are correct, False otherwise.
         """
+        base = self.mem.bases["UntendedGravesFlag"]
+        address = self.mem.resolve_address(self.data.address_offsets["UntendedGravesFlag"], base)
+        if self.mem.read_bytes(address, 1) == b'\x0A':
+            return False
         base = self.mem.bases["GameFlagData"]
         address = self.mem.resolve_address(self.data.address_offsets["IudexDefeated"], base=base)
         buff = self.mem.read_int(address)
@@ -469,6 +498,12 @@ class DarkSoulsIII(Game):
     def iudex_flags(self, val: bool):
         flag = 1 if val else 0
         base = self.mem.bases["GameFlagData"]
+        # Iudex shares the
+        if flag:
+            base = self.mem.bases["UntendedGravesFlag"]
+            address = self.mem.resolve_address(self.data.address_offsets["UntendedGravesFlag"],
+                                               base)
+            self.mem.write_bytes(address, struct.pack('B', 0))
         # Encountered flag
         address = self.mem.resolve_address(self.data.address_offsets["IudexDefeated"], base=base)
         self.mem.write_bit(address, 5, flag)
@@ -477,6 +512,7 @@ class DarkSoulsIII(Game):
         # Defeated flag
         self.mem.write_bit(address, 7, 0)
 
+    @requires_boss_support
     def get_boss_max_hp(self, boss_id: str) -> int:
         """Get the maximum health points of a boss.
 
@@ -485,15 +521,10 @@ class DarkSoulsIII(Game):
 
         Returns:
             The maximum health points of the specified boss.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            return self.iudex_max_hp
-        logger.error(f"Boss name {boss_id} currently not supported")
-        raise KeyError(f"Boss name {boss_id} currently not supported")
+        return getattr(self, boss_id + "_max_hp")
 
+    @requires_boss_support
     def get_boss_hp(self, boss_id: str) -> int:
         """Get the health points of a boss.
 
@@ -502,30 +533,18 @@ class DarkSoulsIII(Game):
 
         Returns:
             The health points of the specified boss.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            return self.iudex_hp
-        logger.error(f"Boss name {boss_id} currently not supported")
-        raise KeyError(f"Boss name {boss_id} currently not supported")
+        return getattr(self, boss_id + "_hp")
 
+    @requires_boss_support
     def set_boss_hp(self, boss_id: str, hp: int):
         """Set the health points of a boss.
 
         Args:
             boss_id: The boss ID.
             hp: The health points assigned to the boss.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            self.iudex_hp = hp
-        else:
-            logger.error(f"Boss name {boss_id} currently not supported")
-            raise KeyError(f"Boss name {boss_id} currently not supported")
+        setattr(self, boss_id + "_hp", hp)
 
     @property
     def iudex_hp(self) -> int:
@@ -554,21 +573,16 @@ class DarkSoulsIII(Game):
         """
         return 1037
 
+    @requires_boss_support
     def reset_boss_hp(self, boss_id: str):
         """Reset the current boss hit points.
 
         Args:
             boss_id: The boss ID.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            self.iudex_hp = self.iudex_max_hp
-        else:
-            logger.error(f"Boss name {boss_id} currently not supported")
-            raise KeyError(f"Boss {boss_id} not supported!")
+        setattr(self, boss_id + "_hp", getattr(self, boss_id + "_max_hp"))
 
+    @requires_boss_support
     def get_boss_pose(self, boss_id: str) -> np.ndarray:
         """Get the current boss pose.
 
@@ -577,14 +591,8 @@ class DarkSoulsIII(Game):
 
         Returns:
             The current boss pose.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            return self.iudex_pose
-        logger.error(f"Boss name {boss_id} currently not supported")
-        raise KeyError(f"Boss name {boss_id} currently not supported")
+        return getattr(self, boss_id + "_pose")
 
     @property
     def iudex_pose(self) -> np.ndarray:
@@ -611,6 +619,17 @@ class DarkSoulsIII(Game):
         self.mem.write_float(a_addr, coordinates[3])
         self.game_speed = game_speed
 
+    @requires_boss_support
+    def set_boss_pose(self, boss_id: str, coordinates: tuple[float]):
+        """Set the current boss pose.
+
+        Args:
+            boss_id: The boss ID.
+            coordinates: The coordinates of the boss pose.
+        """
+        setattr(self, boss_id + "_pose", coordinates)
+
+    @requires_boss_support
     def get_boss_phase(self, boss_id: str) -> int:
         """Get the current boss phase.
 
@@ -618,21 +637,15 @@ class DarkSoulsIII(Game):
 
         Returns:
             The current boss phase.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            return self.iudex_phase
-        else:
-            logger.error(f"Boss name {boss_id} currently not supported")
-            raise KeyError(f"Boss name {boss_id} currently not supported")
+        return getattr(self, boss_id + "_phase")
 
     @property
     def iudex_phase(self) -> int:
         """Phase detection is currently not implemented."""
         raise NotImplementedError
 
+    @requires_boss_support
     def get_boss_animation(self, boss_id: str) -> str:
         """Get the current boss animation.
 
@@ -641,15 +654,8 @@ class DarkSoulsIII(Game):
 
         Returns:
             The current boss animation.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            return self.iudex_animation
-        else:
-            logger.error(f"Boss name {boss_id} currently not supported")
-            raise KeyError(f"Boss name {boss_id} currently not supported")
+        return getattr(self, boss_id + "_animation")
 
     @property
     def iudex_animation(self) -> str:
@@ -694,11 +700,7 @@ class DarkSoulsIII(Game):
         Returns:
             The bosses current animation time.
         """
-        if boss_id == "iudex":
-            return self.iudex_animation_time
-        else:
-            logger.error(f"Boss name {boss_id} currently not supported")
-            raise KeyError(f"Boss name {boss_id} currently not supported")
+        return getattr(self, boss_id + "_animation_time")
 
     @property
     def iudex_animation_time(self) -> float:
@@ -728,11 +730,7 @@ class DarkSoulsIII(Game):
         Returns:
             The bosses current maximum animation time.
         """
-        if boss_id == "iudex":
-            return self.iudex_animation_max_time
-        else:
-            logger.error(f"Boss name {boss_id} currently not supported")
-            raise KeyError(f"Boss name {boss_id} currently not supported")
+        return getattr(self, boss_id + "_animation_time")
 
     @property
     def iudex_animation_max_time(self) -> float:
@@ -753,20 +751,14 @@ class DarkSoulsIII(Game):
     def iudex_animation_max_time(self, _: float):
         raise NotImplementedError("Setting iudex animation max time is not supported")
 
+    @requires_boss_support
     def set_boss_attacks(self, boss_id: str, flag: bool):
         """Set the ``allow_attack`` flag of a boss.
 
         Args:
             boss_id: The boss ID.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
         """
-        if boss_id == "iudex":
-            self.iudex_attacks = flag
-        else:
-            logger.error(f"Boss name {boss_id} currently not supported")
-            raise KeyError(f"Boss name {boss_id} currently not supported")
+        setattr(self, boss_id + "_attacks", flag)
 
     @property
     def iudex_attacks(self) -> bool:

@@ -256,8 +256,7 @@ class MemoryManipulator(metaclass=Singleton):
         if address_bases[game] is None:
             bases = {}
         else:
-            bases = {name: addr + self.base_address
-                     for name, addr in address_bases[game].items()}
+            bases = {name: addr + self.base_address for name, addr in address_bases[game].items()}
         for base_key, base in address_base_patterns[game].items():
             pattern = bytes(base["pattern"], "ASCII")
             addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.process_module,

@@ -1,6 +1,5 @@
 # Setup args
-init_msg: "Iudex Gundyr gym. Please make sure you start at the `Cemetry of Ash` bonfire!\n
-Please make sure your keyboard settings are correct!"
+init_msg: "Iudex Gundyr gym. Please make sure your keyboard settings are correct!"
 cam_setup_orient: [0.378, 0.926, 0]
 
 # StateSpace coordinate boxes
