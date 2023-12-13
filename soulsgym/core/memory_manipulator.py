@@ -263,11 +263,20 @@ class MemoryManipulator(metaclass=Singleton):
                                                    pattern)
             if not addr:
                 raise RuntimeError(f"Pattern for '{base_key}' could not be resolved!")
-            # Conversion logic from TGA cheat table for Dark Souls III v. 3.1.2
-            # More recent versions use CE disassembler. Address is read from asm commands, e.g.
-            # rbx,[address]
-            # TODO: If possible, replace with own disassembler
             if "offset" in base:
                 addr += base["offset"]
+            # Conversion logic from TGA cheat table for Dark Souls III v. 3.1.2
+            # More recent table versions use CE disassembler. Address is read from asm, e.g.
+            #
+            # rbx,[address]
+            #
+            # [x + 3] + 7 is necessary to extract the same addresses as CheatEngine. The + 3 should
+            # be the offset for the leading asm command, e.g. rbx. Not sure about the +7, but it
+            # matches the definition in version 3.1.2 and earlier.
+            #
+            # After the conversion, the address is equal to the base address in CheatEngine. I.e. if
+            # the pointer chain is [["DarkSoulsIII.exe" + 0x123] + 0x456], the address we store in
+            # bases is "DarkSoulsIII.exe" + 0x123.
+            # TODO: If possible, replace with own disassembler
             bases[base_key] = addr + self.pymem.read_long(addr + 3) + 7
         return bases

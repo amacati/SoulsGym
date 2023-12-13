@@ -481,29 +481,27 @@ class DarkSoulsIII(Game):
         Returns:
             True if all flags are correct, False otherwise.
         """
-        base = self.mem.bases["UntendedGravesFlag"]
+        base = self.mem.bases["WorldChrMan"]
         address = self.mem.resolve_address(self.data.address_offsets["UntendedGravesFlag"], base)
         if self.mem.read_bytes(address, 1) == b'\x0A':
             return False
         base = self.mem.bases["GameFlagData"]
         address = self.mem.resolve_address(self.data.address_offsets["IudexDefeated"], base=base)
-        buff = self.mem.read_int(address)
         # The leftmost 3 bits tell if iudex is defeated(7), encountered(6) and his sword is pulled
-        # out (5). We need him encountered and his sword pulled out but not defeated, so shifting
-        # the bits by five has to be equal to xxxxx011 (binary). Therefore we check if the value is
-        # 3 (python fills with 0 bits)
-        return (buff >> 5) == 3
+        # out (5). We need him encountered and his sword pulled out but not defeated. Therefore we
+        # check if the value is 0b01100000 = 0x60
+        return self.mem.read_bytes(address, 1) == b'\x60'  # 01100000
 
     @iudex_flags.setter
     def iudex_flags(self, val: bool):
         flag = 1 if val else 0
-        base = self.mem.bases["GameFlagData"]
         # Iudex shares the
         if flag:
-            base = self.mem.bases["UntendedGravesFlag"]
+            base = self.mem.bases["WorldChrMan"]
             address = self.mem.resolve_address(self.data.address_offsets["UntendedGravesFlag"],
                                                base)
             self.mem.write_bytes(address, struct.pack('B', 0))
+        base = self.mem.bases["GameFlagData"]
         # Encountered flag
         address = self.mem.resolve_address(self.data.address_offsets["IudexDefeated"], base=base)
         self.mem.write_bit(address, 5, flag)
