@@ -689,6 +689,29 @@ class DarkSoulsIII(Game):
             return "Attack" + str(attack_id)
         return animation
 
+    @property
+    def vordt_animation(self) -> str:
+        """Vordt's current animation.
+
+        Returns:
+            Vordt's current animation.
+        """
+        # Animation string has maximum of 20 chars (utf-16)
+        base = self.mem.bases["Vordt"]
+        address = self.mem.resolve_address(self.data.address_offsets["VordtAnimation"], base=base)
+        animation = self.mem.read_string(address, 40, codec="utf-16")
+        # See iudex_animation for details on the extra checks
+        if "SABlend" in animation or "Attack" in animation or "Part" in animation:
+            address = self.mem.resolve_address(self.data.address_offsets["VordtAttackID"], base)
+            attack_id = self.mem.read_int(address)
+            if attack_id == -1:  # Read fallback register
+                address += 0x10
+                attack_id = self.mem.read_int(address)
+                if attack_id == -1:  # No active attack, so default to best guess
+                    return "IdleBattle"
+            return "Attack" + str(attack_id)
+        return animation
+
     def get_boss_animation_time(self, boss_id: str) -> float:
         """Get the duration of the bosses current animation.
 
