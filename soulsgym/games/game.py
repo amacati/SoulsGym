@@ -19,7 +19,6 @@ from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.game_window import GameWindow
 from soulsgym.core.speedhack import SpeedHackConnector
-from soulsgym.core.game_state import GameState
 from soulsgym.core.static import keybindings, keymap, actions, coordinates, player_animations
 from soulsgym.core.static import critical_player_animations, boss_animations, player_stats
 from soulsgym.core.static import bonfires, address_bases, address_offsets, address_base_patterns
@@ -99,12 +98,4 @@ class Game(ABC):
 
         Returns:
             The game process name.
-        """
-
-    @abstractmethod
-    def get_state(self) -> GameState:
-        """Read the current state of the game into a :class:`.GameState`.
-
-        Returns:
-            The current game state.
         """

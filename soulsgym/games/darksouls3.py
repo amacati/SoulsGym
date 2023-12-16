@@ -1,4 +1,6 @@
 """This module contains the game interface for Dark Souls III."""
+from __future__ import annotations
+
 import struct
 from typing import Any
 import logging
@@ -7,7 +9,6 @@ import time
 import numpy as np
 from pymem.exception import MemoryReadError
 
-from soulsgym.core.game_state import GameState
 from soulsgym.core.utils import wrap_to_pi
 from soulsgym.games import Game
 
@@ -30,71 +31,8 @@ class DarkSoulsIII(Game):
         super().__init__()  # Initialize helpers for game access and manipulation
         # Helper attributes
         self._game_flags = {}  # Cache game flags to restore them after a game reload
-        self._game_state_cache = {}  # Partially cache game states to reduce the number of reads
         self._game_speed = 1.0
         self.game_speed = 1.0
-
-    def requires_boss_support(fn):
-        """Decorator to report unsupported boss IDs.
-
-        Args:
-            fn: The function to decorate.
-
-        Returns:
-            The decorated function.
-        """
-
-        def requires_boss_support_wrapper(self, boss_id: str, *args, **kwargs):
-            try:
-                return fn(self, boss_id, *args, **kwargs)
-            except AttributeError as e:
-                raise NotImplementedError(f"Support for boss {boss_id} is not implemented.") from e
-
-        return requires_boss_support_wrapper
-
-    def get_state(self, boss_id: str, use_cache: bool = False):
-        """Get the current state of the game.
-
-        Some attributes (i.e. boss_max_hp, player_max_hp, player_max_sp) can be cached to reduce
-        redundand memory reads.
-
-        Warning:
-            We do not have access to the length of the current animation and are unable to determine
-            the animation count from the game memory alone. All animation durations in the
-            ``GameState`` are set to 0. The animation durations tracking is the responsibility of
-            the gyms instead.
-
-        Warning:
-            If the maximum player hp, sp or boss hp change and the cache is enabled, the change
-            won't be reflected in the ``GameState``! You need to call
-            :meth:`.DarkSoulsIII.clear_game_state_cache` yourself to ensure subsequent game states
-            are correct
-
-        Args:
-            boss_id: The current boss ID. Used to define the game state context.
-            use_cache: Enable partial caching of game states.
-
-        Returns:
-            The current game state in the context of the boss_id.
-        """
-        if use_cache and boss_id in self._game_state_cache:
-            game_state = self._game_state_cache[boss_id]
-        else:
-            game_state = GameState(player_max_hp=self.player_max_hp,
-                                   player_max_sp=self.player_max_sp,
-                                   boss_max_hp=self.get_boss_max_hp(boss_id))
-        if use_cache and boss_id not in self._game_state_cache:
-            self._game_state_cache[boss_id] = game_state
-        game_state.lock_on = self.lock_on
-        game_state.boss_pose = self.get_boss_pose(boss_id)
-        game_state.boss_hp = self.get_boss_hp(boss_id)
-        game_state.boss_animation = self.get_boss_animation(boss_id)
-        game_state.player_animation = self.player_animation
-        game_state.player_pose = self.player_pose
-        game_state.camera_pose = self.camera_pose
-        game_state.player_hp = self.player_hp
-        game_state.player_sp = self.player_sp
-        return game_state.copy()
 
     @property
     def img(self) -> np.ndarray:
@@ -430,31 +368,6 @@ class DarkSoulsIII(Game):
         self.mem.write_int(address_faith, stats[8])
         self.mem.write_int(address_luck, stats[9])
 
-    @requires_boss_support
-    def check_boss_flags(self, boss_id: str) -> bool:
-        """Check if the boss flags are correct for starting the boss fight.
-
-        Args:
-            boss_id: The boss ID.
-
-        Returns:
-            True if all boss flags are correct else False.
-        """
-        return getattr(self, boss_id + "_flags")
-
-    @requires_boss_support
-    def set_boss_flags(self, boss_id: str, flag: bool):
-        """Set the boss flags of a boss to enable the boss fight.
-
-        Args:
-            boss_id: The boss ID.
-            flag: Value of the boss flags.
-
-        Raises:
-            KeyError: ``boss_id`` does not match any known boss.
-        """
-        setattr(self, boss_id + "_flags", flag)
-
     @property
     def iudex_flags(self) -> bool:
         """Iudex boss fight flags.
@@ -467,7 +380,7 @@ class DarkSoulsIII(Game):
         Note:
             Iudex Gundyr and Champion Gundyr share the exact same area in the game. Which level is
             loaded depends on the "Untended Graves" flag. If the flag is set to False, the
-            "Cemetery of Ash" version of the level loads. If it is set to True (0xA), the "Untended 
+            "Cemetery of Ash" version of the level loads. If it is set to True (0xA), the "Untended
             Graves" version loads. The flag is set by the game whenever the player advances past
             Firelink Shrine. Warping from bonfires loads the correct level, but setting the last
             bonfire and respawning will not. Therefore, the "Untended Graves" flag has to be set to
@@ -510,68 +423,65 @@ class DarkSoulsIII(Game):
         # Defeated flag
         self.mem.write_bit(address, 7, 0)
 
-    @requires_boss_support
-    def get_boss_max_hp(self, boss_id: str) -> int:
-        """Get the maximum health points of a boss.
+    # We define properties for each boss. Since most code is shared between the bosses, we create
+    # a property factory for each boss attribute, e.g. boss_hp. The factory takes the boss ID and
+    # returns a property object for this particular boss. This allows us to define properties for
+    # new bosses in a single line and reduces code duplication. Each factory assumes that the
+    # addresses for bosses are stored with the boss ID as a suffix, e.g. "IudexHP" for Iudex's HP.
+
+    def boss_hp(boss_id: str) -> property:
+        """Create a property for the boss HP given the boss ID.
 
         Args:
             boss_id: The boss ID.
 
         Returns:
-            The maximum health points of the specified boss.
+            A property object that can be used to get and set the boss HP.
         """
-        return getattr(self, boss_id + "_max_hp")
 
-    @requires_boss_support
-    def get_boss_hp(self, boss_id: str) -> int:
-        """Get the health points of a boss.
+        @property
+        def _boss_hp(self: DarkSoulsIII) -> int:
+            base = self.mem.bases[boss_id]
+            address = self.mem.resolve_address(self.data.address_offsets[boss_id + "HP"], base=base)
+            return self.mem.read_int(address)
+
+        @_boss_hp.setter
+        def _boss_hp(self: DarkSoulsIII, hp: int):
+            assert 0 <= hp, "Boss HP has to be zero or positive"
+            base = self.mem.bases[boss_id]
+            address = self.mem.resolve_address(self.data.address_offsets[boss_id + "HP"], base=base)
+            self.mem.write_int(address, hp)
+
+        return _boss_hp
+
+    iudex_hp: int = boss_hp("Iudex")
+    vordt_hp: int = boss_hp("Vordt")
+
+    def boss_max_hp(boss_id: str) -> property:
+        """Create a property for the boss maximum HP given the boss ID.
 
         Args:
             boss_id: The boss ID.
 
         Returns:
-            The health points of the specified boss.
+            A property object that can be used to get the boss maximum HP.
         """
-        return getattr(self, boss_id + "_hp")
 
-    @requires_boss_support
-    def set_boss_hp(self, boss_id: str, hp: int):
-        """Set the health points of a boss.
+        @property
+        def _boss_max_hp(self: DarkSoulsIII) -> int:
+            base = self.mem.bases[boss_id]
+            address = self.mem.resolve_address(self.data.address_offsets[boss_id + "MaxHP"], base)
+            return self.mem.read_int(address)
 
-        Args:
-            boss_id: The boss ID.
-            hp: The health points assigned to the boss.
-        """
-        setattr(self, boss_id + "_hp", hp)
+        @_boss_max_hp.setter
+        def _boss_max_hp(self: DarkSoulsIII, _: int):
+            raise RuntimeError("Boss maximum HP can't be changed!")
 
-    @property
-    def iudex_hp(self) -> int:
-        """Iudex Gundyr's current hit points.
+        return _boss_max_hp
 
-        Returns:
-            Iudex Gundyr's current hit points.
-        """
-        base = self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(self.data.address_offsets["IudexHP"], base=base)
-        return self.mem.read_int(address)
+    iudex_max_hp: int = boss_max_hp("Iudex")
+    vordt_max_hp: int = boss_max_hp("Vordt")
 
-    @iudex_hp.setter
-    def iudex_hp(self, hp: int):
-        assert 0 <= hp <= 1037  # Iudex HP has to lie in this range
-        base = self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(self.data.address_offsets["IudexHP"], base=base)
-        self.mem.write_int(address, hp)
-
-    @property
-    def iudex_max_hp(self) -> int:
-        """Iudex Gundyr's maximum hit points.
-
-        Returns:
-            Iudex Gundyr's maximum hit points.
-        """
-        return 1037
-
-    @requires_boss_support
     def reset_boss_hp(self, boss_id: str):
         """Reset the current boss hit points.
 
@@ -580,226 +490,190 @@ class DarkSoulsIII(Game):
         """
         setattr(self, boss_id + "_hp", getattr(self, boss_id + "_max_hp"))
 
-    @requires_boss_support
-    def get_boss_pose(self, boss_id: str) -> np.ndarray:
-        """Get the current boss pose.
+    def boss_pose(boss_id: str) -> property:
+        """Create a property for the boss pose given the boss ID.
 
         Args:
             boss_id: The boss ID.
 
         Returns:
-            The current boss pose.
+            A property object that can be used to get and set the boss pose.
         """
-        return getattr(self, boss_id + "_pose")
 
-    @property
-    def iudex_pose(self) -> np.ndarray:
-        """Iudex Gundyr's pose.
+        @property
+        def _boss_pose(self: DarkSoulsIII) -> np.ndarray:
+            base = self.mem.bases[boss_id]
+            address = self.mem.resolve_address(self.data.address_offsets[boss_id + "PoseA"], base)
+            buff = self.mem.read_bytes(address, length=24)
+            a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the game memory
+            return np.array([x, y, z, a])
 
-        Returns:
-            Iudex Gundyr's pose.
-        """
-        base = self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(self.data.address_offsets["IudexPoseA"], base=base)
-        buff = self.mem.read_bytes(address, length=24)
-        a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure
-        return np.array([x, y, z, a])
+        @_boss_pose.setter
+        def _boss_pose(self: DarkSoulsIII, coordinates: tuple[float]):
+            game_speed = self.game_speed
+            self.pause_game()
+            base = self.mem.bases[boss_id]
+            x_addr = self.mem.resolve_address(self.data.address_offsets[boss_id + "PoseX"], base)
+            a_addr = self.mem.resolve_address(self.data.address_offsets[boss_id + "PoseA"], base)
+            # Swap y and z order because the game's coordinates are stored as xzy
+            xzy = struct.pack("fff", coordinates[0], coordinates[2], coordinates[1])
+            self.mem.write_bytes(x_addr, xzy)
+            self.mem.write_float(a_addr, coordinates[3])
+            self.game_speed = game_speed
 
-    @iudex_pose.setter
-    def iudex_pose(self, coordinates: tuple[float]):
-        game_speed = self.game_speed  # TODO: Verify this is necessary
-        self.pause_game()
-        base = self.mem.bases["Iudex"]
-        x_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseX"], base=base)
-        a_addr = self.mem.resolve_address(self.data.address_offsets["IudexPoseA"], base=base)
-        xzy = struct.pack("fff", coordinates[0], coordinates[2], coordinates[1])  # Swap y z order
-        self.mem.write_bytes(x_addr, xzy)
-        self.mem.write_float(a_addr, coordinates[3])
-        self.game_speed = game_speed
+        return _boss_pose
 
-    @requires_boss_support
-    def set_boss_pose(self, boss_id: str, coordinates: tuple[float]):
-        """Set the current boss pose.
+    iudex_pose: np.ndarray = boss_pose("Iudex")
+    vordt_pose: np.ndarray = boss_pose("Vordt")
 
-        Args:
-            boss_id: The boss ID.
-            coordinates: The coordinates of the boss pose.
-        """
-        setattr(self, boss_id + "_pose", coordinates)
-
-    @requires_boss_support
-    def get_boss_phase(self, boss_id: str) -> int:
-        """Get the current boss phase.
-
-        boss_id: The boss ID.
-
-        Returns:
-            The current boss phase.
-        """
-        return getattr(self, boss_id + "_phase")
-
-    @property
-    def iudex_phase(self) -> int:
-        """Phase detection is currently not implemented."""
-        raise NotImplementedError
-
-    @requires_boss_support
-    def get_boss_animation(self, boss_id: str) -> str:
-        """Get the current boss animation.
+    def boss_phase(boss_id: str) -> property:
+        """Create a property for the boss phase given the boss ID.
 
         Args:
             boss_id: The boss ID.
 
         Returns:
-            The current boss animation.
+            A property object that can be used to get and set the boss phase.
         """
-        return getattr(self, boss_id + "_animation")
 
-    @property
-    def iudex_animation(self) -> str:
-        """Iudex Gundyr's current animation.
+        @property
+        def _boss_phase(self: DarkSoulsIII) -> int:
+            raise NotImplementedError("Boss phase detection is not implemented")
+
+        @_boss_phase.setter
+        def _boss_phase(self: DarkSoulsIII, phase: int):
+            raise NotImplementedError("Boss phase setter is not implemented")
+
+        return _boss_phase
+
+    iudex_phase: int = boss_phase("Iudex")
+    vordt_phase: int = boss_phase("Vordt")
+
+    def boss_animation(boss_id: str) -> property:
+        """Create a property for the boss animation given the boss ID.
+
+        Args:
+            boss_id: The boss ID.
 
         Returns:
-            Iudex Gundyr's current animation.
+            A property object that can be used to get and set the boss animation.
         """
-        # Animation string has maximum of 20 chars (utf-16)
-        base = self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(self.data.address_offsets["IudexAnimation"], base=base)
-        animation = self.mem.read_string(address, 40, codec="utf-16")
-        # Damage animations 'SABlend_xxx' overwrite the current animation for ~0.4s. This leads to
-        # bad info since the boss' true animation cannot infered. We recover the true animation by
-        # reading two registers that contain the current attack integer. This integer is -1 if no
-        # attack is currently performed. In the split second between attack decisions, register 1 is
-        # empty. We then read register 2. If that one is -1 as well, we default to a neutral
-        # `IdleBattle` animation, but this could really be any non-attacking animation.
-        # If the attack has ended, SABlend has finished, and animation is a valid attack read, we
-        # still need to confirm via the attack registers to not catch the tail of an animation that
-        # is already finished but still lingers in animation.
-        # In phase 2, bleed animations "Partxxx" are also possible.
-        if "SABlend" in animation or "Attack" in animation or "Part" in animation:
-            base = self.mem.bases["Iudex"]
-            address = self.mem.resolve_address(self.data.address_offsets["IudexAttackID"],
-                                               base=base)
-            attack_id = self.mem.read_int(address)
-            if attack_id == -1:  # Read fallback register
-                address += 0x10
+
+        @property
+        def _boss_animation(self: DarkSoulsIII) -> str:
+            base = self.mem.bases[boss_id]
+            offsets = self.data.address_offsets[boss_id + "Animation"]
+            address = self.mem.resolve_address(offsets, base=base)
+            animation = self.mem.read_string(address, 40, codec="utf-16")
+            # Damage/bleed animations 'SABlend_xxx' overwrite the current animation for ~0.4s. This
+            # overwrites the actual current animation. We recover the true animation by reading two
+            # registers that contain the current attack integer. This integer is -1 if no attack is
+            # currently performed. In the split second between attack decisions, register 1 is
+            # empty. We then read register 2. If that one is -1 as well, we default to a neutral
+            # `IdleBattle` animation as a proxy for non-attacking animations. If the attack has
+            # ended, SABlend has finished, and animation is a valid attack read, we still need to
+            # confirm via the attack registers to not catch the tail of an animation that is already
+            # finished but still lingers in animation. Alternative bleed animations are "Partxxx".
+            if "SABlend" in animation or "Attack" in animation or "Part" in animation:
+                offsets = self.data.address_offsets[boss_id + "AttackID"]
+                address = self.mem.resolve_address(offsets, base=base)
                 attack_id = self.mem.read_int(address)
-                if attack_id == -1:  # No active attack, so default to best guess
-                    return "IdleBattle"
-            return "Attack" + str(attack_id)
-        return animation
+                if attack_id == -1:  # Read fallback register
+                    address += 0x10
+                    attack_id = self.mem.read_int(address)
+                    if attack_id == -1:  # No active attack, so default to best guess
+                        return "IdleBattle"
+                return "Attack" + str(attack_id)
+            return animation
 
-    @property
-    def vordt_animation(self) -> str:
-        """Vordt's current animation.
+        @_boss_animation.setter
+        def _boss_animation(self: DarkSoulsIII, _: str):
+            raise NotImplementedError("Boss animation can't be set!")
 
-        Returns:
-            Vordt's current animation.
-        """
-        # Animation string has maximum of 20 chars (utf-16)
-        base = self.mem.bases["Vordt"]
-        address = self.mem.resolve_address(self.data.address_offsets["VordtAnimation"], base=base)
-        animation = self.mem.read_string(address, 40, codec="utf-16")
-        # See iudex_animation for details on the extra checks
-        if "SABlend" in animation or "Attack" in animation or "Part" in animation:
-            address = self.mem.resolve_address(self.data.address_offsets["VordtAttackID"], base)
-            attack_id = self.mem.read_int(address)
-            if attack_id == -1:  # Read fallback register
-                address += 0x10
-                attack_id = self.mem.read_int(address)
-                if attack_id == -1:  # No active attack, so default to best guess
-                    return "IdleBattle"
-            return "Attack" + str(attack_id)
-        return animation
+        return _boss_animation
 
-    def get_boss_animation_time(self, boss_id: str) -> float:
-        """Get the duration of the bosses current animation.
+    iudex_animation: str = boss_animation("Iudex")
+    vordt_animation: str = boss_animation("Vordt")
 
-        Note:
-            The animation time cannot be overwritten.
-
-        Returns:
-            The bosses current animation time.
-        """
-        return getattr(self, boss_id + "_animation_time")
-
-    @property
-    def iudex_animation_time(self) -> float:
-        """Iudex's current animation duration.
-
-        Note:
-            Iudex animation time cannot be overwritten.
-
-        Returns:
-            Iudex's current animation time.
-        """
-        base = self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(self.data.address_offsets["IudexAnimationTime"],
-                                           base=base)
-        return self.mem.read_float(address)
-
-    @iudex_animation_time.setter
-    def iudex_animation_time(self, _: float):
-        raise NotImplementedError("Setting boss animation time is not supported")
-
-    def get_boss_animation_max_time(self, boss_id: str) -> float:
-        """Get the maximum duration of the bosses current animation.
-
-        Note:
-            The animation max time cannot be overwritten.
-
-        Returns:
-            The bosses current maximum animation time.
-        """
-        return getattr(self, boss_id + "_animation_time")
-
-    @property
-    def iudex_animation_max_time(self) -> float:
-        """Iudex's current animation maximum duration.
-
-        Note:
-            The animation max time cannot be overwritten.
-
-        Returns:
-            Iudex's current animation maximum duration.
-        """
-        base = self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(self.data.address_offsets["IudexAnimationMaxTime"],
-                                           base=base)
-        return self.mem.read_float(address)
-
-    @iudex_animation_max_time.setter
-    def iudex_animation_max_time(self, _: float):
-        raise NotImplementedError("Setting iudex animation max time is not supported")
-
-    @requires_boss_support
-    def set_boss_attacks(self, boss_id: str, flag: bool):
-        """Set the ``allow_attack`` flag of a boss.
+    def boss_animation_time(boss_id: str) -> property:
+        """Create a property for the boss animation time given the boss ID.
 
         Args:
             boss_id: The boss ID.
-        """
-        setattr(self, boss_id + "_attacks", flag)
-
-    @property
-    def iudex_attacks(self) -> bool:
-        """Iudex Gundyr's ``allow_attack`` flag.
 
         Returns:
-            True if Iudex is allowed to attack, else False.
+            A property object that can be used to get and set the boss animation time.
         """
-        base = self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(self.data.address_offsets["IudexAttacks"], base=base)
-        no_atk = self.mem.read_bytes(address, 1)  # Checks if attacks are forbidden
-        return (no_atk[0] & 64) == 0  # Flag is saved in bit 6 (including 0)
 
-    @iudex_attacks.setter
-    def iudex_attacks(self, val: bool):
-        flag = not val
-        base = self.mem.bases["Iudex"]
-        address = self.mem.resolve_address(self.data.address_offsets["IudexAttacks"], base=base)
-        # Flag is saved in bit 6 (including 0)
-        self.mem.write_bit(address, 6, flag)
+        @property
+        def _boss_animation_time(self: DarkSoulsIII) -> float:
+            base = self.mem.bases[boss_id]
+            offsets = self.data.address_offsets[boss_id + "AnimationTime"]
+            address = self.mem.resolve_address(offsets, base=base)
+            return self.mem.read_float(address)
+
+        @_boss_animation_time.setter
+        def _boss_animation_time(self: DarkSoulsIII, _: float):
+            raise NotImplementedError("Boss animation time can't be set!")
+
+        return _boss_animation_time
+
+    iudex_animation_time = boss_animation_time("Iudex")
+    vordt_animation_time = boss_animation_time("Vordt")
+
+    def boss_animation_max_time(boss_id: str) -> property:
+        """Create a property for the boss animation maximum time given the boss ID.
+
+        Args:
+            boss_id: The boss ID.
+
+        Returns:
+            A property object that can be used to get and set the boss animation maximum time.
+        """
+
+        @property
+        def _boss_animation_max_time(self: DarkSoulsIII) -> float:
+            base = self.mem.bases[boss_id]
+            offsets = self.data.address_offsets[boss_id + "AnimationMaxTime"]
+            address = self.mem.resolve_address(offsets, base=base)
+            return self.mem.read_float(address)
+
+        @_boss_animation_max_time.setter
+        def _boss_animation_max_time(self: DarkSoulsIII, _: float):
+            raise NotImplementedError("Boss animation max time can't be set!")
+
+        return _boss_animation_max_time
+
+    iudex_animation_max_time: float = boss_animation_max_time("Iudex")
+    vordt_animation_max_time: float = boss_animation_max_time("Vordt")
+
+    def boss_attacks(boss_id: str) -> property:
+        """Create a property for the `boss attacks` flag given the boss ID.
+
+        Args:
+            boss_id: The boss ID.
+
+        Returns:
+            # A property object that can be used to get and set the `boss attacks` flag.
+        """
+
+        @property
+        def _boss_attacks(self: DarkSoulsIII) -> bool:
+            base = self.mem.bases[boss_id]
+            address = self.mem.resolve_address(self.data.address_offsets[boss_id + "Attacks"], base)
+            no_atk = self.mem.read_bytes(address, 1)  # Checks if attacks are forbidden
+            return (no_atk[0] & 64) == 0
+
+        @_boss_attacks.setter
+        def _boss_attacks(self: DarkSoulsIII, flag: bool):
+            base = self.mem.bases[boss_id]
+            address = self.mem.resolve_address(self.data.address_offsets[boss_id + "Attacks"], base)
+            self.mem.write_bit(address, 6, not flag)  # Flag prevents attacks if set -> invert
+
+        return _boss_attacks
+
+    iudex_attacks: bool = boss_attacks("Iudex")
+    vordt_attacks: bool = boss_attacks("Vordt")
 
     @property
     def camera_pose(self) -> np.ndarray:
@@ -868,6 +742,11 @@ class DarkSoulsIII(Game):
     @last_bonfire.setter
     def last_bonfire(self, name: str):
         assert name in self.data.bonfires.keys(), f"Unknown bonfire {name} specified!"
+        # See Iudex flags for details on the Untended Graves flag
+        base = self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(self.data.address_offsets["UntendedGravesFlag"], base)
+        untended_graves_flag = 0xA if name in ("Untended Graves", "Champion Gundyr") else 0x0
+        self.mem.write_bytes(address, struct.pack('B', untended_graves_flag))
         base = self.mem.bases["GameMan"]
         address = self.mem.resolve_address(self.data.address_offsets["LastBonfire"], base=base)
         self.mem.write_int(address, self.data.bonfires[name])
@@ -1049,10 +928,7 @@ class DarkSoulsIII(Game):
         Returns:
             The time difference.
         """
-        td = (tend - tstart) / 1000
-        if td < 0:
-            td = tend / 1000
-        return td
+        return (tend - tstart) / 1000 if tend >= tstart else tend / 1000
 
     def sleep(self, t: float):
         """Custom sleep function.
@@ -1151,10 +1027,6 @@ class DarkSoulsIII(Game):
             :meth:`.MemoryManipulator.clear_cache` for detailed information.
         """
         self.mem.clear_cache()
-
-    def clear_game_state_cache(self):
-        """Clear the cached game states from all contexts."""
-        self._game_state_cache = {}
 
     def _save_game_flags(self):
         """Save game flags to the game flags cache."""

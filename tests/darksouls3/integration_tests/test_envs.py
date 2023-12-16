@@ -9,7 +9,7 @@ from soulsgym.games.darksouls3 import DarkSoulsIII
 
 
 @cache
-def game_not_open():
+def game_not_open() -> bool:
     try:
         get_pid("DarkSoulsIII.exe")
         e = DarkSoulsIII()
@@ -38,4 +38,12 @@ def run_env(env_name: str, kwargs: dict | None = None):
 @pytest.mark.parametrize("kwargs", [{}, {"game_speed": 2, "init_pose_randomization": True}])
 def test_iudex(kwargs: dict | None):
     env = "SoulsGymIudex-v0"
+    run_env(env, kwargs)
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(game_not_open(), reason="Dark Souls III is not running.")
+@pytest.mark.parametrize("kwargs", [{}, {"game_speed": 2}])
+def test_vordt(kwargs: dict | None):
+    env = "SoulsGymVordt-v0"
     run_env(env, kwargs)

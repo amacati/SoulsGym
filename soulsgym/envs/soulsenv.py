@@ -134,6 +134,11 @@ class SoulsEnv(gymnasium.Env, ABC):
     def info(self) -> dict:
         """Return the current info dict of the environment."""
 
+    @property
+    @abstractmethod
+    def game_state(self) -> GameState:
+        """Return the current game state of the environment."""
+
     def step(self, action: int) -> tuple[dict, float, bool, dict]:
         """Perform a step forward in the environment with a given action.
 
@@ -295,7 +300,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         # Offset of 0.01s to account for processing time of the loop
         t_loop = self.game.time
         while self.game.timed(self.game.time, t_start) < (max(self.step_size - 0.01, 1e-4)):
-            boss_animation = self.game.get_boss_animation(self.ENV_ID)
+            boss_animation = getattr(self.game, self.ENV_ID + "_animation")
             if boss_animation != previous_boss_animation:
                 boss_animation_start = self.game.time
                 previous_boss_animation = boss_animation
@@ -310,7 +315,7 @@ class SoulsEnv(gymnasium.Env, ABC):
             # time.sleep(self.step_size / 1000.)
         self.game.pause_game()
         t_end = self.game.time
-        game_state = self.game.get_state(self.ENV_ID, use_cache=True)
+        game_state = self.game_state  # Game state is a property, so we only call it once
         # The animations might change between the last loop iteration and the game_state snapshot.
         # We therefore have to check one last time and update the animation durations accordingly
         if game_state.boss_animation != previous_boss_animation:
@@ -458,7 +463,7 @@ class SoulsEnv(gymnasium.Env, ABC):
             if not self.game.lock_on:
                 cpose = self.game.camera_pose
                 if target_pose is None:
-                    target_pose = self.game.get_boss_pose(self.ENV_ID) - self.game.player_pose
+                    target_pose = getattr(self.game, self.ENV_ID + "_pose") - self.game.player_pose
                 normal = target_pose[:3] / np.linalg.norm(target_pose[:3])
                 if np.dot(cpose[3:], normal) > 0.8 and self._lock_on_timer <= 0:
                     # Lock on is established on "button down", so we press once per 3 steps to make

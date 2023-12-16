@@ -22,11 +22,11 @@ import numpy as np
 from gymnasium import spaces
 from gymnasium.error import RetriesExceededError
 
+from soulsgym.core.game_state import GameState
 from soulsgym.envs.soulsenv import SoulsEnv, SoulsEnvDemo
 from soulsgym.exception import GameStateError
 
 if TYPE_CHECKING:
-    from soulsgym.core.game_state import GameState
     from soulsgym.games import DarkSoulsIII
 
 logger = logging.getLogger(__name__)
@@ -144,6 +144,27 @@ class IudexEnv(SoulsEnv):
         """
         return {"allowed_actions": self.current_valid_actions()}
 
+    @property
+    def game_state(self) -> GameState:
+        """Read the current game state.
+
+        Returns:
+            The current game state.
+        """
+        game_state = GameState(player_max_hp=self.game.player_max_hp,
+                               player_max_sp=self.game.player_max_sp,
+                               boss_max_hp=self.game.iudex_max_hp)
+        game_state.lock_on = self.game.lock_on
+        game_state.boss_pose = self.game.iudex_pose
+        game_state.boss_hp = self.game.iudex_hp
+        game_state.boss_animation = self.game.iudex_animation
+        game_state.player_animation = self.game.player_animation
+        game_state.player_pose = self.game.player_pose
+        game_state.camera_pose = self.game.camera_pose
+        game_state.player_hp = self.game.player_hp
+        game_state.player_sp = self.game.player_sp
+        return game_state.copy()
+
     def _env_setup(self, init_retries: int = 3):
         """Execute the Iudex environment setup.
 
@@ -230,15 +251,15 @@ class IudexEnv(SoulsEnv):
         self.game.allow_attacks = True
         self.game.allow_hits = True
         self.game.allow_moves = True
-        self._internal_state = self.game.get_state(self.ENV_ID, use_cache=True)
+        self._internal_state = self.game_state
         return self.obs, self.info
 
     def _iudex_setup(self) -> None:
         """Set up Iudex flags, focus the application, teleport to the fog gate and enter."""
         self.game.game_speed = 3  # In case SoulsGym crashed without unpausing Dark Souls III
-        if not self.game.check_boss_flags("iudex"):
+        if not self.game.iudex_flags:
             logger.debug("_iudex_setup: Reload due to incorrect boss flags")
-            self.game.set_boss_flags("iudex", True)
+            self.game.iudex_flags = True
             self.game.reload()
             logger.debug("_iudex_setup: Player respawn success")
         # Make sure to start around the bonfire. Also, in case the player has entered the arena on a
@@ -349,7 +370,7 @@ class IudexEnv(SoulsEnv):
         Returns:
             True if no problem has been detected, else False.
         """
-        if not self.game.check_boss_flags("iudex"):
+        if not self.game.iudex_flags:
             logger.debug("_reset_inner_check failed: Iudex flags not set properly")
             return False
         # Make sure the player and Iudex are still within arena bounds
@@ -357,13 +378,13 @@ class IudexEnv(SoulsEnv):
                      self.env_args.coordinate_box_high)
         if not all(low < pos < high for low, pos, high in coords):
             logger.debug("_reset_inner_check failed: Player position out of arena bounds")
-            logger.debug(self.game.get_state(self.ENV_ID))
+            logger.debug(self.game_state)
             return False
         coords = zip(self.env_args.coordinate_box_low, self.game.iudex_pose,
                      self.env_args.coordinate_box_high)
         if not all(low < pos < high for low, pos, high in coords):
             logger.debug("_reset_inner_check failed: Iudex position out of arena bounds")
-            logger.debug(self.game.get_state(self.ENV_ID))
+            logger.debug(self.game_state)
             return False
         # Player and Iudex have to be alive
         if self.game.player_hp <= 0:
@@ -382,7 +403,7 @@ class IudexEnv(SoulsEnv):
             InvalidPlayerStateError: Player state is outside of expected values.
         """
         try:
-            game_state = self.game.get_state(self.ENV_ID)
+            game_state = self.game_state
         except MemoryReadError:
             logger.error("_env_setup_init_check failed: Player does not seem to be ingame")
             raise GameStateError("Player does not seem to be ingame")
@@ -403,7 +424,7 @@ class IudexEnv(SoulsEnv):
         if self.game.player_hp == 0:
             logger.debug("_env_setup_check failed: Player HP is 0")
             return False
-        if not self.game.check_boss_flags("iudex"):
+        if not self.game.iudex_flags:
             logger.debug("_env_setup_check failed: Incorrect boss flags")
             return False
         if self.game.player_animation != "Idle":
