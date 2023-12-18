@@ -423,6 +423,23 @@ class DarkSoulsIII(Game):
         # Defeated flag
         self.mem.write_bit(address, 7, 0)
 
+    @property
+    def vordt_flags(self) -> bool:
+        """Vordt boss fight flags.
+
+        See :attr:`.DarkSoulsIII.iudex_flags` for more details.
+        """
+        base = self.mem.bases["GameFlagData"]
+        address = self.mem.resolve_address(self.data.address_offsets["VordtFlags"], base)
+        return self.mem.read_bytes(address, 1) == b'\x40'
+
+    @vordt_flags.setter
+    def vordt_flags(self, val: bool):
+        base = self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(self.data.address_offsets["VordtFlags"], base)
+        self.mem.write_bit(address, 6, not val)
+        self.mem.write_bit(address, 7, 0)
+
     # We define properties for each boss. Since most code is shared between the bosses, we create
     # a property factory for each boss attribute, e.g. boss_hp. The factory takes the boss ID and
     # returns a property object for this particular boss. This allows us to define properties for

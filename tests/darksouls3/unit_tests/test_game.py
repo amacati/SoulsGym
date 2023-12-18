@@ -11,7 +11,7 @@ from tests.utils import type_assert, greater_than_assert, geq_assert, shape_asse
 
 
 @cache
-def game_not_open():
+def game_not_open() -> bool:
     try:
         get_pid("DarkSoulsIII.exe")
         e = DarkSoulsIII()
@@ -54,23 +54,6 @@ game_attributes = {
     "player_stats": {
         "type": tuple,
         "len": 10
-    },
-    "iudex_flags": {
-        "type": bool
-    },
-    "iudex_hp": {
-        "type": int,
-        ">": 0
-    },
-    "iudex_pose": {
-        "type": np.ndarray,
-        "shape": (4,)
-    },
-    "iudex_animation": {
-        "type": str
-    },
-    "iudex_attacks": {
-        "type": bool
     },
     "camera_pose": {
         "type": np.ndarray,
@@ -140,11 +123,31 @@ game_attributes = {
         "type": str
     }
 }
+for boss in ("iudex", "vordt"):
+    game_attributes |= {
+        f"{boss}_hp": {
+            "type": int,
+            ">": 0
+        },
+        f"{boss}_pose": {
+            "type": np.ndarray,
+            "shape": (4,)
+        },
+        f"{boss}_animation": {
+            "type": str
+        },
+        f"{boss}_attacks": {
+            "type": bool
+        },
+        f"{boss}_flags": {
+            "type": bool
+        }
+    }
 
 
 @pytest.mark.skipif(game_not_open(), reason="Dark Souls III is not running.")
 @pytest.mark.parametrize("attr_name, attr_info", game_attributes.items())
-def test_game_attributes(game, attr_name, attr_info):
+def test_game_attributes(game: str, attr_name: str, attr_info: dict):
     attr = getattr(game, attr_name)
     for attr_info_key, attr_info_value in attr_info.items():
         match attr_info_key:
