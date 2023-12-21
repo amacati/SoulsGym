@@ -1,6 +1,6 @@
-envs.iudex
-==========
-.. automodule:: soulsgym.envs.iudex
+envs.darksouls3.iudex
+=====================
+.. automodule:: soulsgym.envs.darksouls3.iudex
 
 .. autoclass:: IudexEnv
     :members:

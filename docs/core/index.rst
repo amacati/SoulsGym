@@ -4,13 +4,12 @@ soulsgym.core
 .. automodule:: soulsgym.core
 
 .. toctree::
+    :hidden:
 
     game_input
-    game_interface
     game_state
     game_window
-    logger
     memory_manipulator
+    speedhack
     static
     utils
-    speedhack

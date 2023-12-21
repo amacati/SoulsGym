@@ -1,24 +1,33 @@
 """The ``soulsgym`` package is a collection of Gymnasium environments for Dark Souls III.
 
-It contains two main components. The first module :mod:`soulsgym.envs` includes a core environment
-as well as an individual environment for each available boss fight. SoulsGym uses Dark Souls III as
-the underlying engine that is modified at runtime by reading and writing into the game memory to
-create the environments.
+Its high-level objective is to provide Souls games boss fights as reinforcement learning
+environments. These environments are located in the :mod:`soulsgym.envs` module. It is structured
+into a core environment that is subclassed into an individual environment for each available boss
+fight. SoulsGym uses the Souls games, e.g. Dark Souls III or Elden Ring, as the underlying engine
+that is modified at runtime by reading and writing into the game memory to create the environments.
 
 Note:
     The environments only cover one phase of the boss fights so far. For further explanations see
     :mod:`~.envs`.
 
-We do however provide a demo environment. This environment is meant to test the agent on a single
-episode of the full boss fight.
+We also provide a demo environment. This environment is meant to test the agent on a single episode
+of the full boss fight.
 
-The second main module is the :mod:`soulsgym.core` module. It contains all necessary
-functionalities for the environments to interact with the game. Unless you want to develop your own
-environment for :mod:`~.envs` or are trying to contribute, this module can safely be ignored.
+The Souls games have no API for developers to modify the game. Therefore, ``soulsgym`` has to hack
+the games instead. The core hacking and interactions tools are located in the :mod:`soulsgym.core`
+module. Unless you want to develop your own environment for :mod:`~.envs` or are trying to
+contribute, this module can safely be ignored.
+
+As an intermediate layer between the core module and the environments, the :mod:`soulsgym.games`
+module provides a game class for each of the Souls games that is used to seamlessly interact with
+the games as if they were regular Python objects. This immensely simplifies the development of new
+environments.
 
 ``soulsgym`` registers its environments with the ``gymnasium`` module on import. In order to use the
 environments you follow the usual pattern of ``gymnasium.make``. A list of all available
 environments is available at ``soulsgym.available_envs``.
+
+
 """
 import logging
 

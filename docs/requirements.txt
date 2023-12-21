@@ -2,3 +2,4 @@ sphinx-book-theme==0.3.2
 gymnasium==0.27.1
 psutil==5.9.0
 numpy==1.22.3
+opencv-python>=4.0.0

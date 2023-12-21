@@ -4,6 +4,7 @@ soulsgym.envs
 .. automodule:: soulsgym.envs
 
 .. toctree::
+    :hidden:
 
     soulsgym
     iudex

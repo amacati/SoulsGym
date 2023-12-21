@@ -34,8 +34,9 @@ The video shows an example of an agent training against Iudex Gundyr. The game r
    :caption: Python API
 
    soulsgym
-   envs/index
    core/index
+   games/index
+   envs/index
    exception
 
 .. toctree::
