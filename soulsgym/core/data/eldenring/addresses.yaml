@@ -46,7 +46,7 @@ bases_by_pattern:  # Also see https://github.com/Dasaav-dsv/erfps/blob/master/sr
   # CSFD4VirtualMemoryFlag:
   #   pattern: \x48\x8B\x3D....\x48\x85\xFF\x74.\x48\x8B\x49
 
-address_offsets:
+addresses:
   PlayerHP: [0x10EF8, 0x0, 0x190, 0x0, 0x138]
   PlayerMaxHP: [0x10EF8, 0x0, 0x190, 0x0, 0x13C]
   PlayerSP: [0x10EF8, 0x0, 0x190, 0x0, 0x154]

@@ -123,7 +123,7 @@ game_attributes = {
         "type": str
     }
 }
-for boss in ("iudex", "vordt"):
+for boss in ("iudex", ):
     game_attributes |= {
         f"{boss}_hp": {
             "type": int,

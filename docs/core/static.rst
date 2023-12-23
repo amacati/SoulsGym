@@ -29,6 +29,6 @@ core.static
 .. autodata:: soulsgym.core.static.address_bases
     :annotation:
 
-.. autodata:: soulsgym.core.static.address_offsets
+.. autodata:: soulsgym.core.static.addresses
     :annotation:
 

@@ -21,7 +21,7 @@ from soulsgym.core.game_window import GameWindow
 from soulsgym.core.speedhack import SpeedHackConnector
 from soulsgym.core.static import keybindings, keymap, actions, coordinates, player_animations
 from soulsgym.core.static import critical_player_animations, boss_animations, player_stats
-from soulsgym.core.static import bonfires, address_bases, address_offsets, address_base_patterns
+from soulsgym.core.static import bonfires, address_bases, addresses, address_base_patterns
 
 
 @dataclass
@@ -40,7 +40,7 @@ class StaticGameData:
     player_stats: dict
     bonfires: dict
     address_bases: dict
-    address_offsets: dict
+    addresses: dict
     address_base_patterns: dict
 
     def __init__(self, game_id: str):
@@ -59,7 +59,7 @@ class StaticGameData:
         self.player_stats = player_stats[game_id]
         self.bonfires = bonfires[game_id]
         self.address_bases = address_bases[game_id]
-        self.address_offsets = address_offsets[game_id]
+        self.addresses = addresses[game_id]
         self.address_base_patterns = address_base_patterns[game_id]
 
 

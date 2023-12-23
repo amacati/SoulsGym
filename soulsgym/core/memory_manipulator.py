@@ -24,6 +24,7 @@ have taken effect in the game when you write to these memory locations.
 from __future__ import annotations
 
 import platform
+from typing import TypedDict
 
 if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
     import win32process
@@ -35,6 +36,13 @@ from pymem import Pymem
 
 from soulsgym.core.utils import Singleton, get_pid
 from soulsgym.core.static import address_base_patterns, address_bases
+
+
+class AddressRecord(TypedDict):
+    """Type definition for an address record."""
+    base: str
+    offsets: list[int]
+    type_hint: str
 
 
 class MemoryManipulator(metaclass=Singleton):
@@ -68,6 +76,20 @@ class MemoryManipulator(metaclass=Singleton):
             self.process_module = pym.process.module_from_name(self.pymem.process_handle,
                                                                self.process_name)
             self.bases = self._load_bases(process_name)
+
+    def resolve_record(self, record: AddressRecord) -> int:
+        """Resolve an address record or return the cached resolved address if it exists.
+
+        Warning:
+            Can't detect an invalid cache, this is the user's responsibility!
+
+        Args:
+            record: The address record.
+
+        Returns:
+            The resolved address.
+        """
+        return self.resolve_address(record["offsets"], self.bases[record["base"]])
 
     def clear_cache(self):
         """Clear the reference look-up cache of the memory manipulator.

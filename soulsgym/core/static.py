@@ -99,15 +99,15 @@ def _load_bonfires() -> dict:
 
 
 def _load_addresses() -> tuple[dict, dict, dict]:
-    address_bases, address_offsets, address_base_patterns = {}, {}, {}
+    address_bases, addresses, address_base_patterns = {}, {}, {}
     for game in _games:
         with open(_data_paths[game] / "addresses.yaml", "r") as f:
             adresses = yaml.load(f, Loader=yaml.SafeLoader)
 
         address_bases[game] = adresses["bases"]
-        address_offsets[game] = adresses["address_offsets"]
+        addresses[game] = adresses["addresses"]
         address_base_patterns[game] = adresses["bases_by_pattern"]
-    return address_bases, address_offsets, address_base_patterns
+    return address_bases, addresses, address_base_patterns
 
 
 # Initialize all static data dictionaries. Each dictionary is indexed by the game's name.
@@ -147,8 +147,8 @@ bonfires = _load_bonfires()
 #: Dictionary of recurring initial base address offset from the game's ``base_address``
 address_bases = {}
 #: Dictionary of address offsets for the pointer chain to each game property's memory location
-address_offsets = {}
+addresses = {}
 #: Dictionary of patterns that can be scanned by AOB modules to locate the base addresses
 address_base_patterns = {}
 
-address_bases, address_offsets, address_base_patterns = _load_addresses()
+address_bases, addresses, address_base_patterns = _load_addresses()
