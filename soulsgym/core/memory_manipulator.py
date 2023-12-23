@@ -24,7 +24,7 @@ have taken effect in the game when you write to these memory locations.
 from __future__ import annotations
 
 import platform
-from typing import TypedDict
+from typing import TypedDict, NotRequired
 
 if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
     import win32process
@@ -42,7 +42,9 @@ class AddressRecord(TypedDict):
     """Type definition for an address record."""
     base: str
     offsets: list[int]
-    type_hint: str
+    type: str
+    length: NotRequired[int]  # Length of string or byte arrays
+    codec: NotRequired[str]  # Codec for string decoding
 
 
 class MemoryManipulator(metaclass=Singleton):
@@ -91,6 +93,55 @@ class MemoryManipulator(metaclass=Singleton):
         """
         return self.resolve_address(record["offsets"], self.bases[record["base"]])
 
+    def read_record(self, record: AddressRecord) -> int | float | str | bytes:
+        """Resolve the record address and read the value into the hinted type.
+
+        Args:
+            record: The address record.
+
+        Returns:
+            The read value.
+        """
+        address = self.resolve_record(record)
+        match record["type"]:
+            case "int":
+                return self.read_int(address)
+            case "float":
+                return self.read_float(address)
+            case "str":
+                return self.read_string(address, length=record["length"], codec=record["codec"])
+            case "bytes":
+                return self.read_bytes(address, record["length"])
+            case _:
+                raise ValueError(f"Type '{record['type']}' not supported!")
+
+    def write_record(self, record: AddressRecord, value: int | float | bytes):
+        """Resolve the record address and write the value to the address.
+
+        The provided value has to match the type hint of the record.
+
+        Note:
+            We support reading string records, but not writing them.
+
+        Args:
+            record: The address record.
+            value: The value to write. Type has to match the type hint of the record.
+        """
+        address = self.resolve_record(record)
+        match record["type"]:
+            case "int":
+                assert isinstance(value, int), f"Trying to write {type(value)} to int record!"
+                self.write_int(address, value)
+            case "float":
+                assert isinstance(value, float) or isinstance(
+                    value, int), f"Trying to write {type(value)} to float record!"
+                self.write_float(address, value)
+            case "bytes":
+                assert isinstance(value, bytes), f"Trying to write {type(value)} to byte record!"
+                self.write_bytes(address, value)
+            case _:
+                raise ValueError(f"Type '{record['type']}' not supported!")
+
     def clear_cache(self):
         """Clear the reference look-up cache of the memory manipulator.
 
@@ -125,17 +176,15 @@ class MemoryManipulator(metaclass=Singleton):
         Raises:
             pym.exception.MemoryReadError: An error with the memory read occured.
         """
-        u_id = str((addr_offsets, base))
-        # Look up the cache
-        if u_id in self.address_cache:
-            return self.address_cache[u_id]
+        unique_address_id = str((addr_offsets, base))
+        if unique_address_id in self.address_cache:  # Look up the cache first
+            return self.address_cache[unique_address_id]
         # When no cache hit: resolve by following the pointer chain until its last link
         address = self.pymem.read_longlong(base)
-        for o in addr_offsets[:-1]:
-            address = self.pymem.read_longlong(address + o)
+        for offset in addr_offsets[:-1]:
+            address = self.pymem.read_longlong(address + offset)
         address += addr_offsets[-1]
-        # Add to cache
-        self.address_cache[u_id] = address
+        self.address_cache[unique_address_id] = address  # Add resolved address to cache
         return address
 
     def read_int(self, address: int) -> int:
