@@ -133,3 +133,34 @@ boss:
       - PartBlend_NoAdd1
       - PartBlend_NoAdd2
       - PartBlend_NoAdd3
+  vordt:
+    attacks:
+      - Attack3000
+      - Attack3001
+      - Attack3007
+      - Attack3008
+      - Attack3009
+      - Attack3010
+      - Attack3017
+      - Attack3019
+      - Attack3020
+      - Attack3021
+      - Attack6001
+      - Attack6002
+      - Attack6003
+      - Attack9910
+    movement:
+      - WalkFrontBattle
+      - WalkRightBattle
+      - WalkLeftBattle
+      - IdleBattle
+      - TurnBattle_Right90
+      - TurnBattle_Left90
+      - TurnBattle_Right180
+      - TurnBattle_Left180
+      - RunBattle
+      - Step6001
+      - Step6002
+      - Step6003
+    misc: []
+    unused: []

@@ -369,6 +369,59 @@ class DarkSoulsIII(Game):
         self.mem.write_int(address_luck, stats[9])
 
     @property
+    def player_frost_resistance(self) -> float:
+        """The player's frostbite resistance relative to its maximum capacity.
+
+        Is 1 if no frostbite resistance is missing, else decreases from 1. to 0.
+
+        Returns:
+            The player's frostbite resistance.
+        """
+        base = self.mem.bases["WorldChrMan"]
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerFrostResistance"], base)
+        frost_resistance = self.mem.read_int(address)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerFrostResistanceMax"],
+                                           base)
+        frost_max_resistance = self.mem.read_int(address)
+        return frost_resistance / frost_max_resistance
+
+    @player_frost_resistance.setter
+    def player_frost_resistance(self, val: float):
+        assert 0 <= val <= 1, "Frostbite resistance must be between 0 and 1"
+        base = self.mem.bases["WorldChrMan"]
+        # First, read the maximum frostbite resistance
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerFrostResistanceMax"],
+                                           base)
+        frost_max_resistance = self.mem.read_int(address)
+        # Calculate the absolute frostbite resistance value based on the relative value and the
+        # maximum resistance
+        frost_resistance = int(val * frost_max_resistance)
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerFrostResistance"], base)
+        self.mem.write_int(address, frost_resistance)
+
+    @property
+    def player_frost_effect(self) -> float:
+        """The player's remaining frostbite effect duration.
+
+        Is 0. if the player is not frostbitten, else decreases from 1. to 0.
+
+        Returns:
+            The player's frostbite effect duration.
+        """
+        base = self.mem.bases["GameDataMan"]
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerFrostEffect"], base)
+        return self.mem.read_float(address)
+
+    @player_frost_effect.setter
+    def player_frost_effect(self, val: float):
+        assert 0 <= val <= 1, "Frostbite effect must be between 0 and 1"
+        raise NotImplementedError(
+            "Setting the player frostbite effect is not possible with the current address")
+        base = self.mem.bases["GameDataMan"]
+        address = self.mem.resolve_address(self.data.address_offsets["PlayerFrostEffect"], base)
+        self.mem.write_float(address, val)
+
+    @property
     def iudex_flags(self) -> bool:
         """Iudex boss fight flags.
 
@@ -645,9 +698,9 @@ class DarkSoulsIII(Game):
 
         return boss_animation_time
 
-    iudex_animation_time = _boss_animation_time("Iudex")
+    iudex_animation_time: float = _boss_animation_time("Iudex")
     """Iudex Gundyr's animation time."""
-    vordt_animation_time = _boss_animation_time("Vordt")
+    vordt_animation_time: float = _boss_animation_time("Vordt")
     """Vordt of the Boreal Valley's animation time."""
 
     def _boss_animation_max_time(boss_id: str) -> property:

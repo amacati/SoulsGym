@@ -11,9 +11,12 @@ Note:
 from __future__ import annotations
 
 import logging
+import time
+from typing import Any
 
 import numpy as np
 from gymnasium import spaces
+from soulsgym.core.game_state import GameState
 
 from soulsgym.envs.soulsenv import SoulsEnv
 from soulsgym.games import DarkSoulsIII
@@ -58,17 +61,20 @@ class VordtEnv(SoulsEnv):
             "player_animation_duration": spaces.Box(0., 10.),
             "boss_animation": spaces.Discrete(len(boss_animations) + 1, start=-1),
             "boss_animation_duration": spaces.Box(0., 10.),
-            "lock_on": spaces.Discrete(2)
+            "lock_on": spaces.Discrete(2),
+            "frost_resistance": spaces.Box(0., 1.),
+            "frost_effect": spaces.Box(0., 1.),
         })
         self.action_space = spaces.Discrete(len(self.game.data.actions))
         assert phase in (1, 2)
         self.phase = phase
+        self._arena_init = False
         self._phase_init = False
         # We keep track of the last time the environment has been reset completely. After several
         # hours of gameplay, the game input starts to lag and the agent's actions are not executed
         # properly anymore. We therefore reset the environment every 15 minutes to avoid an
         # unintended performance degradation
-        self._last_hard_reset = 0
+        self._last_hard_reset = time.time()
 
     @property
     def game_id(self) -> str:
@@ -95,13 +101,13 @@ class VordtEnv(SoulsEnv):
         obs["player_animation"] = _player_animations.get(obs["player_animation"], {"ID": -1})["ID"]
         _boss_animations = self.game.data.boss_animations[self.ENV_ID]["all"]
         obs["boss_animation"] = _boss_animations.get(obs["boss_animation"], {"ID": -1})["ID"]
-        obs["player_animation_duration"] = np.array([obs["player_animation_duration"]],
-                                                    dtype=np.float32)
-        obs["boss_animation_duration"] = np.array([obs["boss_animation_duration"]],
-                                                  dtype=np.float32)
+        obs["player_animation_duration"] = np.array([obs["player_animation_duration"]], np.float32)
+        obs["boss_animation_duration"] = np.array([obs["boss_animation_duration"]], np.float32)
         obs["player_pose"] = obs["player_pose"].astype(np.float32)
         obs["boss_pose"] = obs["boss_pose"].astype(np.float32)
         obs["camera_pose"] = obs["camera_pose"].astype(np.float32)
+        obs["frost_resistance"] = np.array(self.game.player_frost_resistance, np.float32)
+        obs["frost_effect"] = np.array(self.game.player_frost_effect, np.float32)
         return obs
 
     @property
@@ -112,3 +118,158 @@ class VordtEnv(SoulsEnv):
             The current info dict of the environment.
         """
         return {"allowed_actions": self.current_valid_actions()}
+
+    @property
+    def game_state(self) -> GameState:
+        """Read the current game state.
+
+        Returns:
+            The current game state.
+        """
+        game_state = GameState(player_max_hp=self.game.player_max_hp,
+                               player_max_sp=self.game.player_max_sp,
+                               boss_max_hp=self.game.vordt_max_hp)
+        game_state.lock_on = self.game.lock_on
+        game_state.boss_pose = self.game.vordt_pose
+        game_state.boss_hp = self.game.vordt_hp
+        game_state.boss_animation = self.game.vordt_animation
+        game_state.player_animation = self.game.player_animation
+        game_state.player_pose = self.game.player_pose
+        game_state.camera_pose = self.game.camera_pose
+        game_state.player_hp = self.game.player_hp
+        game_state.player_sp = self.game.player_sp
+        return game_state.copy()
+
+    def reset(self, seed: int | None = None, options: Any | None = None) -> tuple[dict, dict]:
+        """Reset the environment to its initial state.
+
+        Args:
+            seed: Random seed. Required by gymnasium, but does not apply to SoulsGyms.
+            options: Options argument required by gymnasium. Not used in SoulsGym.
+
+        Returns:
+            A tuple of the first game state and the info dict after the reset.
+        """
+        self._game_input.reset()
+        self._game_window.focus_application()
+        if self._reload_required():
+            self._reload()
+        if self._arena_setup_required():
+            self._arena_setup()
+        if self._phase_setup_required():
+            self._phase_setup()
+        self._entity_reset()
+        self._camera_reset()
+        self.game.pause_game()
+        self.terminated = False
+        self._internal_state = self.game_state
+        return self.obs, self.info
+
+    def _reload_required(self) -> bool:
+        """Check if a game reload is required.
+
+        Returns:
+            True if a game reload is required, False otherwise.
+        """
+        if not self.game.vordt_flags:  # Boss is dead, not encountered etc.
+            return True
+        if time.time() - 900 > self._last_hard_reset:  # Reset every 15 minutes
+            return True
+        if not self._arena_init:  # Player is not already in the arena and not at the bonfire
+            bonfire_pos = self.game.data.coordinates[self.ENV_ID]["bonfire"][:3]
+            if np.linalg.norm(self.game.player_pose[:3] - bonfire_pos) > 10:
+                return True
+        return False
+
+    def _reload(self):
+        """Reload the environment completely."""
+        self.game.vordt_flags = True
+        self.game.game_speed = 3  # Faster death
+        self.game.reload()
+        self._last_hard_reset = time.time()
+        self._arena_init = False
+        self._phase_init = False
+        self.game.game_speed = self._game_speed
+
+    def _arena_setup_required(self) -> bool:
+        """Check if the arena setup is required.
+
+        Returns:
+            True if the arena setup is required, False otherwise.
+        """
+        return not self._arena_init
+
+    def _arena_setup(self):
+        """Teleport the player to the arena, enter the fog gate and warp to the start position."""
+        self.game.game_speed = 3  # Faster teleport
+        self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["fog_wall"]
+        self.game.sleep(0.2)  # Wait for the teleport to finish
+        while not self.game.player_animation == "Idle":
+            self.game.sleep(0.1)  # Sometimes the teleport triggers a fall animation
+        # Enter the fog gate
+        self.game.camera_pose = self.env_args.cam_setup_orient
+        self._game_input.single_action("interact")
+        self.game.sleep(0.2)  # Wait for the fog gate animation to start
+        while not self.game.player_animation == "Idle":
+            self.game.sleep(0.1)
+        self.game.game_speed = self._game_speed
+        self._arena_init = True
+
+    def _phase_setup_required(self) -> bool:
+        """Check if the phase setup is required.
+
+        Returns:
+            True if the phase setup is required, False otherwise.
+        """
+        return self._phase_init
+
+    def _phase_setup(self):
+        """Trigger the phase transition."""
+        if self.phase == 2:
+            self.game.vordt_hp = 100
+            self.game.allow_attacks = True
+            self.game.game_speed = 3
+        while not self.game.vordt_animation == "Idle":
+            self.game.sleep(0.1)
+        while self.game.vordt_animation == "Idle":
+            self.game.sleep(0.1)
+        self.game.allow_attacks = False
+        self.game.pause_game()
+        self.game.reset_boss_hp("vordt")
+        self._phase_init = True
+
+    def _entity_reset(self):
+        """Reset the player and boss entities."""
+        self.game.player_frost_resistance = 1.
+        # self.game.player_frost_effect = 0.  TODO: Can't be set to 0, maybe change address?
+        self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
+        self.game.vordt_pose = self.game.data.coordinates[self.ENV_ID]["boss_init_pose"]
+
+    def _camera_reset(self):
+        """Reset the camera to a locked on state."""
+        while not self.game.lock_on:
+            self._lock_on()
+            self._game_input.update_input()
+            self.game.sleep(0.01)
+            self._game_input.reset()  # Prevent getting stuck if initial press is missed
+            if not self._game_window.focused:
+                self._game_window.focus_application()
+
+    @staticmethod
+    def compute_reward(game_state: GameState, next_game_state: GameState) -> float:
+        """Compute the reward from the current game state and the next game state.
+
+        Args:
+            game_state: The game state before the step.
+            next_game_state: The game state after the step.
+
+        Returns:
+            The reward for the provided game states.
+        """
+        boss_reward = (game_state.boss_hp - next_game_state.boss_hp) / game_state.boss_max_hp
+        player_hp_diff = (next_game_state.player_hp - game_state.player_hp)
+        player_reward = player_hp_diff / game_state.player_max_hp
+        base_reward = 0.
+        if next_game_state.boss_hp == 0 or next_game_state.player_hp == 0:
+            base_reward = 0.1 if next_game_state.boss_hp == 0 else -0.1
+        return boss_reward + player_reward + base_reward
