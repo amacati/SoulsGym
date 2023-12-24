@@ -67,15 +67,11 @@ class EldenRing(Game):
         Returns:
             The player's current hit points.
         """
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerHP"], base=base)
-        return self.mem.read_int(address)
+        return self.mem.read_record(self.data.addresses["PlayerHP"])
 
     @player_hp.setter
     def player_hp(self, hp: int):
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerHP"], base=base)
-        self.mem.write_int(address, hp)
+        self.mem.write_record(self.data.addresses["PlayerHP"], hp)
 
     @property
     def player_sp(self) -> int:
@@ -84,15 +80,11 @@ class EldenRing(Game):
         Returns:
             The player's current stamina points.
         """
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerSP"], base=base)
-        return self.mem.read_int(address)
+        return self.mem.read_record(self.data.addresses["PlayerSP"])
 
     @player_sp.setter
     def player_sp(self, sp: int):
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerSP"], base=base)
-        self.mem.write_int(address, sp)
+        self.mem.write_record(self.data.addresses["PlayerSP"], sp)
 
     @property
     def player_mp(self) -> int:
@@ -101,15 +93,11 @@ class EldenRing(Game):
         Returns:
             The player's current mana points.
         """
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerMP"], base=base)
-        return self.mem.read_int(address)
+        return self.mem.read_record(self.data.addresses["PlayerMP"])
 
     @player_mp.setter
     def player_mp(self, mp: int):
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerMP"], base=base)
-        self.mem.write_int(address, mp)
+        self.mem.write_record(self.data.addresses["PlayerMP"], mp)
 
     @property
     def player_max_hp(self) -> int:
@@ -118,13 +106,11 @@ class EldenRing(Game):
         Returns:
             The player's maximum hit points.
         """
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerMaxHP"], base=base)
-        return self.mem.read_int(address)
+        return self.mem.read_record(self.data.addresses["PlayerMaxHP"])
 
     @player_max_hp.setter
     def player_max_hp(self, _: int):
-        logger.warning("Player maximum HP can't be set. Ignoring for now")
+        raise RuntimeError("Player maximum HP can't be changed directly")
 
     @property
     def player_max_sp(self) -> int:
@@ -133,13 +119,11 @@ class EldenRing(Game):
         Returns:
             The player's maximum stamina points.
         """
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerMaxSP"], base=base)
-        return self.mem.read_int(address)
+        return self.mem.read_record(self.data.addresses["PlayerMaxSP"])
 
     @player_max_sp.setter
     def player_max_sp(self, _: int):
-        logger.warning("Player maximum SP can't be set. Ignoring for now")
+        raise RuntimeError("Player maximum SP can't be changed directly")
 
     @property
     def player_max_mp(self) -> int:
@@ -148,13 +132,11 @@ class EldenRing(Game):
         Returns:
             The player's maximum mana points.
         """
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerMaxMP"], base=base)
-        return self.mem.read_int(address)
+        return self.mem.read_record(self.data.addresses["PlayerMaxMP"])
 
     @player_max_mp.setter
     def player_max_mp(self, _: int):
-        logger.warning("Player maximum MP can't be set. Ignoring for now")
+        raise RuntimeError("Player maximum MP can't be set directly")
 
     def reset_player_hp(self):
         """Reset the player's hit points to its current maximum."""
@@ -186,9 +168,7 @@ class EldenRing(Game):
         Returns:
             The current player pose as [x, y, z, a].
         """
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerXYZA"], base=base)
-        x, z, y, a = struct.unpack('ffff', self.mem.read_bytes(address, length=16))
+        x, z, y, a = struct.unpack('ffff', self.mem.read_record(self.data.addresses["PlayerXYZA"]))
         return np.array([x, y, z, a])
 
     @player_pose.setter
@@ -204,12 +184,11 @@ class EldenRing(Game):
         # Read global coordinates, calculate the difference to the target coordinates
         delta = np.array(coordinates[:3]) - self.player_pose[:3]
         # Read local coords, add the difference and write the new local coords
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerLocalXYZ"], base=base)
-        x, z, y = struct.unpack('fff', self.mem.read_bytes(address, length=12))
-        self.mem.write_bytes(address, struct.pack('fff', x + delta[0], z + delta[2], y + delta[1]))
+        x, z, y = struct.unpack('fff', self.mem.read_record(self.data.addresses["PlayerLocalXYZ"]))
+        new_global_pos = struct.pack('fff', x + delta[0], z + delta[2], y + delta[1])
+        self.mem.write_record(self.data.addresses["PlayerLocalXYZ"], new_global_pos)
         # TODO: Rotation is currently not working
-        # address = self.mem.resolve_address(self.data.addresses["PlayerLocalQ"], base=base)
+        # address = self.mem.resolve_record(self.data.addresses["PlayerLocalQ"])
         # See https://www.euclideanspace.com/maths/geometry/rotations/conversions/index.htm
         # qw, qx, qz, qy = np.cos(coordinates[3] / 2), 0, np.sin(coordinates[3] / 2), 0
         # Order in the memory structure is qw qx qz qy
@@ -226,10 +205,7 @@ class EldenRing(Game):
         Returns:
             The player's current animation ID.
         """
-        # animation string has maximum of 20 chars (utf-16)
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerAnimation"], base=base)
-        return self.mem.read_int(address)
+        return self.mem.read_record(self.data.addresses["PlayerAnimation"])
 
     @player_animation.setter
     def player_animation(self, _: int):
@@ -238,70 +214,35 @@ class EldenRing(Game):
     @property
     def allow_player_death(self) -> bool:
         """Disable/enable player deaths ingame."""
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["AllowPlayerDeath"], base=base)
-        return not self.mem.read_int(address) & 1
+        return not self.mem.read_record(self.data.addresses["AllowPlayerDeath"]) & 1
 
     @allow_player_death.setter
     def allow_player_death(self, flag: bool):
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["AllowPlayerDeath"], base=base)
-        bit = 0 if flag else 1
-        self.mem.write_bit(address, 0, bit)
+        address = self.mem.resolve_record(self.data.addresses["AllowPlayerDeath"])
+        self.mem.write_bit(address, index=0, value=0 if flag else 1)
 
     @property
     def player_stats(self) -> tuple[int]:
         """The current player stats from the game.
 
-        The stats can be overwritten by a tuple of matching dimension (9) and order.
+        The stats can be overwritten by a tuple of matching dimension (9) and order. Stats are
+        ordered as follows: Soul Level, Vigor, Mind, Endurance, Strength, Dexterity, Intelligence,
+        Faith, Arcane.
 
         Returns:
             A tuple with all player attributes in the same order as in the game.
         """
-        base = self.mem.bases["GameDataMan"]
-        address_sl = self.mem.resolve_address(self.data.addresses["SoulLevel"], base=base)
-        address_vigor = self.mem.resolve_address(self.data.addresses["Vigor"], base=base)
-        address_mind = self.mem.resolve_address(self.data.addresses["Mind"], base=base)
-        address_endurance = self.mem.resolve_address(self.data.addresses["Endurance"], base=base)
-        address_strength = self.mem.resolve_address(self.data.addresses["Strength"], base=base)
-        address_dex = self.mem.resolve_address(self.data.addresses["Dexterity"], base=base)
-        address_intell = self.mem.resolve_address(self.data.addresses["Intelligence"], base=base)
-        address_faith = self.mem.resolve_address(self.data.addresses["Faith"], base=base)
-        address_arcane = self.mem.resolve_address(self.data.addresses["Arcane"], base=base)
-        sl = self.mem.read_int(address_sl)
-        vigor = self.mem.read_int(address_vigor)
-        mind = self.mem.read_int(address_mind)
-        endurance = self.mem.read_int(address_endurance)
-        strength = self.mem.read_int(address_strength)
-        dex = self.mem.read_int(address_dex)
-        intelligence = self.mem.read_int(address_intell)
-        faith = self.mem.read_int(address_faith)
-        arcane = self.mem.read_int(address_arcane)
-        return (sl, vigor, mind, endurance, strength, dex, intelligence, faith, arcane)
+        address = self.mem.resolve_record(self.data.addresses["PlayerStats"])
+        offsets = (0x2C, 0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C)
+        return tuple(self.mem.read_int(address + offset) for offset in offsets)
 
     @player_stats.setter
     def player_stats(self, stats: list[int]):
         assert len(stats) == 9, "Stats tuple dimension does not match requirements"
-        base = self.mem.bases["GameDataMan"]
-        address_sl = self.mem.resolve_address(self.data.addresses["SoulLevel"], base=base)
-        address_vigor = self.mem.resolve_address(self.data.addresses["Vigor"], base=base)
-        address_mind = self.mem.resolve_address(self.data.addresses["Mind"], base=base)
-        address_endurance = self.mem.resolve_address(self.data.addresses["Endurance"], base=base)
-        address_strength = self.mem.resolve_address(self.data.addresses["Strength"], base=base)
-        address_dex = self.mem.resolve_address(self.data.addresses["Dexterity"], base=base)
-        address_intell = self.mem.resolve_address(self.data.addresses["Intelligence"], base=base)
-        address_faith = self.mem.resolve_address(self.data.addresses["Faith"], base=base)
-        address_arcane = self.mem.resolve_address(self.data.addresses["Arcane"], base=base)
-
-        self.mem.write_int(address_sl, stats[0])
-        self.mem.write_int(address_vigor, stats[1])
-        self.mem.write_int(address_mind, stats[2])
-        self.mem.write_int(address_endurance, stats[3])
-        self.mem.write_int(address_strength, stats[4])
-        self.mem.write_int(address_dex, stats[5])
-        self.mem.write_int(address_intell, stats[6])
-        self.mem.write_int(address_faith, stats[7])
-        self.mem.write_int(address_arcane, stats[8])
+        address = self.mem.resolve_record(self.data.addresses["PlayerStats"])
+        offsets = (0x2C, 0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C)
+        for stat, offset in zip(stats, offsets):
+            self.mem.write_int(address + offset, stat)
 
     @property
     def camera_pose(self) -> np.ndarray:
@@ -314,16 +255,12 @@ class EldenRing(Game):
             The current camera rotation as normal vector and position as coordinates
             [x, y, z, nx, ny, nz].
         """
-        base = self.mem.bases["FieldArea"]
-        address = self.mem.resolve_address(self.data.addresses["LocalCam"], base=base)
-        buff = self.mem.read_bytes(address, length=28)
+        buff = self.mem.read_record(self.data.addresses["LocalCam"])
         # cam orientation seems to be given as a normal vector for the camera plane. As with the
         # position, the game switches y and z
         nx, nz, ny, x, z, y = struct.unpack('fff' + 4 * 'x' + 'fff', buff)
         # In Elden Ring, the xyz coordinates use chunks -> We have to add the current chunk values
-        address = self.mem.resolve_address(self.data.addresses["ChunkCamXYZ"], base=base)
-        buff = self.mem.read_bytes(address, length=12)
-        cx, cz, cy = struct.unpack('fff', buff)
+        cx, cz, cy = struct.unpack('fff', self.mem.read_record(self.data.addresses["ChunkCamXYZ"]))
         return np.array([x - cx, y - cy, z - cz, nx, ny, nz])
 
     @camera_pose.setter
@@ -376,19 +313,15 @@ class EldenRing(Game):
         Returns:
             The bonfire name.
         """
-        base = self.mem.bases["GameMan"]
-        address = self.mem.resolve_address(self.data.addresses["LastGrace"], base=base)
         # Get the integer ID and look up the corresponding key to this value from the bonfires dict
-        int_id = self.mem.read_int(address)
+        int_id = self.mem.read_record(self.data.addresses["LastGrace"])
         str_id = list(self.data.bonfires.keys())[list(self.data.bonfires.values()).index(int_id)]
         return str_id
 
     @last_bonfire.setter
     def last_bonfire(self, name: str):
         assert name in self.data.bonfires.keys(), f"Unknown bonfire {name} specified!"
-        base = self.mem.bases["GameMan"]
-        address = self.mem.resolve_address(self.data.addresses["LastGrace"], base=base)
-        self.mem.write_int(address, self.data.bonfires[name])
+        self.mem.write_record(self.data.addresses["LastGrace"], self.data.bonfires[name])
 
     @property
     def lock_on(self) -> bool:
@@ -400,10 +333,7 @@ class EldenRing(Game):
         Returns:
             True if the player is currently locked on a target, else False.
         """
-        base = self.mem.bases["LockTgtMan"]
-        address = self.mem.resolve_address(self.data.addresses["LockOn"], base=base)
-        buff = self.mem.read_bytes(address, 1)[0]
-        return bool(buff)
+        return bool(self.mem.read_record(self.data.addresses["LockOn"])[0])
 
     @property
     def gravity(self) -> bool:
@@ -412,10 +342,13 @@ class EldenRing(Game):
         Returns:
             True if gravity is active, else False.
         """
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerGravity"], base=base)
-        buff = self.mem.read_int(address)
+        buff = self.mem.read_record(self.data.addresses["PlayerGravity"])
         return buff & 1 == 0  # Gravity disabled flag is saved at bit 6 (including 0)
+
+    @gravity.setter
+    def gravity(self, flag: bool):
+        address = self.mem.resolve_record(self.data.addresses["PlayerGravity"])
+        self.mem.write_bit(address, index=0, val=0 if flag else 1)
 
     @property
     def allow_weapon_durability_dmg(self) -> bool:
@@ -429,13 +362,6 @@ class EldenRing(Game):
     @allow_weapon_durability_dmg.setter
     def allow_weapon_durability_dmg(self, _: bool):
         ...
-
-    @gravity.setter
-    def gravity(self, flag: bool):
-        base = self.mem.bases["WorldChrMan"]
-        address = self.mem.resolve_address(self.data.addresses["PlayerGravity"], base=base)
-        bit = 0 if flag else 1
-        self.mem.write_bit(address, 0, bit)
 
     def reload(self):
         """Kill the player, clear the address cache and wait for the player to respawn."""
@@ -474,16 +400,12 @@ class EldenRing(Game):
         Returns:
             The current game time.
         """
-        base = self.mem.bases["GameDataMan"]
-        address = self.mem.resolve_address(self.data.addresses["Time"], base=base)
-        return self.mem.read_int(address)
+        return self.mem.read_record(self.data.addresses["Time"])
 
     @time.setter
     def time(self, val: int):
         assert isinstance(val, int)
-        base = self.mem.bases["GameDataMan"]
-        address = self.mem.resolve_address(self.data.addresses["Time"], base=base)
-        self.mem.write_int(address, val)
+        self.mem.write_record(self.data.addresses["Time"], val)
 
     @staticmethod
     def timed(tend: int, tstart: int) -> float:
@@ -499,10 +421,7 @@ class EldenRing(Game):
         Returns:
             The time difference.
         """
-        td = (tend - tstart) / 1000
-        if td < 0:
-            td = tend / 1000
-        return td
+        return (tend - tstart) / 1000 if tend >= tstart else tend / 1000
 
     def sleep(self, t: float):
         """Custom sleep function.

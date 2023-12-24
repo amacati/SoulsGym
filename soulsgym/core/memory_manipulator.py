@@ -80,18 +80,46 @@ class MemoryManipulator(metaclass=Singleton):
             self.bases = self._load_bases(process_name)
 
     def resolve_record(self, record: AddressRecord) -> int:
-        """Resolve an address record or return the cached resolved address if it exists.
+        """Resolve an address record by following its pointer chain to the final address.
+
+        Resolved addresses are cached to increase performance. If the program reallocates memory,
+        the cached addresses are no longer valid and the cache has to be cleared.
 
         Warning:
             Can't detect an invalid cache, this is the user's responsibility!
 
         Args:
-            record: The address record.
+            record: The address record. Address records must contain at least the `base` and
+                `offsets` keys.
 
         Returns:
             The resolved address.
         """
-        return self.resolve_address(record["offsets"], self.bases[record["base"]])
+        unique_address_id = str((record["offsets"], record["base"]))
+        if unique_address_id in self.address_cache:  # Look up the cache first
+            return self.address_cache[unique_address_id]
+        # When no cache hit: resolve by following the pointer chain until its last link
+        address = self.pymem.read_longlong(self.bases[record["base"]])
+        for offset in record["offsets"][:-1]:
+            address = self.pymem.read_longlong(address + offset)
+        address += record["offsets"][-1]
+        self.address_cache[unique_address_id] = address  # Add resolved address to cache
+        return address
+
+    def clear_cache(self):
+        """Clear the reference look-up cache of the memory manipulator.
+
+        The ``MemoryManipulator`` caches all pointer chains it resolves to speed up the reads and
+        writes. If the game reloads, these addresses are no longer guaranteed to be valid and the
+        address cache has to be cleared in order to resolve the new addresses of all values. Cache
+        validation by reading the player death count is omitted since it incurs additional overhead
+        for read operations and offsets any performance gains made by using an address cache.
+
+        Warning:
+            We do not validate the cache before reading from a cached address! It is the users's
+            responsibility to clear the cache on reload!
+        """
+        self.address_cache = {}
 
     def read_record(self, record: AddressRecord) -> int | float | str | bytes:
         """Resolve the record address and read the value into the hinted type.
@@ -141,51 +169,6 @@ class MemoryManipulator(metaclass=Singleton):
                 self.write_bytes(address, value)
             case _:
                 raise ValueError(f"Type '{record['type']}' not supported!")
-
-    def clear_cache(self):
-        """Clear the reference look-up cache of the memory manipulator.
-
-        The ``MemoryManipulator`` caches all pointer chains it resolves to speed up the reads and
-        writes. If the game reloads, these addresses are no longer guaranteed to be valid and the
-        address cache has to be cleared in order to resolve the new addresses of all values. Cache
-        validation by reading the player death count is omitted since it incurs additional overhead
-        for read operations and offsets any performance gains made by using an address cache.
-
-        Warning:
-            We do not validate the cache before reading from a cached address! It is the users's
-            responsibility to clear the cache on reload!
-        """
-        self.address_cache = {}
-
-    def resolve_address(self, addr_offsets: list[int], base: int) -> int:
-        """Resolve an address by its offsets and a base.
-
-        Looks up the address cache first.
-
-        Warning:
-            Can't detect an invalid cache, this is the user's responsibility!
-
-        Args:
-            addr_offsets: The offsets which will be resolved iteratively. The first offset is the
-                offset to the base itself.
-            base: The base offset from the start of the program's memory.
-
-        Returns:
-            The resolved address.
-
-        Raises:
-            pym.exception.MemoryReadError: An error with the memory read occured.
-        """
-        unique_address_id = str((addr_offsets, base))
-        if unique_address_id in self.address_cache:  # Look up the cache first
-            return self.address_cache[unique_address_id]
-        # When no cache hit: resolve by following the pointer chain until its last link
-        address = self.pymem.read_longlong(base)
-        for offset in addr_offsets[:-1]:
-            address = self.pymem.read_longlong(address + offset)
-        address += addr_offsets[-1]
-        self.address_cache[unique_address_id] = address  # Add resolved address to cache
-        return address
 
     def read_int(self, address: int) -> int:
         """Read an integer from memory.

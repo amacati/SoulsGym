@@ -47,31 +47,85 @@ bases_by_pattern:  # Also see https://github.com/Dasaav-dsv/erfps/blob/master/sr
   #   pattern: \x48\x8B\x3D....\x48\x85\xFF\x74.\x48\x8B\x49
 
 addresses:
-  PlayerHP: [0x10EF8, 0x0, 0x190, 0x0, 0x138]
-  PlayerMaxHP: [0x10EF8, 0x0, 0x190, 0x0, 0x13C]
-  PlayerSP: [0x10EF8, 0x0, 0x190, 0x0, 0x154]
-  PlayerMaxSP: [0x10EF8, 0x0, 0x190, 0x0, 0x158]
-  PlayerMP: [0x10EF8, 0x0, 0x190, 0x0, 0x148]
-  PlayerMaxMP: [0x10EF8, 0x0, 0x190, 0x0, 0x150]
-  PlayerXYZA: [0x10EF8, 0x0, 0x6C0]
-  PlayerLocalQ: [0x10EF8, 0x0, 0x190, 0x68, 0x5C]
-  PlayerLocalXYZ: [0x10EF8, 0x0, 0x190, 0x68, 0x70]
-  PlayerAnimation: [0x10EF8, 0x0, 0x190, 0x18, 0x20]
-  PlayerGravity: [0x10EF8, 0x0, 0x190, 0x68, 0x1D3]
-  AllowPlayerDeath: [0x10EF8, 0x0, 0x190, 0x0, 0x19B]
-  LastGrace: [0xB30]
-  Time: [0xA0]
-  LocalCam: [0x20, 0x18, 0x30]
-  ChunkCamXYZ: [0x20, 0xD0, 0x40]
+  PlayerHP:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x0, 0x138]
+    type: int
+  PlayerMaxHP:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x0, 0x13C]
+    type: int
+  PlayerSP:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x0, 0x154]
+    type: int
+  PlayerMaxSP:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x0, 0x158]
+    type: int
+  PlayerMP:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x0, 0x148]
+    type: int
+  PlayerMaxMP:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x0, 0x150]
+    type: int
+  PlayerXYZA:  # Actually XZYA
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x6C0]
+    type: bytes
+    length: 16
+  PlayerLocalQ:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x68, 0x5C]
+    type: bytes
+    length: 16
+  PlayerLocalXYZ:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x68, 0x70]
+    type: bytes
+    length: 12
+  PlayerAnimation:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x18, 0x20]
+    type: int
+  PlayerGravity:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x68, 0x1D3]
+    type: int  # Saved at bit 6 (including 0)
+  AllowPlayerDeath:
+    base: WorldChrMan
+    offsets: [0x10EF8, 0x0, 0x190, 0x0, 0x19B]
+    type: int
+  LastGrace:
+    base: GameMan
+    offsets: [0xB30]
+    type: int
+  Time:
+    base: GameDataMan
+    offsets: [0xA0]
+    type: int
+  LocalCam:
+    base: FieldArea
+    offsets: [0x20, 0x18, 0x30]
+    type: bytes
+    length: 28
+  ChunkCamXYZ:
+    base: FieldArea
+    offsets: [0x20, 0xD0, 0x40]
+    type: bytes
+    length: 12
   # Stats
-  SoulLevel: [0x08, 0x68]
-  Vigor: [0x08, 0x3C]
-  Mind: [0x08, 0x40]
-  Endurance: [0x08, 0x44]
-  Strength: [0x08, 0x48]
-  Dexterity: [0x08, 0x4C]
-  Intelligence: [0x08, 0x50]
-  Faith: [0x08, 0x54]
-  Arcane: [0x08, 0x58]
-  LockOn: [0x2831]
+  PlayerStats:
+    # Vigor, Mind, Endurance, Strength, Dexterity, Intelligence, Faith, Arcane, x, x, x, Soul Level
+    # All stats are 4 bytes long, and are stored in the same order as above
+    base: GameDataMan
+    offsets: [0x08, 0x3C]
+    type: int
+  LockOn:
+    base: LockTgtMan
+    offsets: [0x2831]
+    type: bytes
+    length: 1
 bases:

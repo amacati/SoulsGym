@@ -277,32 +277,18 @@ class DarkSoulsIII(Game):
             A tuple with all player attributes in the same order as in the game.
         """
         stats_address = self.mem.resolve_record(self.data.addresses["PlayerStats"])
-        sl = self.mem.read_int(stats_address + 0x2C)  # No typo, memory layout does not match
-        vigor = self.mem.read_int(stats_address)
-        att = self.mem.read_int(stats_address + 0x4)
-        endurance = self.mem.read_int(stats_address + 0x8)
-        vit = self.mem.read_int(stats_address + 0x28)  # No typo, memory layout does not match
-        strength = self.mem.read_int(stats_address + 0xC)
-        dex = self.mem.read_int(stats_address + 0x10)
-        intelligence = self.mem.read_int(stats_address + 0x14)
-        faith = self.mem.read_int(stats_address + 0x18)
-        luck = self.mem.read_int(stats_address + 0x1C)
-        return (sl, vigor, att, endurance, vit, strength, dex, intelligence, faith, luck)
+        # Offsets are relative to the stats address. The memory layout does not match the order of
+        # the stats in the game
+        offsets = (0x2C, 0x00, 0x04, 0x08, 0x28, 0x0C, 0x10, 0x14, 0x18, 0x1C)
+        return tuple(self.mem.read_int(stats_address + offset) for offset in offsets)
 
     @player_stats.setter
     def player_stats(self, stats: tuple[int]):
         assert len(stats) == 10, "Stats tuple dimension does not match requirements"
         stats_address = self.mem.resolve_record(self.data.addresses["PlayerStats"])
-        self.mem.write_int(stats_address + 0x2C, stats[0])
-        self.mem.write_int(stats_address, stats[1])
-        self.mem.write_int(stats_address + 0x4, stats[2])
-        self.mem.write_int(stats_address + 0x8, stats[3])
-        self.mem.write_int(stats_address + 0x28, stats[4])
-        self.mem.write_int(stats_address + 0xC, stats[5])
-        self.mem.write_int(stats_address + 0x10, stats[6])
-        self.mem.write_int(stats_address + 0x14, stats[7])
-        self.mem.write_int(stats_address + 0x18, stats[8])
-        self.mem.write_int(stats_address + 0x1C, stats[9])
+        offsets = (0x2C, 0x00, 0x04, 0x08, 0x28, 0x0C, 0x10, 0x14, 0x18, 0x1C)
+        for stat, offset in zip(stats, offsets):
+            self.mem.write_int(stats_address + offset, stat)
 
     @property
     def player_frost_resistance(self) -> float:
