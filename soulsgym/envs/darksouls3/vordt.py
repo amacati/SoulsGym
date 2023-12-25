@@ -12,14 +12,16 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import numpy as np
 from gymnasium import spaces
 from soulsgym.core.game_state import GameState
 
 from soulsgym.envs.soulsenv import SoulsEnv
-from soulsgym.games import DarkSoulsIII
+
+if TYPE_CHECKING:
+    from soulsgym.games import DarkSoulsIII
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +30,11 @@ class VordtEnv(SoulsEnv):
     """The SoulsGym environment for Vordt of the Boreal Valley."""
 
     ENV_ID = "vordt"
+    BONFIRE = "Dancer of the Boreal Valley"
+    ARENA_LIM_LOW = [13., -7., -27., -3.1416]
+    ARENA_LIM_HIGH = [42., 46., -15., 3.1416]
+    CAM_SETUP_POSE = [0., -1., 0.]
+    VORDT_MAX_HP = 1328
 
     def __init__(self, game_speed: float = 1., phase: int = 1):
         """Initialize the observation and action spaces.
@@ -39,21 +46,20 @@ class VordtEnv(SoulsEnv):
         super().__init__(game_speed=game_speed)
         self.game: DarkSoulsIII  # Type hint only
         self.phase = phase
-        pose_box_low = np.array(self.env_args.coordinate_box_low, dtype=np.float32)
-        pose_box_high = np.array(self.env_args.coordinate_box_high, dtype=np.float32)
-        cam_box_low = np.array(self.env_args.coordinate_box_low[:3] + [-1, -1, -1],
-                               dtype=np.float32)
-        cam_box_high = np.array(self.env_args.coordinate_box_high[:3] + [1, 1, 1], dtype=np.float32)
+        pose_box_low = np.array(self.ARENA_LIM_LOW, dtype=np.float32)
+        pose_box_high = np.array(self.ARENA_LIM_HIGH, dtype=np.float32)
+        cam_box_low = np.array(self.ARENA_LIM_LOW[:3] + [-1, -1, -1], dtype=np.float32)
+        cam_box_high = np.array(self.ARENA_LIM_HIGH[:3] + [1, 1, 1], dtype=np.float32)
         player_animations = self.game.data.player_animations
         boss_animations = self.game.data.boss_animations[self.ENV_ID]["all"]
         self.observation_space = spaces.Dict({
             "phase": spaces.Discrete(2, start=1),
-            "player_hp": spaces.Box(0, self.env_args.player_max_hp),
-            "player_max_hp": spaces.Discrete(1, start=self.env_args.player_max_hp),
-            "player_sp": spaces.Box(0, self.env_args.player_max_sp),
-            "player_max_sp": spaces.Discrete(1, start=self.env_args.player_max_sp),
-            "boss_hp": spaces.Box(0, self.env_args.boss_max_hp),
-            "boss_max_hp": spaces.Discrete(1, start=self.env_args.boss_max_hp),
+            "player_hp": spaces.Box(0, self.game.player_max_hp),
+            "player_max_hp": spaces.Discrete(1, start=self.game.player_max_hp),
+            "player_sp": spaces.Box(0, self.game.player_max_sp),
+            "player_max_sp": spaces.Discrete(1, start=self.game.player_max_sp),
+            "boss_hp": spaces.Box(0, self.VORDT_MAX_HP),
+            "boss_max_hp": spaces.Discrete(1, start=self.VORDT_MAX_HP),
             "player_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
             "boss_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
             "camera_pose": spaces.Box(cam_box_low, cam_box_high, dtype=np.float32),
@@ -106,8 +112,8 @@ class VordtEnv(SoulsEnv):
         obs["player_pose"] = obs["player_pose"].astype(np.float32)
         obs["boss_pose"] = obs["boss_pose"].astype(np.float32)
         obs["camera_pose"] = obs["camera_pose"].astype(np.float32)
-        obs["frost_resistance"] = np.array(self.game.player_frost_resistance, np.float32)
-        obs["frost_effect"] = np.array(self.game.player_frost_effect, np.float32)
+        obs["frost_resistance"] = np.array([self.game.player_frost_resistance], np.float32)
+        obs["frost_effect"] = np.array([self.game.player_frost_effect], np.float32)
         return obs
 
     @property
@@ -207,7 +213,7 @@ class VordtEnv(SoulsEnv):
         while not self.game.player_animation == "Idle":
             self.game.sleep(0.1)  # Sometimes the teleport triggers a fall animation
         # Enter the fog gate
-        self.game.camera_pose = self.env_args.cam_setup_orient
+        self.game.camera_pose = self.CAM_SETUP_POSE
         self._game_input.single_action("interact")
         self.game.sleep(0.2)  # Wait for the fog gate animation to start
         while not self.game.player_animation == "Idle":
@@ -240,13 +246,40 @@ class VordtEnv(SoulsEnv):
 
     def _entity_reset(self):
         """Reset the player and boss entities."""
+        self.game.allow_attacks = False
+        self.game.allow_moves = False
+        self.game.game_speed = 3  # Faster reset
         self.game.player_frost_resistance = 1.
         # self.game.player_frost_effect = 0.  TODO: Can't be set to 0, maybe change address?
-        self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
-        self.game.vordt_pose = self.game.data.coordinates[self.ENV_ID]["boss_init_pose"]
+        while not self._entity_reset_complete():
+            self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
+            self.game.vordt_pose = self.game.data.coordinates[self.ENV_ID]["boss_init_pose"]
+            self.game.sleep(0.01)
+        self.game.pause_game()
+        self.game.allow_attacks = True
+        self.game.allow_moves = True
+
+    def _entity_reset_complete(self) -> bool:
+        """Check if the player and boss have been successfully reset.
+
+        Returns:
+            True if the entities have been reset, False otherwise.
+        """
+        if not self.game.player_animation == "Idle":
+            return False
+        if self.game.vordt_animation not in ("Attack9910", "IdleBattle"):
+            return False
+        desired_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
+        if np.linalg.norm(self.game.player_pose - desired_pose) > 0.5:
+            return False
+        desired_pose = self.game.data.coordinates[self.ENV_ID]["boss_init_pose"]
+        if np.linalg.norm(self.game.vordt_pose - desired_pose) > 0.5:
+            return False
+        return True
 
     def _camera_reset(self):
         """Reset the camera to a locked on state."""
+        self.game.resume_game()
         while not self.game.lock_on:
             self._lock_on()
             self._game_input.update_input()

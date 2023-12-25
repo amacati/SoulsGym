@@ -10,13 +10,11 @@ agent's abilities in a setting that is as close to the real game as possible.
 from __future__ import annotations
 
 import logging
-from typing import Any, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING, ClassVar
 from pathlib import Path
 from abc import ABC, abstractmethod
-from argparse import Namespace
 
 import gymnasium
-import yaml
 import numpy as np
 
 from soulsgym.core.game_input import GameInput
@@ -60,8 +58,12 @@ class SoulsEnv(gymnasium.Env, ABC):
     """
 
     metadata = {'render_modes': []}
-    ENV_ID = ""  # Each SoulsGym has to define its own ID and name the config files accordingly
     step_size = 0.1  # Seconds between each step
+    # The following class variables have to be set by the child classes
+    ENV_ID: ClassVar[str]
+    BONFIRE: ClassVar[str]
+    ARENA_LIM_LOW: ClassVar[list[float]]
+    ARENA_LIM_HIGH: ClassVar[list[float]]
 
     def __init__(self, game_speed: float = 1.):
         """Initialize the game managers, load the environment config and set the game properties.
@@ -89,9 +91,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         self.terminated = False
         # Load environment config
         self.config_path = Path(__file__).parent / "config"
-        self.env_args = self._load_env_args()
         self._set_game_properties()
-        logger.info(self.env_args.init_msg)
         logger.debug("Env init complete")
 
     @property
@@ -232,20 +232,11 @@ class SoulsEnv(gymnasium.Env, ABC):
         """
         logger.warning("Rendering the environment is useless, game has to be open anyways.")
 
-    def _load_env_args(self) -> Namespace:
-        """Load the configuration parameters for the environment.
-
-        Returns:
-            The arguments as a Namespace object.
-        """
-        with open(self.config_path / (self.ENV_ID + ".yaml")) as f:
-            return Namespace(**(yaml.load(f, Loader=yaml.SafeLoader)))
-
     def _set_game_properties(self):
         """Set general game properties that help gym stability."""
         self.game.lock_on_bonus_range = 45  # Increase lock on range for bosses
         self.game.los_lock_on_deactivate_time = 99  # Increase line of sight lock on deactivate time
-        self.game.last_bonfire = self.env_args.bonfire
+        self.game.last_bonfire = self.BONFIRE
         self.game.player_stats = self.game.data.player_stats[self.ENV_ID]
         self.game.allow_moves = True
         self.game.allow_attacks = True
@@ -362,8 +353,7 @@ class SoulsEnv(gymnasium.Env, ABC):
             logger.error(game_state)
             raise InvalidPlayerStateError("Player HP is 0")
         # Check if player is inside the borders of the arena
-        coords = zip(self.env_args.coordinate_box_low, self.game.player_pose[:2],
-                     self.env_args.coordinate_box_high)
+        coords = zip(self.ARENA_LIM_LOW, self.game.player_pose[:2], self.ARENA_LIM_HIGH)
         if not all(low < pos < high for low, pos, high in coords):
             logger.error("_step_check: Player outside of arena bounds")
             logger.error(game_state)
@@ -372,7 +362,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         if game_state.player_animation in self.game.data.critical_player_animations:
             return False
         # Fall detection by lower state space bound on z coordinate
-        if self.env_args.coordinate_box_low[2] > game_state.player_pose[2]:
+        if self.ARENA_LIM_LOW[2] > game_state.player_pose[2]:
             return False
         # Unknown player animation. Shouldn't happen, add animation to tables!
         if game_state.player_animation not in self.game.data.player_animations:
@@ -427,7 +417,7 @@ class SoulsEnv(gymnasium.Env, ABC):
             game_state: The critical game state.
         """
         # Player is falling. Set player log HP to 0 and eagerly reset to prevent reload
-        if game_state.player_pose[2] < self.env_args.coordinate_box_low[2]:
+        if game_state.player_pose[2] < self.ARENA_LIM_LOW[2]:
             game_state.player_hp = 0
             self._update_internal_game_state(game_state, self.step_size, self.step_size)
             self.game.reset_player_hp()

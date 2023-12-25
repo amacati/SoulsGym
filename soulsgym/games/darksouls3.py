@@ -693,8 +693,8 @@ class DarkSoulsIII(Game):
     def last_bonfire(self, name: str):
         assert name in self.data.bonfires.keys(), f"Unknown bonfire {name} specified!"
         # See Iudex flags for details on the Untended Graves flag
-        untended_graves_flag = 0xA if name in ("Untended Graves", "Champion Gundyr") else 0x0
-        self.mem.write_record(self.data.addresses["UntendedGravesFlag"], untended_graves_flag)
+        ug_flag = b"\x0A" if name in ("Untended Graves", "Champion Gundyr") else b"\x00"
+        self.mem.write_record(self.data.addresses["UntendedGravesFlag"], ug_flag)
         self.mem.write_record(self.data.addresses["LastBonfire"], self.data.bonfires[name])
 
     @property

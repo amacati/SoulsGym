@@ -39,6 +39,11 @@ class IudexEnv(SoulsEnv):
     """
 
     ENV_ID = "iudex"
+    BONFIRE = "Cemetery of Ash"
+    ARENA_LIM_LOW = [110., 540., -73., -3.1416]
+    ARENA_LIM_HIGH = [190., 640., -55., 3.1416]
+    CAM_SETUP_POSE = [0.378, 0.926, 0.0]
+    IUDEX_MAX_HP = 1037  # When we are not in Cemetery of Ash, the boss HP read can be incorrect
 
     def __init__(self,
                  game_speed: float = 1.,
@@ -66,21 +71,20 @@ class IudexEnv(SoulsEnv):
         # 14)     Boss animation duration. We assume no animation takes longer than 10s.
         # 15)     Lock on flag. Either true or false.
         self.game: DarkSoulsIII  # Type hint only
-        pose_box_low = np.array(self.env_args.coordinate_box_low, dtype=np.float32)
-        pose_box_high = np.array(self.env_args.coordinate_box_high, dtype=np.float32)
-        cam_box_low = np.array(self.env_args.coordinate_box_low[:3] + [-1, -1, -1],
-                               dtype=np.float32)
-        cam_box_high = np.array(self.env_args.coordinate_box_high[:3] + [1, 1, 1], dtype=np.float32)
+        pose_box_low = np.array(self.ARENA_LIM_LOW, dtype=np.float32)
+        pose_box_high = np.array(self.ARENA_LIM_HIGH, dtype=np.float32)
+        cam_box_low = np.array(self.ARENA_LIM_LOW[:3] + [-1, -1, -1], dtype=np.float32)
+        cam_box_high = np.array(self.ARENA_LIM_HIGH[:3] + [1, 1, 1], dtype=np.float32)
         player_animations = self.game.data.player_animations
         boss_animations = self.game.data.boss_animations[self.ENV_ID]["all"]
         self.observation_space = spaces.Dict({
             "phase": spaces.Discrete(2, start=1),
-            "player_hp": spaces.Box(0, self.env_args.player_max_hp),
-            "player_max_hp": spaces.Discrete(1, start=self.env_args.player_max_hp),
-            "player_sp": spaces.Box(0, self.env_args.player_max_sp),
-            "player_max_sp": spaces.Discrete(1, start=self.env_args.player_max_sp),
-            "boss_hp": spaces.Box(0, self.env_args.boss_max_hp),
-            "boss_max_hp": spaces.Discrete(1, start=self.env_args.boss_max_hp),
+            "player_hp": spaces.Box(0, self.game.player_max_hp),
+            "player_max_hp": spaces.Discrete(1, start=self.game.player_max_hp),
+            "player_sp": spaces.Box(0, self.game.player_max_sp),
+            "player_max_sp": spaces.Discrete(1, start=self.game.player_max_sp),
+            "boss_hp": spaces.Box(0, self.IUDEX_MAX_HP),
+            "boss_max_hp": spaces.Discrete(1, start=self.IUDEX_MAX_HP),
             "player_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
             "boss_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
             "camera_pose": spaces.Box(cam_box_low, cam_box_high, dtype=np.float32),
@@ -306,7 +310,7 @@ class IudexEnv(SoulsEnv):
 
     def _enter_fog_gate(self):
         """Enter the fog gate."""
-        self.game.camera_pose = self.env_args.cam_setup_orient
+        self.game.camera_pose = self.CAM_SETUP_POSE
         self._game_input.single_action("interact")
         while not self.game.player_animation == "Idle":
             self.game.sleep(0.1)
@@ -374,14 +378,12 @@ class IudexEnv(SoulsEnv):
             logger.debug("_reset_inner_check failed: Iudex flags not set properly")
             return False
         # Make sure the player and Iudex are still within arena bounds
-        coords = zip(self.env_args.coordinate_box_low, self.game.player_pose,
-                     self.env_args.coordinate_box_high)
+        coords = zip(self.ARENA_LIM_LOW, self.game.player_pose, self.ARENA_LIM_HIGH)
         if not all(low < pos < high for low, pos, high in coords):
             logger.debug("_reset_inner_check failed: Player position out of arena bounds")
             logger.debug(self.game_state)
             return False
-        coords = zip(self.env_args.coordinate_box_low, self.game.iudex_pose,
-                     self.env_args.coordinate_box_high)
+        coords = zip(self.ARENA_LIM_LOW, self.game.iudex_pose, self.ARENA_LIM_HIGH)
         if not all(low < pos < high for low, pos, high in coords):
             logger.debug("_reset_inner_check failed: Iudex position out of arena bounds")
             logger.debug(self.game_state)
