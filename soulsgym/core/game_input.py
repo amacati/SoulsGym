@@ -52,7 +52,7 @@ class GameInput:
     """Trigger keystrokes by calling the Windows user32 API."""
 
     press_and_release_actions = ("roll", "lightattack", "heavyattack", "parry")
-    DEFAULT_PRESS_TIME = 0.015
+    DEFAULT_PRESS_TIME = 0.05
 
     def __init__(self, game_id: str, game_speed: float = 1.0):
         """Initialize the key state dictionary.
