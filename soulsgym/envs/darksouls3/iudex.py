@@ -441,7 +441,7 @@ class IudexImgEnv(IudexEnv):
     HP are available in the info dict.
     """
 
-    def __init__(self, game_speed: int = 1., phase: int = 1, init_pose_randomization: bool = False):
+    def __init__(self, game_speed: int = 1., phase: int = 1, init_pose_randomization: bool = False, resolution: tuple[int, int] = (90, 160)):
         """Overwrite the observation space to use the game image.
 
         Args:
@@ -450,7 +450,9 @@ class IudexImgEnv(IudexEnv):
             init_pose_randomization: Flag to randomize the player pose on reset.
         """
         super().__init__(game_speed, phase, init_pose_randomization)
-        self.observation_space = spaces.Box(low=0, high=255, shape=(90, 160, 3), dtype=np.uint8)
+        assert len(resolution) == 2
+        self.observation_space = spaces.Box(low=0, high=255, shape=resolution + (3,), dtype=np.uint8)
+        self.game.img_resolution = resolution
 
     @property
     def obs(self) -> np.ndarray:
