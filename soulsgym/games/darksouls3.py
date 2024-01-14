@@ -466,7 +466,7 @@ class DarkSoulsIII(Game):
         @boss_pose.setter
         def boss_pose(self: DarkSoulsIII, coordinates: tuple[float]):
             game_speed = self.game_speed
-            self.pause_game()
+            self.pause()
             x_addr = self.mem.resolve_record(self.data.addresses[boss_id + "PoseX"])
             a_addr = self.mem.resolve_record(self.data.addresses[boss_id + "PoseA"])
             # Swap y and z order because the game's coordinates are stored as xzy
@@ -761,7 +761,7 @@ class DarkSoulsIII(Game):
         self.player_hp = 0
         self._save_game_flags()
         if self.game_speed == 0:
-            self.resume_game()  # For safety, player might never change animation otherwise
+            self.resume()  # For safety, player might never change animation otherwise
         self.clear_cache()
         self.sleep(0.5)  # Give the game time to register player death and change animation
         while True:
@@ -936,11 +936,11 @@ class DarkSoulsIII(Game):
         except MemoryReadError:
             return False
 
-    def pause_game(self):
+    def pause(self):
         """Pause the game by setting the global speed to 0."""
         self.game_speed = 0
 
-    def resume_game(self):
+    def resume(self):
         """Resume the game by setting the global speed to 1."""
         self.game_speed = 1
 

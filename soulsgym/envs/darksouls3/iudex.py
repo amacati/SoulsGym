@@ -17,14 +17,13 @@ import random
 import time
 from typing import Any, TYPE_CHECKING
 
-from pymem.exception import MemoryReadError
 import numpy as np
 from gymnasium import spaces
-from gymnasium.error import RetriesExceededError
 
 from soulsgym.core.game_state import GameState
 from soulsgym.envs.soulsenv import SoulsEnv, SoulsEnvDemo
-from soulsgym.exception import GameStateError
+from soulsgym.envs.utils import max_retries
+from soulsgym.exception import GameStateError, ResetError
 
 if TYPE_CHECKING:
     from soulsgym.games import DarkSoulsIII
@@ -44,18 +43,17 @@ class IudexEnv(SoulsEnv):
     ARENA_LIM_HIGH = [190., 640., -55., 3.1416]
     CAM_SETUP_POSE = [0.378, 0.926, 0.0]
     IUDEX_MAX_HP = 1037  # When we are not in Cemetery of Ash, the boss HP read can be incorrect
+    HARD_RESET_INTERVAL = 900  # Reset the environment every 15 minutes
 
-    def __init__(self,
-                 game_speed: float = 1.,
-                 phase: int = 1,
-                 init_pose_randomization: bool = False):
+    def __init__(self, game_speed: float = 1., phase: int = 1, random_player_pose: bool = False):
         """Initialize the observation and action spaces.
 
         Args:
             game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
             phase: Set the boss phase. Either 1 or 2 for Iudex.
-            init_pose_randomization: Flag to randomize the player pose on reset.
+            random_player_pose: Flag to randomize the player pose on reset.
         """
+        assert phase in (1, 2)
         # DarkSoulsIII needs to be open at this point
         super().__init__(game_speed=game_speed)
         # The state space consists of multiple spaces. These represent:
@@ -95,15 +93,15 @@ class IudexEnv(SoulsEnv):
             "lock_on": spaces.Discrete(2)
         })
         self.action_space = spaces.Discrete(len(self.game.data.actions))
-        assert phase in (1, 2)
         self.phase = phase
+        self._arena_init = False
         self._phase_init = False
-        self._init_pose_randomization = init_pose_randomization
+        self._random_player_pose = random_player_pose
         # We keep track of the last time the environment has been reset completely. After several
         # hours of gameplay, the game input starts to lag and the agent's actions are not executed
         # properly anymore. We therefore reset the environment every 15 minutes to avoid an
         # unintended performance degradation
-        self._last_hard_reset = 0
+        self._last_hard_reset = time.time()
 
     @property
     def game_id(self) -> str:
@@ -130,10 +128,8 @@ class IudexEnv(SoulsEnv):
         obs["player_animation"] = _player_animations.get(obs["player_animation"], {"ID": -1})["ID"]
         _boss_animations = self.game.data.boss_animations[self.ENV_ID]["all"]
         obs["boss_animation"] = _boss_animations.get(obs["boss_animation"], {"ID": -1})["ID"]
-        obs["player_animation_duration"] = np.array([obs["player_animation_duration"]],
-                                                    dtype=np.float32)
-        obs["boss_animation_duration"] = np.array([obs["boss_animation_duration"]],
-                                                  dtype=np.float32)
+        obs["player_animation_duration"] = np.array([obs["player_animation_duration"]], np.float32)
+        obs["boss_animation_duration"] = np.array([obs["boss_animation_duration"]], np.float32)
         obs["player_pose"] = obs["player_pose"].astype(np.float32)
         obs["boss_pose"] = obs["boss_pose"].astype(np.float32)
         obs["camera_pose"] = obs["camera_pose"].astype(np.float32)
@@ -169,27 +165,7 @@ class IudexEnv(SoulsEnv):
         game_state.player_sp = self.game.player_sp
         return game_state.copy()
 
-    def _env_setup(self, init_retries: int = 3):
-        """Execute the Iudex environment setup.
-
-        Args:
-            init_retries: Maximum number of retries in case of initialization failure.
-
-        Raises:
-            RetriesExceededError: Setup failed more than ``init_retries`` times.
-        """
-        self._env_setup_init_check()
-        while not self._env_setup_check() and init_retries >= 0:
-            if not init_retries:
-                logger.error("Maximum number of teleport resets exceeded")
-                raise RetriesExceededError("Iudex environment setup failed")
-            init_retries -= 1
-            self._iudex_setup()
-        self._is_init = True
-        self._phase_init = False  # When we reload, the phase is automatically reset to 1
-        self._last_hard_reset = time.time()
-        self.game.pause_game()
-
+    @max_retries(retries=3)
     def reset(self, seed: int | None = None, options: Any | None = None) -> tuple[dict, dict]:
         """Reset the environment to the beginning of an episode.
 
@@ -200,50 +176,134 @@ class IudexEnv(SoulsEnv):
         Returns:
             A tuple of the first game state and the info dict after the reset.
         """
-        if not self._is_init:
-            self._env_setup()
-        # Reset the environment every 15 minutes to avoid performance degradation. See `__init__`
-        # for details
         self._game_input.reset()
-        if time.time() - self._last_hard_reset > 900:
-            self.game.reload()
-            self._env_setup()
-        self.terminated = False
-        self.game.pause_game()
+        self._game_window.focus_application()
+        if self._reload_required():
+            self._reload()
+        if self._arena_setup_required():
+            self._arena_setup()
+        if self._phase_setup_required():
+            self._phase_setup()
         self.game.allow_attacks = False
         self.game.allow_hits = False
         self.game.allow_moves = False
+        self.game.time = 0  # Reset the total play time to avoid stuck timer on 999.99h
+        self.game.game_speed = 3  # Increase game speed to speed up recovery
+        self._entity_reset()
+        self._camera_reset()
+        self.game.pause()
+        self.terminated = False
+        self.game.allow_attacks = True
+        self.game.allow_hits = True
+        self.game.allow_moves = True
+        self._internal_state = self.game_state
+        return self.obs, self.info
+
+    def _reload_required(self) -> bool:
+        """Check if the environment needs to be reloaded.
+
+        Returns:
+            True if the environment needs to be reloaded, else False.
+        """
+        if not self.game.is_ingame:
+            raise GameStateError("Player does not seem to be ingame")
+        if not self.game.iudex_flags:
+            return True
+        if time.time() - self._last_hard_reset > self.HARD_RESET_INTERVAL:
+            return True
+        return False
+
+    def _reload(self):
+        """Set up the required flags and reload the game."""
+        self.game.iudex_flags = True
+        self.game.reload()
+        self._last_hard_reset = time.time()
+
+    def _arena_setup_required(self) -> bool:
+        """Check if the arena needs to be set up.
+
+        Returns:
+            True if the arena needs to be set up, else False.
+        """
+        return not self._arena_init
+
+    @max_retries(retries=5)
+    def _arena_setup(self):
+        """Set up the arena.
+
+        Args:
+            init_retries: Maximum number of retries in case of initialization failure.
+        """
+        self.game.game_speed = 3  # Increase game speed to speed up player actions
+        # Make sure to start around the bonfire. In case the player has entered the arena on a
+        # previous try, Iudex has to deaggro before the player can enter the arena again. This
+        # forces us to reload. If the player is not idle, we also reload as a precaution
+        d_pos = self.game.player_pose[:3] - self.game.data.coordinates[self.ENV_ID]["bonfire"][:3]
+        if np.linalg.norm(d_pos) > 10 or self.game.player_animation != "Idle":
+            self.game.reload()
+        self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["fog_wall"]
+        self.game.sleep(0.2)  # Wait for the teleport to finish and the camera to settle
+        d_pos = self.game.player_pose[:3] - self.game.data.coordinates[self.ENV_ID]["fog_wall"][:3]
+        if np.linalg.norm(d_pos) > 0.1:
+            raise ResetError("Player is not standing in front of the fog wall as expected")
+        self._enter_fog_gate()
+        self._arena_init = True
+        self._phase_init = False  # When we reload, the phase is automatically reset to 1
+        self.game.pause()
+
+    def _phase_setup_required(self) -> bool:
+        """Check if the boss phase needs to be set up.
+
+        Returns:
+            True if the boss phase needs to be set up, else False.
+        """
+        return self.phase == 2 and not self._phase_init
+
+    def _phase_setup(self):
+        """Reduce Iudex HP to trigger phase transition and wait for completion."""
+        self.game.iudex_hp = 100
+        self.game.allow_attacks = True  # Iudex needs to attack for the transition
+        self.game.game_speed = 3
+        while not self.game.iudex_animation == "Attack1500":  # Wait for transition animation
+            self.game.sleep(0.1)
+        while self.game.iudex_animation == "Attack1500":  # Wait for transition animation to end
+            self.game.sleep(0.1)
+        self.game.allow_attacks = False
+        self.game.pause()
+        self.game.reset_boss_hp("iudex")
+        self._phase_init = True
+
+    def _entity_reset(self):
+        """Reset the player and boss HP and reset their poses."""
         self.game.reset_player_hp()
         self.game.reset_player_sp()
-        self.game.time = 0  # Reset the total play time to avoid stuck timer on 999.99h
-        if self.phase == 1:
-            self.game.reset_boss_hp("iudex")
-        # If Iudex is set to phase 2, set HP to 100 to trigger phase transition and wait
-        elif not self._phase_init:
-            self._phase_2_setup()
-        self.game.game_speed = 3  # Speed up recovery
-        if self._init_pose_randomization:
-            # Sample player pose uniformly at random around Iudex
-            player_pose = random.choice(
-                self.game.data.coordinates[self.ENV_ID]["player_init_poses_random"])
-        else:
-            player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
+        self.game.reset_boss_hp("iudex")
+        player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
+        if self._random_player_pose:  # Sample player pose uniformly at random around Iudex
+            init_poses = self.game.data.coordinates[self.ENV_ID]["player_init_poses_random"]
+            player_pose = random.choice(init_poses)
+        self.game.player_pose = player_pose
         # When the arena is reset in between episodes, the player is possibly locked on to Iudex or
         # a unit outside the arena. This changes the player's orientation and prevents the
         # successful teleport to the initial pose. We therefore have to release lock on
         if self.game.lock_on:
             self._game_input.single_action("lock_on", 0.005)
         tstart = time.time()
-        while not self._reset_check(player_pose):
+        while not self._entity_reset_check(player_pose):
             self.game.player_pose = player_pose
             self.game.iudex_pose = self.game.data.coordinates[self.ENV_ID]["boss_init_pose"]
-            # On rare occasions, the player can still get stuck with log ons outside the arena, or
-            # races lead to unexpected bugs. In that case, we completely reset the environment
-            if not self._reset_inner_check() or time.time() - tstart > 10:
-                self.game.reload()
-                self._env_setup()
-                return self.reset()
+            # On rare occasions, the player can still get stuck with lock ons outside the arena, or
+            # races lead to unexpected bugs. In that case, we completely reset the environment by
+            # setting the arena_init flag to False and raising a ResetError that implicitly starts
+            # the next reset attempt through the @max_retries decorator
+            if time.time() - tstart > 5:
+                self._arena_init = False  # Make sure the arena is reset on the next reset call
+                raise ResetError("Player or boss pose could not be reset")
             self.game.sleep(0.01)
+
+    def _camera_reset(self):
+        """Reset the camera pose and lock on to the boss."""
+        self.game.game_speed = 3  # Speed up recovery
         while not self.game.lock_on:
             self._lock_on()
             self._game_input.update_input()
@@ -251,99 +311,9 @@ class IudexEnv(SoulsEnv):
             self._game_input.reset()  # Prevent getting stuck if initial press is missed
             if not self._game_window.focused:
                 self._game_window.focus_application()
-        self.game.pause_game()
-        self.game.allow_attacks = True
-        self.game.allow_hits = True
-        self.game.allow_moves = True
-        self._internal_state = self.game_state
-        return self.obs, self.info
 
-    def _iudex_setup(self) -> None:
-        """Set up Iudex flags, focus the application, teleport to the fog gate and enter."""
-        self.game.game_speed = 3  # In case SoulsGym crashed without unpausing Dark Souls III
-        if not self.game.iudex_flags:
-            logger.debug("_iudex_setup: Reload due to incorrect boss flags")
-            self.game.iudex_flags = True
-            self.game.reload()
-            logger.debug("_iudex_setup: Player respawn success")
-        # Make sure to start around the bonfire. Also, in case the player has entered the arena on a
-        # previous try, Iudex has to deaggro before the player can enter the arena again. This
-        # forces us to reload
-        d_pos = self.game.player_pose[:3] - self.game.data.coordinates[self.ENV_ID]["bonfire"][:3]
-        if np.linalg.norm(d_pos) > 10:
-            logger.debug("_iudex_setup: Reload due to incorrect player position")
-            self.game.reload()
-            logger.debug("_iudex_setup: Player respawn success")
-        logger.debug("_iudex_setup: Reset success")
-        self._game_window.focus_application()
-        logger.debug("_iudex_setup: Focus success")
-        # At this point the player should be idle. If this is not the case for some reason,
-        # preemtively reload the game
-        if not self.game.player_animation == "Idle":
-            logger.debug("_iudex_setup: Reload due to unexpected player animation")
-            self.game.reload()
-            logger.debug("_iudex_setup: Player respawn success")
-        self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["fog_wall"]
-        self.game.sleep(0.2)
-        d_pos = self.game.player_pose[:3] - self.game.data.coordinates[self.ENV_ID]["fog_wall"][:3]
-        if np.linalg.norm(d_pos) > 0.1:
-            logger.debug("_iudex_setup: Teleport failed. Retrying")
-            self.game.reload()
-            return self._iudex_setup()
-        self._enter_fog_gate()
-        self._phase_init = False
-        logger.debug("_iudex_setup: Done")
-
-    def _phase_2_setup(self):
-        """Reduce Iudex HP to trigger phase transition and wait for completion."""
-        self.game.iudex_hp = 100
-        self.game.allow_attacks = True  # Iudex needs to attack for the transition
-        self.game.game_speed = 3
-        while not self.game.iudex_animation == "Attack1500":
-            self.game.sleep(0.1)
-        while self.game.iudex_animation == "Attack1500":
-            self.game.sleep(0.1)
-        self.game.allow_attacks = False
-        self.game.pause_game()
-        self.game.reset_boss_hp("iudex")
-        self._phase_init = True
-
-    def _enter_fog_gate(self):
-        """Enter the fog gate."""
-        self.game.camera_pose = self.CAM_SETUP_POSE
-        self._game_input.single_action("interact")
-        while not self.game.player_animation == "Idle":
-            self.game.sleep(0.1)
-        fog_wall_pos = self.game.data.coordinates[self.ENV_ID]["post_fog_wall"][:3]
-        if np.linalg.norm(self.game.player_pose[:3] - fog_wall_pos) > 0.1:
-            return  # Player has not entered the fog wall, abort early
-        logger.debug("_enter_fog_gate: Done")
-
-    @staticmethod
-    def compute_reward(game_state: GameState, next_game_state: GameState) -> float:
-        """Compute the reward from the current game state and the next game state.
-
-        Args:
-            game_state: The game state before the step.
-            next_game_state: The game state after the step.
-
-        Returns:
-            The reward for the provided game states.
-        """
-        boss_reward = (game_state.boss_hp - next_game_state.boss_hp) / game_state.boss_max_hp
-        player_hp_diff = (next_game_state.player_hp - game_state.player_hp)
-        player_reward = player_hp_diff / game_state.player_max_hp
-        if next_game_state.boss_hp == 0 or next_game_state.player_hp == 0:
-            base_reward = 0.1 if next_game_state.boss_hp == 0 else -0.1
-        else:
-            # Experimental: Reward for moving towards the arena center, no reward within 4m distance
-            d_center_now = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
-            d_center_prev = np.linalg.norm(game_state.player_pose[:2] - np.array([139., 596.]))
-            base_reward = 0.01 * (d_center_prev - d_center_now) * (d_center_now > 4)
-        return boss_reward + player_reward + base_reward
-
-    def _reset_check(self, player_pose: np.ndarray) -> bool:
-        """Check if the environment reset was successful.
+    def _entity_reset_check(self, player_pose: np.ndarray) -> bool:
+        """Check if the entity reset was successful.
 
         Args:
             player_pose: The targeted player start pose.
@@ -368,70 +338,42 @@ class IudexEnv(SoulsEnv):
             return False
         return True
 
-    def _reset_inner_check(self) -> bool:
-        """Check if a critical event has happened during the inner reset loop.
-
-        Returns:
-            True if no problem has been detected, else False.
-        """
-        if not self.game.iudex_flags:
-            logger.debug("_reset_inner_check failed: Iudex flags not set properly")
-            return False
-        # Make sure the player and Iudex are still within arena bounds
-        coords = zip(self.ARENA_LIM_LOW, self.game.player_pose, self.ARENA_LIM_HIGH)
-        if not all(low < pos < high for low, pos, high in coords):
-            logger.debug("_reset_inner_check failed: Player position out of arena bounds")
-            logger.debug(self.game_state)
-            return False
-        coords = zip(self.ARENA_LIM_LOW, self.game.iudex_pose, self.ARENA_LIM_HIGH)
-        if not all(low < pos < high for low, pos, high in coords):
-            logger.debug("_reset_inner_check failed: Iudex position out of arena bounds")
-            logger.debug(self.game_state)
-            return False
-        # Player and Iudex have to be alive
-        if self.game.player_hp <= 0:
-            logger.debug("_reset_check failed: Player HP below 1")
-            return False
-        if self.game.iudex_hp <= 0:
-            logger.debug("_reset_check failed: Boss HP below 1")
-            return False
-        return True
-
-    def _env_setup_init_check(self):
-        """Check if all conditions for starting the environment setup are met.
-
-        Raises:
-            GameStateError: Game does not seem to be open.
-            InvalidPlayerStateError: Player state is outside of expected values.
-        """
-        try:
-            game_state = self.game_state
-        except MemoryReadError:
-            logger.error("_env_setup_init_check failed: Player does not seem to be ingame")
-            raise GameStateError("Player does not seem to be ingame")
-        if game_state.player_animation != "Idle":
-            self._game_input.reset()
-            self.game.reload()
-
-    def _env_setup_check(self) -> bool:
-        """Check if the environment setup was successful.
-
-        Returns:
-            True if all conditions are met, else False.
-        """
+    def _enter_fog_gate(self):
+        """Enter the fog gate."""
+        self.game.camera_pose = self.CAM_SETUP_POSE
+        self._game_input.single_action("interact")
+        while not self.game.player_animation == "Idle":
+            self.game.sleep(0.1)
+            # Clear the cache in case the player has died to prevent reading stale addresses
+            self.game.clear_cache()
         post_fog_wall_pos = self.game.data.coordinates[self.ENV_ID]["post_fog_wall"][:3]
         if np.linalg.norm(self.game.player_pose[:3] - post_fog_wall_pos) > 0.2:
-            logger.debug("_env_setup_check failed: Player pose out of tolerances")
-            return False
+            raise ResetError("Player has not entered the fog wall as expected")
         if self.game.player_hp == 0:
-            logger.debug("_env_setup_check failed: Player HP is 0")
-            return False
-        if not self.game.iudex_flags:
-            logger.debug("_env_setup_check failed: Incorrect boss flags")
-            return False
-        if self.game.player_animation != "Idle":
-            logger.debug(f"_env_setup_check: Unexpected animation {self.game.player_animation}")
-        return True
+            raise ResetError("Player has died during reset")
+
+    @staticmethod
+    def compute_reward(game_state: GameState, next_game_state: GameState) -> float:
+        """Compute the reward from the current game state and the next game state.
+
+        Args:
+            game_state: The game state before the step.
+            next_game_state: The game state after the step.
+
+        Returns:
+            The reward for the provided game states.
+        """
+        boss_reward = (game_state.boss_hp - next_game_state.boss_hp) / game_state.boss_max_hp
+        player_hp_diff = (next_game_state.player_hp - game_state.player_hp)
+        player_reward = player_hp_diff / game_state.player_max_hp
+        if next_game_state.boss_hp == 0 or next_game_state.player_hp == 0:
+            base_reward = 0.1 if next_game_state.boss_hp == 0 else -0.1
+        else:
+            # Experimental: Reward for moving towards the arena center, no reward within 4m distance
+            d_center_now = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
+            d_center_prev = np.linalg.norm(game_state.player_pose[:2] - np.array([139., 596.]))
+            base_reward = 0.01 * (d_center_prev - d_center_now) * (d_center_now > 4)
+        return boss_reward + player_reward + base_reward
 
 
 class IudexImgEnv(IudexEnv):
@@ -441,17 +383,25 @@ class IudexImgEnv(IudexEnv):
     HP are available in the info dict.
     """
 
-    def __init__(self, game_speed: int = 1., phase: int = 1, init_pose_randomization: bool = False, resolution: tuple[int, int] = (90, 160)):
+    def __init__(self,
+                 game_speed: int = 1.,
+                 phase: int = 1,
+                 random_player_pose: bool = False,
+                 resolution: tuple[int, int] = (90, 160)):
         """Overwrite the observation space to use the game image.
 
         Args:
             game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
             phase: Set the boss phase. Either 1 or 2 for Iudex.
-            init_pose_randomization: Flag to randomize the player pose on reset.
+            random_player_pose: Flag to randomize the player pose on reset.
+            resolution: The resolution of the game image.
         """
-        super().__init__(game_speed, phase, init_pose_randomization)
+        super().__init__(game_speed, phase, random_player_pose)
         assert len(resolution) == 2
-        self.observation_space = spaces.Box(low=0, high=255, shape=resolution + (3,), dtype=np.uint8)
+        self.observation_space = spaces.Box(low=0,
+                                            high=255,
+                                            shape=resolution + (3,),
+                                            dtype=np.uint8)
         self.game.img_resolution = resolution
 
     @property
@@ -478,16 +428,16 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
     Covers both phases. Player and boss loose HP, and the episode does not reset.
     """
 
-    def __init__(self, game_speed: int = 1., init_pose_randomization: bool = False):
+    def __init__(self, game_speed: int = 1., random_player_pose: bool = False):
         """Initialize the demo environment.
 
         Args:
             game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
-            init_pose_randomization: Flag to randomize the player pose on reset.
+            random_player_pose: Flag to randomize the player pose on reset.
         """
         super().__init__(game_speed)
         # IudexEnv can't be called with all arguments, so we have to set it manually after __init__
-        self._init_pose_randomization = init_pose_randomization
+        self._random_player_pose = random_player_pose
         self.phase = 1
 
     def reset(self, seed: int | None = None, options: Any | None = None) -> tuple[dict, dict]:

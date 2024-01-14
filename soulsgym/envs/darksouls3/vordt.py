@@ -166,7 +166,7 @@ class VordtEnv(SoulsEnv):
             self._phase_setup()
         self._entity_reset()
         self._camera_reset()
-        self.game.pause_game()
+        self.game.pause()
         self.terminated = False
         self._internal_state = self.game_state
         return self.obs, self.info
@@ -240,7 +240,7 @@ class VordtEnv(SoulsEnv):
         while self.game.vordt_animation == "Idle":
             self.game.sleep(0.1)
         self.game.allow_attacks = False
-        self.game.pause_game()
+        self.game.pause()
         self.game.reset_boss_hp("vordt")
         self._phase_init = True
 
@@ -255,7 +255,7 @@ class VordtEnv(SoulsEnv):
             self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
             self.game.vordt_pose = self.game.data.coordinates[self.ENV_ID]["boss_init_pose"]
             self.game.sleep(0.01)
-        self.game.pause_game()
+        self.game.pause()
         self.game.allow_attacks = True
         self.game.allow_moves = True
 
@@ -279,7 +279,7 @@ class VordtEnv(SoulsEnv):
 
     def _camera_reset(self):
         """Reset the camera to a locked on state."""
-        self.game.resume_game()
+        self.game.resume()
         while not self.game.lock_on:
             self._lock_on()
             self._game_input.update_input()

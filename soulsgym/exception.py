@@ -31,3 +31,7 @@ class InjectionFailure(SoulsGymException):
 
 class InvalidGameSettings(SoulsGymException):
     """Raised when the game settings are invalid."""
+
+
+class ResetError(SoulsGymException):
+    """Raised when an environment reset fails."""

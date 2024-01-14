@@ -171,7 +171,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         Note:
             Does not wait for reload to complete.
         """
-        self.game.resume_game()
+        self.game.resume()
         self._game_input.reset()
         # Restore game parameter defaults
         self.game.lock_on_bonus_range = 0
@@ -243,7 +243,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         self.game.allow_hits = True
         self.game.allow_deaths = False
         self.game.allow_weapon_durability_dmg = False  # Weapons mustn't break during long sessions
-        self.game.resume_game()
+        self.game.resume()
 
     def _apply_action(self, action: int):
         """Apply an action to the environment.
@@ -304,7 +304,7 @@ class SoulsEnv(gymnasium.Env, ABC):
             # to a few iterations as context switching allows the CPU to schedule other processes.
             # Disabled for now to increase loop timing precision
             # time.sleep(self.step_size / 1000.)
-        self.game.pause_game()
+        self.game.pause()
         t_end = self.game.time
         game_state = self.game_state  # Game state is a property, so we only call it once
         # The animations might change between the last loop iteration and the game_state snapshot.
@@ -519,7 +519,7 @@ class SoulsEnvDemo(SoulsEnv):
         """Continue the game after finishing the demo."""
         super()._step(action)
         if self.terminated:
-            self.game.resume_game()
+            self.game.resume()
 
     def _step_check(self, game_state: GameState) -> bool:
         """Check if game and player state are within expected values.

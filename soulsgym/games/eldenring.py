@@ -369,7 +369,7 @@ class EldenRing(Game):
         # self.player_hp = 0
         # self._save_game_flags()
         # if self.game_speed == 0:
-        #    self.resume_game()  # For safety, player might never change animation otherwise
+        #    self.resume()  # For safety, player might never change animation otherwise
         # self.clear_cache()
         # self.sleep(0.5)  # Give the game time to register player death and change animation
         # while True:

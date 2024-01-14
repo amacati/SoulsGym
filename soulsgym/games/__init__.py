@@ -1,4 +1,4 @@
-from soulsgym.games.game import Game
+from soulsgym.games.game import Game  # noqa: TC001, required to avoid circular import errors
 from soulsgym.games.darksouls3 import DarkSoulsIII
 from soulsgym.games.eldenring import EldenRing
 
