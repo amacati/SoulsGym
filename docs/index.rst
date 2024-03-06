@@ -30,7 +30,7 @@ The video shows an example of an agent training against Iudex Gundyr. The game r
 
 .. toctree::
    :glob:
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Python API
 
    soulsgym
