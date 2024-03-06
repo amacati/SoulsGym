@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import logging
 from typing import Any, TYPE_CHECKING, ClassVar
-from pathlib import Path
 from abc import ABC, abstractmethod
 
 import gymnasium
@@ -24,7 +23,7 @@ from soulsgym.games import game_factory
 from soulsgym.exception import GameStateError, ResetNeeded, InvalidPlayerStateError
 
 if TYPE_CHECKING:
-    from soulsgym.core.game_state import GameState
+    from soulsgym.envs.game_state import GameState
 
 logger = logging.getLogger(__name__)
 
@@ -83,14 +82,12 @@ class SoulsEnv(gymnasium.Env, ABC):
             raise GameStateError("Player is not loaded into the game")
         # Initialize helper variables
         self._game_speed = game_speed
-        self._internal_state = None
+        self._game_state: GameState = None
         self._last_player_animation_time = 0
         self._last_boss_animation_time = 0
         self._lock_on_timer = 0  # Steps until "lock on" press is allowed
         self._is_init = False
         self.terminated = False
-        # Load environment config
-        self.config_path = Path(__file__).parent / "config"
         self._set_game_properties()
         logger.debug("Env init complete")
 
@@ -126,7 +123,7 @@ class SoulsEnv(gymnasium.Env, ABC):
 
     @property
     @abstractmethod
-    def obs(self) -> dict:
+    def obs(self) -> Any:
         """Return the current observation of the environment."""
 
     @property
@@ -134,12 +131,11 @@ class SoulsEnv(gymnasium.Env, ABC):
     def info(self) -> dict:
         """Return the current info dict of the environment."""
 
-    @property
     @abstractmethod
     def game_state(self) -> GameState:
         """Return the current game state of the environment."""
 
-    def step(self, action: int) -> tuple[dict, float, bool, dict]:
+    def step(self, action: int) -> tuple[dict, float, bool, bool, dict[str, Any]]:
         """Perform a step forward in the environment with a given action.
 
         Each step advances the ingame time by `step_size` seconds. The game is paused before and
@@ -158,9 +154,9 @@ class SoulsEnv(gymnasium.Env, ABC):
         if self.terminated:
             logger.error("Environment step called after environment was terminated")
             raise ResetNeeded("Environment step called after environment was terminated")
-        previous_game_state = self._internal_state.copy()
+        previous_game_state = self._game_state.copy()
         self._step(action)
-        reward = self.compute_reward(previous_game_state, self._internal_state)
+        reward = self.compute_reward(previous_game_state, self._game_state)
         if self.terminated:
             logger.debug("Episode finished")
         return self.obs, reward, self.terminated, False, self.info
@@ -190,13 +186,13 @@ class SoulsEnv(gymnasium.Env, ABC):
         Returns:
             An array of integers containing the currently allowed actions.
         """
-        if self._internal_state is None:
+        if self._game_state is None:
             return []
-        player_animation = self._internal_state.player_animation
+        player_animation = self._game_state.player_animation
         durations = self.game.data.player_animations.get(player_animation,
                                                          {"timings": [0., 0., 0.]})["timings"]
-        current_duration = self._internal_state.player_animation_duration
-        player_sp = self._internal_state.player_sp
+        current_duration = self._game_state.player_animation_duration
+        player_sp = self._game_state.player_sp
         # Movement actions (duration index 2) do not require SP
         movement_ids = list(range(8)) if current_duration >= durations[2] else []
         # Roll actions (duration index 1) require SP > 0
@@ -280,8 +276,8 @@ class SoulsEnv(gymnasium.Env, ABC):
         """
         self.game.game_speed = self._game_speed
         t_start = self.game.time
-        previous_player_animation = self._internal_state.player_animation
-        previous_boss_animation = self._internal_state.boss_animation
+        previous_player_animation = self._game_state.player_animation
+        previous_boss_animation = self._game_state.boss_animation
         boss_animation_start = t_start
         player_animation_start = t_start
         # Needs to be called AFTER resume game to apply roll/hits. Since roll and hit actions have
@@ -306,7 +302,7 @@ class SoulsEnv(gymnasium.Env, ABC):
             # time.sleep(self.step_size / 1000.)
         self.game.pause()
         t_end = self.game.time
-        game_state = self.game_state  # Game state is a property, so we only call it once
+        game_state = self.game_state()
         # The animations might change between the last loop iteration and the game_state snapshot.
         # We therefore have to check one last time and update the animation durations accordingly
         if game_state.boss_animation != previous_boss_animation:
@@ -324,7 +320,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         if not self._step_check(game_state):
             self._handle_critical_game_state(game_state)
             return
-        self._update_internal_game_state(game_state, player_animation_td, boss_animation_td)
+        self._update_game_state(game_state, player_animation_td, boss_animation_td)
         self._step_hook()
 
     def _step_hook(self):
@@ -371,8 +367,8 @@ class SoulsEnv(gymnasium.Env, ABC):
             logger.warning(f"_step: Unknown boss animation {game_state.boss_animation}")
         return True
 
-    def _update_internal_game_state(self, game_state: GameState, player_animation_td: float,
-                                    boss_animation_td: float):
+    def _update_game_state(self, game_state: GameState, player_animation_td: float,
+                           boss_animation_td: float):
         """Update the internal game state.
 
         Args:
@@ -383,32 +379,32 @@ class SoulsEnv(gymnasium.Env, ABC):
         Raises:
             ResetNeeded: Tried to update before resetting the environment first.
         """
-        if self._internal_state is None or self.terminated:
-            logger.error("_update_internal_game_state: SoulsEnv.step() called before reset")
+        if self._game_state is None or self.terminated:
+            logger.error("_update_game_state: SoulsEnv.step() called before reset")
             raise ResetNeeded("SoulsEnv.step() called before reset")
         # Save animation duration and HP
-        if game_state.player_animation == self._internal_state.player_animation:
-            player_animation_duration = self._internal_state.player_animation_duration
+        if game_state.player_animation == self._game_state.player_animation:
+            player_animation_duration = self._game_state.player_animation_duration
             player_animation_duration += player_animation_td
         else:
             player_animation_duration = player_animation_td
-        if game_state.boss_animation == self._internal_state.boss_animation:
-            boss_animation_duration = self._internal_state.boss_animation_duration
+        if game_state.boss_animation == self._game_state.boss_animation:
+            boss_animation_duration = self._game_state.boss_animation_duration
             boss_animation_duration += boss_animation_td
         else:
             boss_animation_duration = boss_animation_td
-        player_hp, boss_hp = self._internal_state.player_hp, self._internal_state.boss_hp
+        player_hp, boss_hp = self._game_state.player_hp, self._game_state.boss_hp
         # Update animation count and HP
-        self._internal_state = game_state
-        self._internal_state.player_animation_duration = player_animation_duration
-        self._internal_state.boss_animation_duration = boss_animation_duration
-        self._internal_state.player_hp -= game_state.player_max_hp - player_hp
-        self._internal_state.boss_hp -= game_state.boss_max_hp - boss_hp
-        if self._internal_state.player_hp < 0:
-            self._internal_state.player_hp = 0
-        if self._internal_state.boss_hp < 0:
-            self._internal_state.boss_hp = 0
-        self.terminated = self._internal_state.player_hp == 0 or self._internal_state.boss_hp == 0
+        self._game_state = game_state
+        self._game_state.player_animation_duration = player_animation_duration
+        self._game_state.boss_animation_duration = boss_animation_duration
+        self._game_state.player_hp -= game_state.player_max_hp - player_hp
+        self._game_state.boss_hp -= game_state.boss_max_hp - boss_hp
+        if self._game_state.player_hp < 0:
+            self._game_state.player_hp = 0
+        if self._game_state.boss_hp < 0:
+            self._game_state.boss_hp = 0
+        self.terminated = self._game_state.player_hp == 0 or self._game_state.boss_hp == 0
 
     def _handle_critical_game_state(self, game_state: GameState):
         """Handle critical game states.
@@ -419,13 +415,13 @@ class SoulsEnv(gymnasium.Env, ABC):
         # Player is falling. Set player log HP to 0 and eagerly reset to prevent reload
         if game_state.player_pose[2] < self.ARENA_LIM_LOW[2]:
             game_state.player_hp = 0
-            self._update_internal_game_state(game_state, self.step_size, self.step_size)
+            self._update_game_state(game_state, self.step_size, self.step_size)
             self.game.reset_player_hp()
             self.game.reset_boss_hp(self.ENV_ID)
             self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
         if game_state.player_animation in self.game.data.critical_player_animations:
             game_state.player_hp = 0
-            self._update_internal_game_state(game_state, self.step_size, self.step_size)
+            self._update_game_state(game_state, self.step_size, self.step_size)
 
     def _lock_on(self, target_pose: np.ndarray | None = None):
         """Reestablish lock on by orienting the camera towards the boss and pressing lock on.
@@ -487,25 +483,25 @@ class SoulsEnvDemo(SoulsEnv):
         """
         super().__init__(game_speed)
 
-    def _update_internal_game_state(self, game_state: GameState, player_animation_td: float,
-                                    boss_animation_td: float):
-        if self._internal_state is None or self.terminated:
-            logger.error("_update_internal_game_state: SoulsEnv.step() called before reset")
+    def _update_game_state(self, game_state: GameState, player_animation_td: float,
+                           boss_animation_td: float):
+        if self._game_state is None or self.terminated:
+            logger.error("_update_game_state: SoulsEnv.step() called before reset")
             raise ResetNeeded("SoulsEnv.step() called before reset")
         # If the animation has not changed, add the previous duration to the time delta
-        if game_state.player_animation == self._internal_state.player_animation:
-            player_animation_td += self._internal_state.player_animation_duration
-        if game_state.boss_animation == self._internal_state.boss_animation:
-            boss_animation_td += self._internal_state.boss_animation_duration
+        if game_state.player_animation == self._game_state.player_animation:
+            player_animation_td += self._game_state.player_animation_duration
+        if game_state.boss_animation == self._game_state.boss_animation:
+            boss_animation_td += self._game_state.boss_animation_duration
         # Update animation count and HP
-        self._internal_state = game_state
-        self._internal_state.player_animation_duration = player_animation_td
-        self._internal_state.boss_animation_duration = boss_animation_td
-        if self._internal_state.player_hp < 0:
-            self._internal_state.player_hp = 0
-        if self._internal_state.boss_hp < 0:
-            self._internal_state.boss_hp = 0
-        self.terminated = self._internal_state.player_hp == 0 or self._internal_state.boss_hp == 0
+        self._game_state = game_state
+        self._game_state.player_animation_duration = player_animation_td
+        self._game_state.boss_animation_duration = boss_animation_td
+        if self._game_state.player_hp < 0:
+            self._game_state.player_hp = 0
+        if self._game_state.boss_hp < 0:
+            self._game_state.boss_hp = 0
+        self.terminated = self._game_state.player_hp == 0 or self._game_state.boss_hp == 0
 
     def _step_hook(self):
         """Omit HP replenishment steps to allow player and boss HP drop."""

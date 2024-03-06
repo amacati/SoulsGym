@@ -20,7 +20,7 @@ from typing import Any, TYPE_CHECKING
 import numpy as np
 from gymnasium import spaces
 
-from soulsgym.core.game_state import GameState
+from soulsgym.envs.game_state import GameState
 from soulsgym.envs.soulsenv import SoulsEnv, SoulsEnvDemo
 from soulsgym.envs.utils import max_retries
 from soulsgym.exception import GameStateError, ResetError
@@ -29,6 +29,14 @@ if TYPE_CHECKING:
     from soulsgym.games import DarkSoulsIII
 
 logger = logging.getLogger(__name__)
+
+
+class IudexState(GameState):
+    """Collect all game information for state tracking in a single data class.
+
+    This class extends the base ``GameState`` with additional data members that are specific to the
+    Iudex Gundyr fight.
+    """
 
 
 class IudexEnv(SoulsEnv):
@@ -69,6 +77,7 @@ class IudexEnv(SoulsEnv):
         # 14)     Boss animation duration. We assume no animation takes longer than 10s.
         # 15)     Lock on flag. Either true or false.
         self.game: DarkSoulsIII  # Type hint only
+        self._game_state: IudexState  # Type hint only
         pose_box_low = np.array(self.ARENA_LIM_LOW, dtype=np.float32)
         pose_box_high = np.array(self.ARENA_LIM_HIGH, dtype=np.float32)
         cam_box_low = np.array(self.ARENA_LIM_LOW[:3] + [-1, -1, -1], dtype=np.float32)
@@ -113,13 +122,13 @@ class IudexEnv(SoulsEnv):
         return "DarkSoulsIII"
 
     @property
-    def obs(self) -> dict:
+    def obs(self) -> dict[str, Any]:
         """Observation property of the environment.
 
         Returns:
             The current observation of the environment.
         """
-        obs = self._internal_state.as_dict()
+        obs = self._game_state.as_dict()
         obs["player_hp"] = np.array([obs["player_hp"]], dtype=np.float32)
         obs["player_sp"] = np.array([obs["player_sp"]], dtype=np.float32)
         obs["boss_hp"] = np.array([obs["boss_hp"]], dtype=np.float32)
@@ -144,16 +153,15 @@ class IudexEnv(SoulsEnv):
         """
         return {"allowed_actions": self.current_valid_actions()}
 
-    @property
-    def game_state(self) -> GameState:
+    def game_state(self) -> IudexState:
         """Read the current game state.
 
         Returns:
             The current game state.
         """
-        game_state = GameState(player_max_hp=self.game.player_max_hp,
-                               player_max_sp=self.game.player_max_sp,
-                               boss_max_hp=self.game.iudex_max_hp)
+        game_state = IudexState(player_max_hp=self.game.player_max_hp,
+                                player_max_sp=self.game.player_max_sp,
+                                boss_max_hp=self.game.iudex_max_hp)
         game_state.lock_on = self.game.lock_on
         game_state.boss_pose = self.game.iudex_pose
         game_state.boss_hp = self.game.iudex_hp
@@ -196,7 +204,7 @@ class IudexEnv(SoulsEnv):
         self.game.allow_attacks = True
         self.game.allow_hits = True
         self.game.allow_moves = True
-        self._internal_state = self.game_state
+        self._game_state = self.game_state()
         return self.obs, self.info
 
     def _reload_required(self) -> bool:
@@ -353,7 +361,7 @@ class IudexEnv(SoulsEnv):
             raise ResetError("Player has died during reset")
 
     @staticmethod
-    def compute_reward(game_state: GameState, next_game_state: GameState) -> float:
+    def compute_reward(game_state: IudexState, next_game_state: IudexState) -> float:
         """Compute the reward from the current game state and the next game state.
 
         Args:
@@ -418,7 +426,7 @@ class IudexImgEnv(IudexEnv):
         """
         return {
             "allowed_actions": self.current_valid_actions(),
-            "boss_hp": self._internal_state.boss_hp
+            "boss_hp": self._game_state.boss_hp
         }
 
 
@@ -428,7 +436,7 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
     Covers both phases. Player and boss loose HP, and the episode does not reset.
     """
 
-    def __init__(self, game_speed: int = 1., random_player_pose: bool = False):
+    def __init__(self, game_speed: float = 1., random_player_pose: bool = False):
         """Initialize the demo environment.
 
         Args:
@@ -456,7 +464,7 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
         self.phase = 1
         return super().reset()
 
-    def step(self, action: int) -> tuple[dict, float, bool, dict]:
+    def step(self, action: int) -> tuple[dict, float, bool, bool, dict[str, Any]]:
         """Perform a step forward in the environment with a given action.
 
         Each step advances the ingame time by `step_size` seconds. The game is paused before and
@@ -470,7 +478,7 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
             an additional info dictionary.
         """
         obs, reward, terminated, truncated, info = super().step(action)
-        if self._internal_state.boss_animation == "Attack1500":  # Phase change animation
+        if self._game_state.boss_animation == "Attack1500":  # Phase change animation
             self.phase = 2
         obs["phase"] = self.phase
         return obs, reward, terminated, truncated, info

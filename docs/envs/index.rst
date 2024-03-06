@@ -7,6 +7,7 @@ soulsgym.envs
     :hidden:
 
     soulsgym
+    game_state
     iudex
 
 Game speed

@@ -16,7 +16,7 @@ from typing import Any, TYPE_CHECKING
 
 import numpy as np
 from gymnasium import spaces
-from soulsgym.core.game_state import GameState
+from soulsgym.envs.game_state import GameState
 
 from soulsgym.envs.soulsenv import SoulsEnv
 
@@ -24,6 +24,14 @@ if TYPE_CHECKING:
     from soulsgym.games import DarkSoulsIII
 
 logger = logging.getLogger(__name__)
+
+
+class VordtState(GameState):
+    """Collect all game information for state tracking in a single data class.
+
+    This class extends the base ``GameState`` with additional data members that are specific to the
+    Iudex Gundyr fight.
+    """
 
 
 class VordtEnv(SoulsEnv):
@@ -98,7 +106,7 @@ class VordtEnv(SoulsEnv):
         Returns:
             The current observation of the environment.
         """
-        obs = self._internal_state.as_dict()
+        obs = self._game_state.as_dict()
         obs["player_hp"] = np.array([obs["player_hp"]], dtype=np.float32)
         obs["player_sp"] = np.array([obs["player_sp"]], dtype=np.float32)
         obs["boss_hp"] = np.array([obs["boss_hp"]], dtype=np.float32)
@@ -125,16 +133,15 @@ class VordtEnv(SoulsEnv):
         """
         return {"allowed_actions": self.current_valid_actions()}
 
-    @property
-    def game_state(self) -> GameState:
+    def game_state(self) -> VordtState:
         """Read the current game state.
 
         Returns:
             The current game state.
         """
-        game_state = GameState(player_max_hp=self.game.player_max_hp,
-                               player_max_sp=self.game.player_max_sp,
-                               boss_max_hp=self.game.vordt_max_hp)
+        game_state = VordtState(player_max_hp=self.game.player_max_hp,
+                                player_max_sp=self.game.player_max_sp,
+                                boss_max_hp=self.game.vordt_max_hp)
         game_state.lock_on = self.game.lock_on
         game_state.boss_pose = self.game.vordt_pose
         game_state.boss_hp = self.game.vordt_hp
@@ -168,7 +175,7 @@ class VordtEnv(SoulsEnv):
         self._camera_reset()
         self.game.pause()
         self.terminated = False
-        self._internal_state = self.game_state
+        self._game_state = self.game_state()
         return self.obs, self.info
 
     def _reload_required(self) -> bool:
@@ -289,7 +296,7 @@ class VordtEnv(SoulsEnv):
                 self._game_window.focus_application()
 
     @staticmethod
-    def compute_reward(game_state: GameState, next_game_state: GameState) -> float:
+    def compute_reward(game_state: VordtState, next_game_state: VordtState) -> float:
         """Compute the reward from the current game state and the next game state.
 
         Args:

@@ -72,7 +72,7 @@ class MemoryManipulator(metaclass=Singleton):
             # Create Pymem object once, this has a relative long initialziation
             self.pymem = Pymem()
             self.pymem.open_process_from_id(self.pid)
-            self.address_cache = {}
+            self.address_cache: dict[str, int] = {}
             # Find the base addresses. Use static addresses where nothing else available. Else use
             # pymems AOB scan functions
             self.process_module = pym.process.module_from_name(self.pymem.process_handle,

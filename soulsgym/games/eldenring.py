@@ -23,9 +23,6 @@ class EldenRing(Game):
         self._game_speed = 1.0
         self.game_speed = 1.0
 
-    def get_state(self):
-        ...
-
     @property
     def img(self) -> np.ndarray:
         """Get the current game image as numpy array.

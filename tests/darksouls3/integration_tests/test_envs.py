@@ -36,7 +36,7 @@ def run_env(env_name: str, kwargs: dict | None = None):
 @pytest.mark.integration
 @pytest.mark.iudex
 @pytest.mark.skipif(game_not_open(), reason="Dark Souls III is not running.")
-@pytest.mark.parametrize("kwargs", [{}, {"game_speed": 2, "init_pose_randomization": True}])
+@pytest.mark.parametrize("kwargs", [{}, {"game_speed": 2, "random_player_pose": True}])
 def test_iudex(kwargs: dict | None):
     env = "SoulsGymIudex-v0"
     run_env(env, kwargs)

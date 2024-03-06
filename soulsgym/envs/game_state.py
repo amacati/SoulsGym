@@ -1,13 +1,16 @@
-"""The ``GameState`` is a ``dataclass`` that contains all information about the game state.
+"""The ``GameState`` is a ``dataclass`` that contains all information for internal tracking.
 
-It is also the observation type returned by soulsgym steps and resets and used as the internal state
-representation of the gym.
+SoulsGym environments periodically reset attributes such as player HP, boss HP etc. To return the
+correct observations, we need to track any changes that have taken place. The ``GameState`` is the
+base class for this purpose. Each environment further extends the ``GameState`` with additional data
+members if necessary.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
 import copy
 
 import numpy as np
+import numpy.typing as npt
 
 
 @dataclass
@@ -19,15 +22,18 @@ class GameState:
     player_max_hp: int = 1
     player_sp: int = 0
     player_max_sp: int = 1
-    boss_hp: int = 0
-    boss_max_hp: int = 1
-    player_pose: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=np.float32))
-    boss_pose: np.ndarray = field(default_factory=lambda: np.zeros(4, dtype=np.float32))
-    camera_pose: np.ndarray = field(default_factory=lambda: np.zeros(6, dtype=np.float32))
+    boss_hp: int | npt.NDArray[np.int64] = 0  # Can also be an array for multi-boss fights
+    boss_max_hp: int | npt.NDArray[np.int64] = 1
+    player_pose: npt.NDArray[np.float32] = field(
+        default_factory=lambda: np.zeros(4, dtype=np.float32))
+    boss_pose: npt.NDArray[np.float32] = field(
+        default_factory=lambda: np.zeros(4, dtype=np.float32))
+    camera_pose: npt.NDArray[np.float32] = field(
+        default_factory=lambda: np.zeros(6, dtype=np.float32))
     player_animation: str = "NoAnimation"
     player_animation_duration: float = 0.
-    boss_animation: str = "NoAnimation"
-    boss_animation_duration: float = 0.
+    boss_animation: str | list[str] = "NoAnimation"
+    boss_animation_duration: float | npt.NDArray[np.float32] = 0.
     lock_on: bool = False
 
     def copy(self) -> GameState:
