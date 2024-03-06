@@ -30,7 +30,7 @@ class WindowCapture:
             hwnd: Handle of the window to open. Note that this is not the process ID, but the window
                 handle.
         """
-        return self._window_capture.open(hwnd)
+        self._window_capture.open(hwnd)
 
     def get_img(self) -> np.ndarray:
         """Get the current image of the window.
@@ -42,4 +42,4 @@ class WindowCapture:
 
     def close(self):
         """Close the window and stop the frame pool."""
-        return self._window_capture.close()
+        self._window_capture.close()
