@@ -358,6 +358,13 @@ class DarkSoulsIII(Game):
         """
         if self.mem.read_record(self.data.addresses["UntendedGravesFlag"]) == b"\x0a":
             return False
+        # Check if the gates to Firelink Shrine are open. If they are, they have to be closed to
+        # prevent the player from leaving the arena. This check might seem redundant with the Iudex
+        # defeated check. However, it is possible for players to open the gates, revive Iudex with
+        # the game interface and then restart the fight with open gates
+        address = self.mem.resolve_record(self.data.addresses["FirelinkShrineGates"])
+        if (self.mem.read_bytes(address, 1)[0] & 8) != 0:  # Gate is open, bit 3 is set
+            return False
         # The leftmost 3 bits tell if iudex is defeated(7), encountered(6) and his sword is pulled
         # out (5). We need him encountered and his sword pulled out but not defeated. Therefore we
         # check if the value is 0b01100000 = 0x60
@@ -368,6 +375,8 @@ class DarkSoulsIII(Game):
         if val:
             self.mem.write_record(self.data.addresses["UntendedGravesFlag"], b"\x00")
             self.mem.write_record(self.data.addresses["IudexFlags"], b"\x60")
+            address = self.mem.resolve_record(self.data.addresses["FirelinkShrineGates"])
+            self.mem.write_bit(address, 3, False)  # Close the gates to Firelink Shrine if open
 
     @property
     def vordt_flags(self) -> bool:
