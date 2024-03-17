@@ -238,6 +238,8 @@ class IudexEnv(SoulsEnv):
     def _reload(self):
         """Set up the required flags and reload the game."""
         self.game.iudex_flags = True
+        self._arena_init = False
+        self._phase_init = False
         self.game.reload()
         self._last_hard_reset = time.time()
 
