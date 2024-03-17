@@ -1,9 +1,10 @@
 """The ``game_input`` module provides an interface to trigger keystrokes from within the gym."""
+
 import ctypes
+import platform
+import time
 from ctypes import wintypes
 from typing import Any
-import time
-import platform
 
 from soulsgym.core.static import keybindings, keymap
 
@@ -14,20 +15,30 @@ KEYEVENTF_UNICODE = 0x0004
 MAPVK_VK_TO_VSC = 0
 
 if platform.system() == "Windows":  # Guard to prevent WinDLL to load on non-Windows systems
-    USER32 = ctypes.WinDLL('user32', use_last_error=True)
+    USER32 = ctypes.WinDLL("user32", use_last_error=True)
 
 wintypes.ULONG_PTR = wintypes.WPARAM
 
 
 class _MOUSEINPUT(ctypes.Structure):
-    _fields_ = (("dx", wintypes.LONG), ("dy", wintypes.LONG), ("mouseData", wintypes.DWORD),
-                ("dwFlags", wintypes.DWORD), ("time", wintypes.DWORD), ("dwExtraInfo",
-                                                                        wintypes.ULONG_PTR))
+    _fields_ = (
+        ("dx", wintypes.LONG),
+        ("dy", wintypes.LONG),
+        ("mouseData", wintypes.DWORD),
+        ("dwFlags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", wintypes.ULONG_PTR),
+    )
 
 
 class _KEYBDINPUT(ctypes.Structure):
-    _fields_ = (("wVk", wintypes.WORD), ("wScan", wintypes.WORD), ("dwFlags", wintypes.DWORD),
-                ("time", wintypes.DWORD), ("dwExtraInfo", wintypes.ULONG_PTR))
+    _fields_ = (
+        ("wVk", wintypes.WORD),
+        ("wScan", wintypes.WORD),
+        ("dwFlags", wintypes.DWORD),
+        ("time", wintypes.DWORD),
+        ("dwExtraInfo", wintypes.ULONG_PTR),
+    )
 
     def __init__(self, *args: Any, **kwargs: Any):
         super(_KEYBDINPUT, self).__init__(*args, **kwargs)
@@ -40,7 +51,6 @@ class _HARDWAREINPUT(ctypes.Structure):
 
 
 class _INPUT(ctypes.Structure):
-
     class __INPUT(ctypes.Union):
         _fields_ = (("ki", _KEYBDINPUT), ("mi", _MOUSEINPUT), ("hi", _HARDWAREINPUT))
 
@@ -75,7 +85,7 @@ class GameInput:
         Action string has to be contained in :data:`.static.keybindings`.
 
         Args:
-            actions: The pressed action.
+            action: The pressed action.
         """
         assert action in self.state.keys()
         self.queued_actions.append(action)

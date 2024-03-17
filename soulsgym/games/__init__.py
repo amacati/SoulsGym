@@ -1,4 +1,6 @@
-from soulsgym.games.game import Game  # noqa: TC001, required to avoid circular import errors
+"""This module contains the game interfaces for the Souls games."""
+
+from soulsgym.games.game import Game  # noqa: TC001, I001, required to avoid circular import errors
 from soulsgym.games.darksouls3 import DarkSoulsIII
 from soulsgym.games.eldenring import EldenRing
 

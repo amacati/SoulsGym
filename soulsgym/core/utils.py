@@ -1,12 +1,13 @@
 """Utility module for ``soulsgym``."""
+
 from __future__ import annotations
 
-from typing import Union, Any
 from threading import Lock
+from typing import Any, Union
 from weakref import WeakValueDictionary
-import psutil
 
 import numpy as np
+import psutil
 
 
 def get_pid(process_name: str) -> int:

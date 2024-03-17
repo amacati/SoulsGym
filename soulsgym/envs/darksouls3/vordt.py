@@ -8,16 +8,17 @@ Note:
     Phase 2 of the boss fight is available by setting the environment keyword argument ``phase``.
     See :mod:`~.envs` for details.
 """
+
 from __future__ import annotations
 
 import logging
 import time
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from gymnasium import spaces
-from soulsgym.envs.game_state import GameState
 
+from soulsgym.envs.game_state import GameState
 from soulsgym.envs.soulsenv import SoulsEnv
 
 if TYPE_CHECKING:
@@ -30,7 +31,7 @@ class VordtState(GameState):
     """Collect all game information for state tracking in a single data class.
 
     This class extends the base ``GameState`` with additional data members that are specific to the
-    Iudex Gundyr fight.
+    Vordt of the Boreal Valley fight.
     """
 
 
@@ -39,12 +40,12 @@ class VordtEnv(SoulsEnv):
 
     ENV_ID = "vordt"
     BONFIRE = "Dancer of the Boreal Valley"
-    ARENA_LIM_LOW = [13., -7., -27., -3.1416]
-    ARENA_LIM_HIGH = [42., 46., -15., 3.1416]
-    CAM_SETUP_POSE = [0., -1., 0.]
+    ARENA_LIM_LOW = [13.0, -7.0, -27.0, -3.1416]
+    ARENA_LIM_HIGH = [42.0, 46.0, -15.0, 3.1416]
+    CAM_SETUP_POSE = [0.0, -1.0, 0.0]
     VORDT_MAX_HP = 1328
 
-    def __init__(self, game_speed: float = 1., phase: int = 1):
+    def __init__(self, game_speed: float = 1.0, phase: int = 1):
         """Initialize the observation and action spaces.
 
         Args:
@@ -60,25 +61,27 @@ class VordtEnv(SoulsEnv):
         cam_box_high = np.array(self.ARENA_LIM_HIGH[:3] + [1, 1, 1], dtype=np.float32)
         player_animations = self.game.data.player_animations
         boss_animations = self.game.data.boss_animations[self.ENV_ID]["all"]
-        self.observation_space = spaces.Dict({
-            "phase": spaces.Discrete(2, start=1),
-            "player_hp": spaces.Box(0, self.game.player_max_hp),
-            "player_max_hp": spaces.Discrete(1, start=self.game.player_max_hp),
-            "player_sp": spaces.Box(0, self.game.player_max_sp),
-            "player_max_sp": spaces.Discrete(1, start=self.game.player_max_sp),
-            "boss_hp": spaces.Box(0, self.VORDT_MAX_HP),
-            "boss_max_hp": spaces.Discrete(1, start=self.VORDT_MAX_HP),
-            "player_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
-            "boss_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
-            "camera_pose": spaces.Box(cam_box_low, cam_box_high, dtype=np.float32),
-            "player_animation": spaces.Discrete(len(player_animations) + 1, start=-1),
-            "player_animation_duration": spaces.Box(0., 10.),
-            "boss_animation": spaces.Discrete(len(boss_animations) + 1, start=-1),
-            "boss_animation_duration": spaces.Box(0., 10.),
-            "lock_on": spaces.Discrete(2),
-            "frost_resistance": spaces.Box(0., 1.),
-            "frost_effect": spaces.Box(0., 1.),
-        })
+        self.observation_space = spaces.Dict(
+            {
+                "phase": spaces.Discrete(2, start=1),
+                "player_hp": spaces.Box(0, self.game.player_max_hp),
+                "player_max_hp": spaces.Discrete(1, start=self.game.player_max_hp),
+                "player_sp": spaces.Box(0, self.game.player_max_sp),
+                "player_max_sp": spaces.Discrete(1, start=self.game.player_max_sp),
+                "boss_hp": spaces.Box(0, self.VORDT_MAX_HP),
+                "boss_max_hp": spaces.Discrete(1, start=self.VORDT_MAX_HP),
+                "player_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
+                "boss_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
+                "camera_pose": spaces.Box(cam_box_low, cam_box_high, dtype=np.float32),
+                "player_animation": spaces.Discrete(len(player_animations) + 1, start=-1),
+                "player_animation_duration": spaces.Box(0.0, 10.0),
+                "boss_animation": spaces.Discrete(len(boss_animations) + 1, start=-1),
+                "boss_animation_duration": spaces.Box(0.0, 10.0),
+                "lock_on": spaces.Discrete(2),
+                "frost_resistance": spaces.Box(0.0, 1.0),
+                "frost_effect": spaces.Box(0.0, 1.0),
+            }
+        )
         self.action_space = spaces.Discrete(len(self.game.data.actions))
         assert phase in (1, 2)
         self.phase = phase
@@ -139,9 +142,11 @@ class VordtEnv(SoulsEnv):
         Returns:
             The current game state.
         """
-        game_state = VordtState(player_max_hp=self.game.player_max_hp,
-                                player_max_sp=self.game.player_max_sp,
-                                boss_max_hp=self.game.vordt_max_hp)
+        game_state = VordtState(
+            player_max_hp=self.game.player_max_hp,
+            player_max_sp=self.game.player_max_sp,
+            boss_max_hp=self.game.vordt_max_hp,
+        )
         game_state.lock_on = self.game.lock_on
         game_state.boss_pose = self.game.vordt_pose
         game_state.boss_hp = self.game.vordt_hp
@@ -256,7 +261,7 @@ class VordtEnv(SoulsEnv):
         self.game.allow_attacks = False
         self.game.allow_moves = False
         self.game.game_speed = 3  # Faster reset
-        self.game.player_frost_resistance = 1.
+        self.game.player_frost_resistance = 1.0
         # self.game.player_frost_effect = 0.  TODO: Can't be set to 0, maybe change address?
         while not self._entity_reset_complete():
             self.game.player_pose = self.game.data.coordinates[self.ENV_ID]["player_init_pose"]
@@ -307,9 +312,9 @@ class VordtEnv(SoulsEnv):
             The reward for the provided game states.
         """
         boss_reward = (game_state.boss_hp - next_game_state.boss_hp) / game_state.boss_max_hp
-        player_hp_diff = (next_game_state.player_hp - game_state.player_hp)
+        player_hp_diff = next_game_state.player_hp - game_state.player_hp
         player_reward = player_hp_diff / game_state.player_max_hp
-        base_reward = 0.
+        base_reward = 0.0
         if next_game_state.boss_hp == 0 or next_game_state.player_hp == 0:
             base_reward = 0.1 if next_game_state.boss_hp == 0 else -0.1
         return boss_reward + player_reward + base_reward

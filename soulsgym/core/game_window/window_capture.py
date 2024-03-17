@@ -1,5 +1,8 @@
-import numpy as np
+"""Wrapper for the C++ WindowCapture class."""
+
 import platform
+
+import numpy as np
 
 if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
     from soulsgym.core.game_window._C.window_capture import WindowCapture as _WindowCapture

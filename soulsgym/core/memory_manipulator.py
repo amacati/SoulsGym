@@ -21,25 +21,27 @@ process. You *will* see race conditions during writing, particularly for values 
 writes in the game loop (e.g. coordinates). Be sure to include checks if writes were successful and
 have taken effect in the game when you write to these memory locations.
 """
+
 from __future__ import annotations
 
 import platform
-from typing import TypedDict, NotRequired
+from typing import NotRequired, TypedDict
 
 if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
-    import win32process
     import win32api
     import win32con
+    import win32process
 
 import pymem as pym
 from pymem import Pymem
 
-from soulsgym.core.utils import Singleton, get_pid
 from soulsgym.core.static import address_base_patterns, address_bases
+from soulsgym.core.utils import Singleton, get_pid
 
 
 class AddressRecord(TypedDict):
     """Type definition for an address record."""
+
     base: str
     offsets: list[int]
     type: str
@@ -75,8 +77,9 @@ class MemoryManipulator(metaclass=Singleton):
             self.address_cache: dict[str, int] = {}
             # Find the base addresses. Use static addresses where nothing else available. Else use
             # pymems AOB scan functions
-            self.process_module = pym.process.module_from_name(self.pymem.process_handle,
-                                                               self.process_name)
+            self.process_module = pym.process.module_from_name(
+                self.pymem.process_handle, self.process_name
+            )
             self.bases = self._load_bases(process_name)
 
     def resolve_record(self, record: AddressRecord) -> int:
@@ -162,7 +165,8 @@ class MemoryManipulator(metaclass=Singleton):
                 self.write_int(address, value)
             case "float":
                 assert isinstance(value, float) or isinstance(
-                    value, int), f"Trying to write {type(value)} to float record!"
+                    value, int
+                ), f"Trying to write {type(value)} to float record!"
                 self.write_float(address, value)
             case "bytes":
                 assert isinstance(value, bytes), f"Trying to write {type(value)} to byte record!"
@@ -198,11 +202,9 @@ class MemoryManipulator(metaclass=Singleton):
         """
         return self.pymem.read_float(address)
 
-    def read_string(self,
-                    address: int,
-                    length: int,
-                    null_term: bool = True,
-                    codec: str = "utf-16") -> str:
+    def read_string(
+        self, address: int, length: int, null_term: bool = True, codec: str = "utf-16"
+    ) -> str:
         """Read a string from memory.
 
         Args:
@@ -225,7 +227,7 @@ class MemoryManipulator(metaclass=Singleton):
                 if s[i - 1] == 0x00 and s[i] == 0x00:
                     pos = i
                     break
-            s = s[:pos - 1]
+            s = s[: pos - 1]
             if not pos:
                 s = s + bytes(1)  # Add null termination for strings which exceed 20 chars.
         return s.decode(codec)
@@ -313,8 +315,9 @@ class MemoryManipulator(metaclass=Singleton):
             bases = {name: addr + self.base_address for name, addr in address_bases[game].items()}
         for base_key, base in address_base_patterns[game].items():
             pattern = bytes(base["pattern"], "ASCII")
-            addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self.process_module,
-                                                   pattern)
+            addr = pym.pattern.pattern_scan_module(
+                self.pymem.process_handle, self.process_module, pattern
+            )
             if not addr:
                 raise RuntimeError(f"Pattern for '{base_key}' could not be resolved!")
             if "offset" in base:

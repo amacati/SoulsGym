@@ -12,16 +12,28 @@ Warning:
     Writing into the process memory is not guaranteed to be "stable". Race conditions with the main
     game loop *will* occur and overwrite values. Coordinates are most affected by this.
 """
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.game_window import GameWindow
+from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.speedhack import SpeedHackConnector
-from soulsgym.core.static import keybindings, keymap, actions, coordinates, player_animations
-from soulsgym.core.static import critical_player_animations, boss_animations, player_stats
-from soulsgym.core.static import bonfires, address_bases, addresses, address_base_patterns
+from soulsgym.core.static import (
+    actions,
+    address_base_patterns,
+    address_bases,
+    addresses,
+    bonfires,
+    boss_animations,
+    coordinates,
+    critical_player_animations,
+    keybindings,
+    keymap,
+    player_animations,
+    player_stats,
+)
 
 
 @dataclass
@@ -30,6 +42,7 @@ class StaticGameData:
 
     Only loads the static data required for the specific game to not clutter the game interface.
     """
+
     keybindings: dict
     keymap: dict
     actions: dict
@@ -73,6 +86,11 @@ class Game(ABC):
     """
 
     def __init__(self):
+        """Initialize the interface tools to target the specified game.
+
+        Load the static data and initialize the memory manipulator, the game window, game input and
+        speed hack connector.
+        """
         super().__init__()
         # Load the static data for the specific game
         self.data = StaticGameData(self.game_id)

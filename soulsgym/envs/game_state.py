@@ -5,9 +5,11 @@ correct observations, we need to track any changes that have taken place. The ``
 base class for this purpose. Each environment further extends the ``GameState`` with additional data
 members if necessary.
 """
+
 from __future__ import annotations
-from dataclasses import dataclass, field
+
 import copy
+from dataclasses import dataclass, field
 
 import numpy as np
 import numpy.typing as npt
@@ -25,15 +27,18 @@ class GameState:
     boss_hp: int | npt.NDArray[np.int64] = 0  # Can also be an array for multi-boss fights
     boss_max_hp: int | npt.NDArray[np.int64] = 1
     player_pose: npt.NDArray[np.float32] = field(
-        default_factory=lambda: np.zeros(4, dtype=np.float32))
+        default_factory=lambda: np.zeros(4, dtype=np.float32)
+    )
     boss_pose: npt.NDArray[np.float32] = field(
-        default_factory=lambda: np.zeros(4, dtype=np.float32))
+        default_factory=lambda: np.zeros(4, dtype=np.float32)
+    )
     camera_pose: npt.NDArray[np.float32] = field(
-        default_factory=lambda: np.zeros(6, dtype=np.float32))
+        default_factory=lambda: np.zeros(6, dtype=np.float32)
+    )
     player_animation: str = "NoAnimation"
-    player_animation_duration: float = 0.
+    player_animation_duration: float = 0.0
     boss_animation: str | list[str] = "NoAnimation"
-    boss_animation_duration: float | npt.NDArray[np.float32] = 0.
+    boss_animation_duration: float | npt.NDArray[np.float32] = 0.0
     lock_on: bool = False
 
     def copy(self) -> GameState:

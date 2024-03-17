@@ -10,12 +10,13 @@ Note:
     Phase 2 of the boss fight is available by setting the environment keyword argument ``phase``.
     See :mod:`~.envs` for details.
 """
+
 from __future__ import annotations
 
 import logging
 import random
 import time
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from gymnasium import spaces
@@ -47,13 +48,13 @@ class IudexEnv(SoulsEnv):
 
     ENV_ID = "iudex"
     BONFIRE = "Cemetery of Ash"
-    ARENA_LIM_LOW = [110., 540., -73., -3.1416]
-    ARENA_LIM_HIGH = [190., 640., -55., 3.1416]
+    ARENA_LIM_LOW = [110.0, 540.0, -73.0, -3.1416]
+    ARENA_LIM_HIGH = [190.0, 640.0, -55.0, 3.1416]
     CAM_SETUP_POSE = [0.378, 0.926, 0.0]
     IUDEX_MAX_HP = 1037  # When we are not in Cemetery of Ash, the boss HP read can be incorrect
     HARD_RESET_INTERVAL = 900  # Reset the environment every 15 minutes
 
-    def __init__(self, game_speed: float = 1., phase: int = 1, random_player_pose: bool = False):
+    def __init__(self, game_speed: float = 1.0, phase: int = 1, random_player_pose: bool = False):
         """Initialize the observation and action spaces.
 
         Args:
@@ -84,23 +85,25 @@ class IudexEnv(SoulsEnv):
         cam_box_high = np.array(self.ARENA_LIM_HIGH[:3] + [1, 1, 1], dtype=np.float32)
         player_animations = self.game.data.player_animations
         boss_animations = self.game.data.boss_animations[self.ENV_ID]["all"]
-        self.observation_space = spaces.Dict({
-            "phase": spaces.Discrete(2, start=1),
-            "player_hp": spaces.Box(0, self.game.player_max_hp),
-            "player_max_hp": spaces.Discrete(1, start=self.game.player_max_hp),
-            "player_sp": spaces.Box(0, self.game.player_max_sp),
-            "player_max_sp": spaces.Discrete(1, start=self.game.player_max_sp),
-            "boss_hp": spaces.Box(0, self.IUDEX_MAX_HP),
-            "boss_max_hp": spaces.Discrete(1, start=self.IUDEX_MAX_HP),
-            "player_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
-            "boss_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
-            "camera_pose": spaces.Box(cam_box_low, cam_box_high, dtype=np.float32),
-            "player_animation": spaces.Discrete(len(player_animations) + 1, start=-1),
-            "player_animation_duration": spaces.Box(0., 10.),
-            "boss_animation": spaces.Discrete(len(boss_animations) + 1, start=-1),
-            "boss_animation_duration": spaces.Box(0., 10.),
-            "lock_on": spaces.Discrete(2)
-        })
+        self.observation_space = spaces.Dict(
+            {
+                "phase": spaces.Discrete(2, start=1),
+                "player_hp": spaces.Box(0, self.game.player_max_hp),
+                "player_max_hp": spaces.Discrete(1, start=self.game.player_max_hp),
+                "player_sp": spaces.Box(0, self.game.player_max_sp),
+                "player_max_sp": spaces.Discrete(1, start=self.game.player_max_sp),
+                "boss_hp": spaces.Box(0, self.IUDEX_MAX_HP),
+                "boss_max_hp": spaces.Discrete(1, start=self.IUDEX_MAX_HP),
+                "player_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
+                "boss_pose": spaces.Box(pose_box_low, pose_box_high, dtype=np.float32),
+                "camera_pose": spaces.Box(cam_box_low, cam_box_high, dtype=np.float32),
+                "player_animation": spaces.Discrete(len(player_animations) + 1, start=-1),
+                "player_animation_duration": spaces.Box(0.0, 10.0),
+                "boss_animation": spaces.Discrete(len(boss_animations) + 1, start=-1),
+                "boss_animation_duration": spaces.Box(0.0, 10.0),
+                "lock_on": spaces.Discrete(2),
+            }
+        )
         self.action_space = spaces.Discrete(len(self.game.data.actions))
         self.phase = phase
         self._arena_init = False
@@ -159,9 +162,11 @@ class IudexEnv(SoulsEnv):
         Returns:
             The current game state.
         """
-        game_state = IudexState(player_max_hp=self.game.player_max_hp,
-                                player_max_sp=self.game.player_max_sp,
-                                boss_max_hp=self.game.iudex_max_hp)
+        game_state = IudexState(
+            player_max_hp=self.game.player_max_hp,
+            player_max_sp=self.game.player_max_sp,
+            boss_max_hp=self.game.iudex_max_hp,
+        )
         game_state.lock_on = self.game.lock_on
         game_state.boss_pose = self.game.iudex_pose
         game_state.boss_hp = self.game.iudex_hp
@@ -372,14 +377,16 @@ class IudexEnv(SoulsEnv):
             The reward for the provided game states.
         """
         boss_reward = (game_state.boss_hp - next_game_state.boss_hp) / game_state.boss_max_hp
-        player_hp_diff = (next_game_state.player_hp - game_state.player_hp)
+        player_hp_diff = next_game_state.player_hp - game_state.player_hp
         player_reward = player_hp_diff / game_state.player_max_hp
         if next_game_state.boss_hp == 0 or next_game_state.player_hp == 0:
             base_reward = 0.1 if next_game_state.boss_hp == 0 else -0.1
         else:
             # Experimental: Reward for moving towards the arena center, no reward within 4m distance
-            d_center_now = np.linalg.norm(next_game_state.player_pose[:2] - np.array([139., 596.]))
-            d_center_prev = np.linalg.norm(game_state.player_pose[:2] - np.array([139., 596.]))
+            d_center_now = np.linalg.norm(
+                next_game_state.player_pose[:2] - np.array([139.0, 596.0])
+            )
+            d_center_prev = np.linalg.norm(game_state.player_pose[:2] - np.array([139.0, 596.0]))
             base_reward = 0.01 * (d_center_prev - d_center_now) * (d_center_now > 4)
         return boss_reward + player_reward + base_reward
 
@@ -391,11 +398,13 @@ class IudexImgEnv(IudexEnv):
     HP are available in the info dict.
     """
 
-    def __init__(self,
-                 game_speed: int = 1.,
-                 phase: int = 1,
-                 random_player_pose: bool = False,
-                 resolution: tuple[int, int] = (90, 160)):
+    def __init__(
+        self,
+        game_speed: int = 1.0,
+        phase: int = 1,
+        random_player_pose: bool = False,
+        resolution: tuple[int, int] = (90, 160),
+    ):
         """Overwrite the observation space to use the game image.
 
         Args:
@@ -406,10 +415,9 @@ class IudexImgEnv(IudexEnv):
         """
         super().__init__(game_speed, phase, random_player_pose)
         assert len(resolution) == 2
-        self.observation_space = spaces.Box(low=0,
-                                            high=255,
-                                            shape=resolution + (3,),
-                                            dtype=np.uint8)
+        self.observation_space = spaces.Box(
+            low=0, high=255, shape=resolution + (3,), dtype=np.uint8
+        )
         self.game.img_resolution = resolution
 
     @property
@@ -426,7 +434,7 @@ class IudexImgEnv(IudexEnv):
         """
         return {
             "allowed_actions": self.current_valid_actions(),
-            "boss_hp": self._game_state.boss_hp
+            "boss_hp": self._game_state.boss_hp,
         }
 
 
@@ -436,7 +444,7 @@ class IudexEnvDemo(SoulsEnvDemo, IudexEnv):
     Covers both phases. Player and boss loose HP, and the episode does not reset.
     """
 
-    def __init__(self, game_speed: float = 1., random_player_pose: bool = False):
+    def __init__(self, game_speed: float = 1.0, random_player_pose: bool = False):
         """Initialize the demo environment.
 
         Args:

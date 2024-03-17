@@ -14,26 +14,27 @@ The module implements a singleton that provides thread-safe access to the named 
 DLL. This is necessary because only a limited number of clients can connect to the pipe. Otherwise,
 multiple game interface objects could not be instantiated.
 """
-import time
-import struct
-from pathlib import Path
-from multiprocessing import Lock
+
 import logging
 import platform
+import struct
+import time
+from multiprocessing import Lock
+from pathlib import Path
 
 if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
+    import pywintypes
     import win32api
-    import win32process
     import win32event
     import win32file
-    import pywintypes
+    import win32process
 
-from soulsgym.exception import InjectionFailure
 from soulsgym.core.utils import Singleton, get_pid
+from soulsgym.exception import InjectionFailure
 
 logger = logging.getLogger(__name__)
 
-PROCESS_ALL_ACCESS = (0x000F0000 | 0x00100000 | 0x00000FFF)
+PROCESS_ALL_ACCESS = 0x000F0000 | 0x00100000 | 0x00000FFF
 MEM_CREATE = 0x00001000 | 0x00002000
 MEM_RELEASE = 0x00008000
 MAX_PATH = 260
@@ -78,8 +79,9 @@ def _write_dll_to_process(p_handle: int, dll_path: Path) -> int:
     mem_addr = win32process.VirtualAllocEx(p_handle, 0, MAX_PATH, MEM_CREATE, PAGE_READWRITE)
     if not mem_addr:
         win32api.CloseHandle(p_handle)
-        raise InjectionFailure(("Failed to execute virtual allocation for writing the DLL to the"
-                                " targeted process"))
+        raise InjectionFailure(
+            ("Failed to execute virtual allocation for writing the DLL to the" " targeted process")
+        )
     if not win32process.WriteProcessMemory(p_handle, mem_addr, str(dll_path).encode("ascii")):
         win32api.CloseHandle(p_handle)
         raise InjectionFailure("Failed to write DLL path to allocated memory in targeted process")
@@ -164,8 +166,9 @@ class SpeedHackConnector(metaclass=Singleton):
         win32file.WriteFile(self.pipe, struct.pack("f", value))
 
     def _connect_pipe(self) -> int:
-        return win32file.CreateFile(self.pipe_name, win32file.GENERIC_WRITE, 0, None,
-                                    win32file.OPEN_EXISTING, 0, None)
+        return win32file.CreateFile(
+            self.pipe_name, win32file.GENERIC_WRITE, 0, None, win32file.OPEN_EXISTING, 0, None
+        )
 
     def __del__(self):
         """Close the pipe handle on deletion."""

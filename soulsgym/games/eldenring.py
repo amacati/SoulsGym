@@ -1,23 +1,27 @@
+"""This module contains the game interface for Elden Ring."""
+
 import logging
 import struct
-from typing import Any
 import time
+from typing import Any
 
-from pymem.exception import MemoryReadError
 import numpy as np
+from pymem.exception import MemoryReadError
 
-from soulsgym.games import Game
 from soulsgym.core.utils import wrap_to_pi
+from soulsgym.games import Game
 
 logger = logging.getLogger(__name__)
 
 
 class EldenRing(Game):
+    """Elden Ring game interface."""
 
     game_id = "EldenRing"
     process_name = "eldenring.exe"
 
     def __init__(self):
+        """Create a new EldenRing game interface and set the game speed to 1.0."""
         super().__init__()
         self._game_flags = {}  # Cache game flags to restore them after a game reload
         self._game_speed = 1.0
@@ -165,7 +169,7 @@ class EldenRing(Game):
         Returns:
             The current player pose as [x, y, z, a].
         """
-        x, z, y, a = struct.unpack('ffff', self.mem.read_record(self.data.addresses["PlayerXYZA"]))
+        x, z, y, a = struct.unpack("ffff", self.mem.read_record(self.data.addresses["PlayerXYZA"]))
         return np.array([x, y, z, a])
 
     @player_pose.setter
@@ -181,8 +185,8 @@ class EldenRing(Game):
         # Read global coordinates, calculate the difference to the target coordinates
         delta = np.array(coordinates[:3]) - self.player_pose[:3]
         # Read local coords, add the difference and write the new local coords
-        x, z, y = struct.unpack('fff', self.mem.read_record(self.data.addresses["PlayerLocalXYZ"]))
-        new_global_pos = struct.pack('fff', x + delta[0], z + delta[2], y + delta[1])
+        x, z, y = struct.unpack("fff", self.mem.read_record(self.data.addresses["PlayerLocalXYZ"]))
+        new_global_pos = struct.pack("fff", x + delta[0], z + delta[2], y + delta[1])
         self.mem.write_record(self.data.addresses["PlayerLocalXYZ"], new_global_pos)
         # TODO: Rotation is currently not working
         # address = self.mem.resolve_record(self.data.addresses["PlayerLocalQ"])
@@ -255,9 +259,9 @@ class EldenRing(Game):
         buff = self.mem.read_record(self.data.addresses["LocalCam"])
         # cam orientation seems to be given as a normal vector for the camera plane. As with the
         # position, the game switches y and z
-        nx, nz, ny, x, z, y = struct.unpack('fff' + 4 * 'x' + 'fff', buff)
+        nx, nz, ny, x, z, y = struct.unpack("fff" + 4 * "x" + "fff", buff)
         # In Elden Ring, the xyz coordinates use chunks -> We have to add the current chunk values
-        cx, cz, cy = struct.unpack('fff', self.mem.read_record(self.data.addresses["ChunkCamXYZ"]))
+        cx, cz, cy = struct.unpack("fff", self.mem.read_record(self.data.addresses["ChunkCamXYZ"]))
         return np.array([x - cx, y - cy, z - cz, nx, ny, nz])
 
     @camera_pose.setter
@@ -357,8 +361,7 @@ class EldenRing(Game):
         return False
 
     @allow_weapon_durability_dmg.setter
-    def allow_weapon_durability_dmg(self, _: bool):
-        ...
+    def allow_weapon_durability_dmg(self, _: bool): ...
 
     def reload(self):
         """Kill the player, clear the address cache and wait for the player to respawn."""

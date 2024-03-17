@@ -7,20 +7,21 @@ In addition, we also provide a :class:`~.SoulsEnvDemo` base class for demo envir
 to the training environments, demos cover all phases of a boss fight and allow to demonstrate the
 agent's abilities in a setting that is as close to the real game as possible.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, TYPE_CHECKING, ClassVar
 from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import gymnasium
 import numpy as np
 
 from soulsgym.core.game_input import GameInput
-from soulsgym.core.utils import wrap_to_pi
 from soulsgym.core.game_window import GameWindow
+from soulsgym.core.utils import wrap_to_pi
+from soulsgym.exception import GameStateError, InvalidPlayerStateError, ResetNeeded
 from soulsgym.games import game_factory
-from soulsgym.exception import GameStateError, ResetNeeded, InvalidPlayerStateError
 
 if TYPE_CHECKING:
     from soulsgym.envs.game_state import GameState
@@ -56,7 +57,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         [1, 3].
     """
 
-    metadata = {'render_modes': []}
+    metadata = {"render_modes": []}
     step_size = 0.1  # Seconds between each step
     # The following class variables have to be set by the child classes
     ENV_ID: ClassVar[str]
@@ -64,7 +65,7 @@ class SoulsEnv(gymnasium.Env, ABC):
     ARENA_LIM_LOW: ClassVar[list[float]]
     ARENA_LIM_HIGH: ClassVar[list[float]]
 
-    def __init__(self, game_speed: float = 1.):
+    def __init__(self, game_speed: float = 1.0):
         """Initialize the game managers, load the environment config and set the game properties.
 
         Args:
@@ -189,8 +190,9 @@ class SoulsEnv(gymnasium.Env, ABC):
         if self._game_state is None:
             return []
         player_animation = self._game_state.player_animation
-        durations = self.game.data.player_animations.get(player_animation,
-                                                         {"timings": [0., 0., 0.]})["timings"]
+        durations = self.game.data.player_animations.get(
+            player_animation, {"timings": [0.0, 0.0, 0.0]}
+        )["timings"]
         current_duration = self._game_state.player_animation_duration
         player_sp = self._game_state.player_sp
         # Movement actions (duration index 2) do not require SP
@@ -367,8 +369,9 @@ class SoulsEnv(gymnasium.Env, ABC):
             logger.warning(f"_step: Unknown boss animation {game_state.boss_animation}")
         return True
 
-    def _update_game_state(self, game_state: GameState, player_animation_td: float,
-                           boss_animation_td: float):
+    def _update_game_state(
+        self, game_state: GameState, player_animation_td: float, boss_animation_td: float
+    ):
         """Update the internal game state.
 
         Args:
@@ -475,7 +478,7 @@ class SoulsEnvDemo(SoulsEnv):
     or the boss has been defeated.
     """
 
-    def __init__(self, game_speed: float = 1.):
+    def __init__(self, game_speed: float = 1.0):
         """Initialize the demo environment.
 
         Args:
@@ -483,8 +486,9 @@ class SoulsEnvDemo(SoulsEnv):
         """
         super().__init__(game_speed)
 
-    def _update_game_state(self, game_state: GameState, player_animation_td: float,
-                           boss_animation_td: float):
+    def _update_game_state(
+        self, game_state: GameState, player_animation_td: float, boss_animation_td: float
+    ):
         if self._game_state is None or self.terminated:
             logger.error("_update_game_state: SoulsEnv.step() called before reset")
             raise ResetNeeded("SoulsEnv.step() called before reset")

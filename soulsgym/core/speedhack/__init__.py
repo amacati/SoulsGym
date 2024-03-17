@@ -15,6 +15,7 @@ The module implements a singleton that provides thread-safe access to the named 
 DLL. This is necessary because only a limited number of clients can connect to the pipe. Otherwise,
 multiple game interface objects could not be instantiated.
 """
-from soulsgym.core.speedhack.speedhack import inject_dll, SpeedHackConnector
+
+from soulsgym.core.speedhack.speedhack import SpeedHackConnector, inject_dll
 
 __all__ = ["inject_dll", "SpeedHackConnector"]

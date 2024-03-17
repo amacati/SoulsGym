@@ -36,6 +36,7 @@ window has to remain focussed at all times for the game to register the keystrok
 Warning:
     Do **not** interact with your game in any way during training.
 """
+
 import logging
 
 import pymem

@@ -1,10 +1,11 @@
 """This module contains the game interface for Dark Souls III."""
+
 from __future__ import annotations
 
-import struct
-from typing import Any
 import logging
+import struct
 import time
+from typing import Any
 
 import numpy as np
 from pymem.exception import MemoryReadError
@@ -186,7 +187,7 @@ class DarkSoulsIII(Game):
         """
         address = self.mem.resolve_record(self.data.addresses["PlayerA"])
         buff = self.mem.read_bytes(address, length=24)
-        a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the memory structure.
+        a, x, z, y = struct.unpack("f" + 8 * "x" + "fff", buff)  # Order as in the memory structure.
         return np.array([x, y, z, a])
 
     @player_pose.setter
@@ -201,7 +202,7 @@ class DarkSoulsIII(Game):
         self.gravity = False
         x_address = self.mem.resolve_record(self.data.addresses["PlayerX"])
         a_address = self.mem.resolve_record(self.data.addresses["PlayerA"])
-        xzy = struct.pack('fff', coordinates[0], coordinates[2], coordinates[1])  # Swap y z order
+        xzy = struct.pack("fff", coordinates[0], coordinates[2], coordinates[1])  # Swap y z order
         self.mem.write_bytes(x_address, xzy)
         self.mem.write_float(a_address, coordinates[3])
         self.gravity = True
@@ -259,11 +260,11 @@ class DarkSoulsIII(Game):
     @property
     def allow_player_death(self) -> bool:
         """Disable/enable player deaths ingame."""
-        return self.mem.read_bytes(self.mem.bases["WorldChrManDbg_Flags"], 1) == b'\x00'
+        return self.mem.read_bytes(self.mem.bases["WorldChrManDbg_Flags"], 1) == b"\x00"
 
     @allow_player_death.setter
     def allow_player_death(self, flag: bool):
-        self.mem.write_bytes(self.mem.bases["WorldChrManDbg_Flags"], struct.pack('B', not flag))
+        self.mem.write_bytes(self.mem.bases["WorldChrManDbg_Flags"], struct.pack("B", not flag))
 
     @property
     def player_stats(self) -> tuple[int]:
@@ -355,18 +356,18 @@ class DarkSoulsIII(Game):
         Returns:
             True if all flags are correct, False otherwise.
         """
-        if self.mem.read_record(self.data.addresses["UntendedGravesFlag"]) == b'\x0A':
+        if self.mem.read_record(self.data.addresses["UntendedGravesFlag"]) == b"\x0a":
             return False
         # The leftmost 3 bits tell if iudex is defeated(7), encountered(6) and his sword is pulled
         # out (5). We need him encountered and his sword pulled out but not defeated. Therefore we
         # check if the value is 0b01100000 = 0x60
-        return self.mem.read_record(self.data.addresses["IudexFlags"]) == b'\x60'  # 01100000
+        return self.mem.read_record(self.data.addresses["IudexFlags"]) == b"\x60"  # 01100000
 
     @iudex_flags.setter
     def iudex_flags(self, val: bool):
         if val:
-            self.mem.write_record(self.data.addresses["UntendedGravesFlag"], b'\x00')
-            self.mem.write_record(self.data.addresses["IudexFlags"], b'\x60')
+            self.mem.write_record(self.data.addresses["UntendedGravesFlag"], b"\x00")
+            self.mem.write_record(self.data.addresses["IudexFlags"], b"\x60")
 
     @property
     def vordt_flags(self) -> bool:
@@ -374,12 +375,12 @@ class DarkSoulsIII(Game):
 
         See :attr:`.DarkSoulsIII.iudex_flags` for more details.
         """
-        return self.mem.read_record(self.data.addresses["VordtFlags"]) == b'\x40'
+        return self.mem.read_record(self.data.addresses["VordtFlags"]) == b"\x40"
 
     @vordt_flags.setter
     def vordt_flags(self, val: bool):
         if val:
-            self.mem.write_record(self.data.addresses["VordtFlags"], b'\x40')
+            self.mem.write_record(self.data.addresses["VordtFlags"], b"\x40")
 
     # We define properties for each boss. Since most code is shared between the bosses, we create
     # a property factory for each boss attribute, e.g. boss_hp. The factory takes the boss ID and
@@ -460,7 +461,7 @@ class DarkSoulsIII(Game):
         def boss_pose(self: DarkSoulsIII) -> np.ndarray:
             address = self.mem.resolve_record(self.data.addresses[boss_id + "PoseA"])
             buff = self.mem.read_bytes(address, length=24)
-            a, x, z, y = struct.unpack('f' + 8 * 'x' + 'fff', buff)  # Order as in the game memory
+            a, x, z, y = struct.unpack("f" + 8 * "x" + "fff", buff)  # Order as in the game memory
             return np.array([x, y, z, a])
 
         @boss_pose.setter
@@ -643,7 +644,7 @@ class DarkSoulsIII(Game):
         cam_buff = self.mem.read_bytes(address, length=28)
         # Cam orientation seems to be given as a normal vector for the camera plane. As with the
         # position, the game switches y and z
-        nx, nz, ny, x, z, y = struct.unpack('fff' + 4 * 'x' + 'fff', cam_buff)
+        nx, nz, ny, x, z, y = struct.unpack("fff" + 4 * "x" + "fff", cam_buff)
         return np.array([x, y, z, nx, ny, nz])
 
     @camera_pose.setter
@@ -693,7 +694,7 @@ class DarkSoulsIII(Game):
     def last_bonfire(self, name: str):
         assert name in self.data.bonfires.keys(), f"Unknown bonfire {name} specified!"
         # See Iudex flags for details on the Untended Graves flag
-        ug_flag = b"\x0A" if name in ("Untended Graves", "Champion Gundyr") else b"\x00"
+        ug_flag = b"\x0a" if name in ("Untended Graves", "Champion Gundyr") else b"\x00"
         self.mem.write_record(self.data.addresses["UntendedGravesFlag"], ug_flag)
         self.mem.write_record(self.data.addresses["LastBonfire"], self.data.bonfires[name])
 
@@ -701,12 +702,12 @@ class DarkSoulsIII(Game):
     def allow_attacks(self) -> bool:
         """Globally enable/disable attacks for all entities."""
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0xB
-        return self.mem.read_bytes(address, length=1) == b'\x00'
+        return self.mem.read_bytes(address, length=1) == b"\x00"
 
     @allow_attacks.setter
     def allow_attacks(self, flag: bool):
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0xB
-        self.mem.write_bytes(address, struct.pack('B', not flag))
+        self.mem.write_bytes(address, struct.pack("B", not flag))
 
     @property
     def allow_hits(self) -> bool:
@@ -716,45 +717,45 @@ class DarkSoulsIII(Game):
         all attacks, staggers etc.
         """
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0xA
-        return self.mem.read_bytes(address, length=1) == b'\x00'
+        return self.mem.read_bytes(address, length=1) == b"\x00"
 
     @allow_hits.setter
     def allow_hits(self, flag: bool):
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0xA
-        self.mem.write_bytes(address, struct.pack('B', not flag))
+        self.mem.write_bytes(address, struct.pack("B", not flag))
 
     @property
     def allow_moves(self) -> bool:
         """Globally enable/disable movement for all entities."""
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0xC
-        return self.mem.read_bytes(address, length=1) == b'\x00'
+        return self.mem.read_bytes(address, length=1) == b"\x00"
 
     @allow_moves.setter
     def allow_moves(self, flag: bool):
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0xC
-        self.mem.write_bytes(address, struct.pack('B', not flag))
+        self.mem.write_bytes(address, struct.pack("B", not flag))
 
     @property
     def allow_deaths(self) -> bool:
         """Globally enable/disable deaths for all entities."""
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0x8
-        return self.mem.read_bytes(address, length=1) == b'\x00'
+        return self.mem.read_bytes(address, length=1) == b"\x00"
 
     @allow_deaths.setter
     def allow_deaths(self, flag: bool):
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0x8
-        self.mem.write_bytes(address, struct.pack('B', not flag))
+        self.mem.write_bytes(address, struct.pack("B", not flag))
 
     @property
     def allow_weapon_durability_dmg(self) -> bool:
         """Globally enable/disable weapon durability damage for all entities."""
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0xE
-        return self.mem.read_bytes(address, length=1) == b'\x00'
+        return self.mem.read_bytes(address, length=1) == b"\x00"
 
     @allow_weapon_durability_dmg.setter
     def allow_weapon_durability_dmg(self, flag: bool):
         address = self.mem.bases["WorldChrManDbg_Flags"] + 0xE
-        self.mem.write_bytes(address, struct.pack('B', not flag))
+        self.mem.write_bytes(address, struct.pack("B", not flag))
 
     def reload(self):
         """Kill the player, clear the address cache and wait for the player to respawn."""

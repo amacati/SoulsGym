@@ -3,18 +3,19 @@
 Window capture itself is implemented in C++ to enable fast and efficient screen capture.
 ``GameWindow`` also allows us to focus the Dark Souls III application on gym start.
 """
-from typing import Callable
-import time
-import platform
-from itertools import groupby
 
-import numpy as np
+import platform
+import time
+from itertools import groupby
+from typing import Callable
+
 import cv2
+import numpy as np
 
 if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
-    import win32gui
     import win32api
     import win32con
+    import win32gui
 
 from soulsgym.core.game_window.window_capture import WindowCapture
 
@@ -26,14 +27,17 @@ class GameWindow:
     larger game window directly corresponds to larger images and more required computational power
     for processing.
     """
+
     window_ids = {"DarkSoulsIII": "DARK SOULS III", "EldenRing": "ELDEN RING™"}
     game_resolution = {"DarkSoulsIII": (800, 450), "EldenRing": (800, 450)}
 
-    def __init__(self,
-                 game_id: str,
-                 processing: Callable | None = None,
-                 img_height: int | None = None,
-                 img_width: int | None = None):
+    def __init__(
+        self,
+        game_id: str,
+        processing: Callable | None = None,
+        img_height: int | None = None,
+        img_width: int | None = None,
+    ):
         """Initialize the monitor and screen frame grab.
 
         We offer an optional ``processing`` callable which can be used to transform images from the
@@ -42,6 +46,8 @@ class GameWindow:
         Args:
             game_id: The name of the game.
             processing: Optional function for raw image processing.
+            img_height: The height of the captured image.
+            img_width: The width of the captured image.
         """
         self.game_id = game_id
         self.img_height = img_height or 90
@@ -50,7 +56,7 @@ class GameWindow:
         # Initialize the window capture
         self.hwnd = win32gui.FindWindow(None, self.window_ids[game_id])
         if not self.hwnd:
-            raise Exception('Window not found: {}'.format(game_id))
+            raise Exception("Window not found: {}".format(game_id))
         self._window_capture = WindowCapture()
         self._window_capture.open(self.hwnd)
         # The image we get from the game capture module game window initially does not match the
@@ -60,6 +66,7 @@ class GameWindow:
 
     @property
     def img_resolution(self) -> tuple[int, int]:
+        """The resolution of the captured image."""
         return self.img_height, self.img_width
 
     @img_resolution.setter
@@ -115,8 +122,10 @@ class GameWindow:
         Returns:
             The processed input image.
         """
-        img = img[self._crop_heights[0]:self._crop_heights[1],
-                  self._crop_widths[0]:self._crop_widths[1]]
+        img = img[
+            self._crop_heights[0] : self._crop_heights[1],
+            self._crop_widths[0] : self._crop_widths[1],
+        ]
         if img.shape == (self.img_height, self.img_width, 3):
             return img
         return cv2.resize(img, (self.img_width, self.img_height), interpolation=cv2.INTER_AREA)
@@ -136,8 +145,10 @@ class GameWindow:
         desired_resolution = self.game_resolution[self.game_id][::-1]
         # Detect all rows and columns in the image that are completely black
         black_pixels = np.all(img == 0, axis=2)
-        black_rows, black_columns = np.all(black_pixels == 1, axis=0), np.all(black_pixels == 1,
-                                                                              axis=1)
+        black_rows, black_columns = (
+            np.all(black_pixels == 1, axis=0),
+            np.all(black_pixels == 1, axis=1),
+        )
         # Generate a list of the lengths of the black pixel rows and columns
         img_column_paddings = [len(list(v)) for k, v in groupby(black_columns) if k == 1]
         img_row_paddings = [len(list(v)) for k, v in groupby(black_rows) if k == 1]
@@ -149,11 +160,19 @@ class GameWindow:
         # Check if the image resolution can still be cropped to the desired resolution and
         res_diff = np.array([bottom_crop - top_crop, right_crop - left_crop]) - desired_resolution
         if np.any(res_diff < 0):
-            raise RuntimeError(("Image autocrop failed: Resolution differences are below zero "
-                                f"({res_diff}). Please set the game resolution to 800x450."))
+            raise RuntimeError(
+                (
+                    "Image autocrop failed: Resolution differences are below zero "
+                    f"({res_diff}). Please set the game resolution to 800x450."
+                )
+            )
         if res_diff[0] > 50 or res_diff[1] > 10:
-            raise RuntimeError((f"Image resolution difference is too great {res_diff}."
-                                "Please set the game resolution to 800x450."))
+            raise RuntimeError(
+                (
+                    f"Image resolution difference is too great {res_diff}."
+                    "Please set the game resolution to 800x450."
+                )
+            )
         # Finally, crop the image to the desired resolution. The side difference is distributed
         # equally to the left and right side of the image. The top difference is assigned most of
         # the difference, since it still contains the window title bar that needs to be cropped out.

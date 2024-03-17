@@ -5,10 +5,11 @@ collection is useful beyond the ``core`` module itself. We provide a complete li
 values for boss and player animations. These can be employed to fit one-hot encoders to animation
 names prior to learning.
 """
+
 from pathlib import Path
 
-import yaml
 import numpy as np
+import yaml
 
 _games = {"DarkSoulsIII": "darksouls3", "EldenRing": "eldenring"}  # Game ID and location
 
