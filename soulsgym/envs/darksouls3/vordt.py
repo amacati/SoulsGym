@@ -45,14 +45,15 @@ class VordtEnv(SoulsEnv):
     CAM_SETUP_POSE = [0.0, -1.0, 0.0]
     VORDT_MAX_HP = 1328
 
-    def __init__(self, game_speed: float = 1.0, phase: int = 1):
+    def __init__(self, game_speed: float = 1.0, phase: int = 1, skip_steps: bool = False):
         """Initialize the observation and action spaces.
 
         Args:
             game_speed: The speed of the game during :meth:`.SoulsEnv.step`. Defaults to 1.0.
             phase: The phase of the boss fight. Either 1 or 2 for Vordt. Defaults to 1.
+            skip_steps: Flag to skip steps while the player is disabled.
         """
-        super().__init__(game_speed=game_speed)
+        super().__init__(game_speed=game_speed, skip_steps=skip_steps)
         self.game: DarkSoulsIII  # Type hint only
         self.phase = phase
         pose_box_low = np.array(self.ARENA_LIM_LOW, dtype=np.float32)

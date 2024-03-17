@@ -54,17 +54,24 @@ class IudexEnv(SoulsEnv):
     IUDEX_MAX_HP = 1037  # When we are not in Cemetery of Ash, the boss HP read can be incorrect
     HARD_RESET_INTERVAL = 900  # Reset the environment every 15 minutes
 
-    def __init__(self, game_speed: float = 1.0, phase: int = 1, random_player_pose: bool = False):
+    def __init__(
+        self,
+        game_speed: float = 1.0,
+        phase: int = 1,
+        random_player_pose: bool = False,
+        skip_steps: bool = False,
+    ):
         """Initialize the observation and action spaces.
 
         Args:
             game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
             phase: Set the boss phase. Either 1 or 2 for Iudex.
             random_player_pose: Flag to randomize the player pose on reset.
+            skip_steps: Flag to skip steps while the player is disabled.
         """
         assert phase in (1, 2)
         # DarkSoulsIII needs to be open at this point
-        super().__init__(game_speed=game_speed)
+        super().__init__(game_speed=game_speed, skip_steps=skip_steps)
         # The state space consists of multiple spaces. These represent:
         # 1)      Boss phase. Either 1 or 2 for Iudex
         # 2 - 7)  Player and boss stats. In order: Player HP, player max HP, player SP, player max
@@ -405,6 +412,7 @@ class IudexImgEnv(IudexEnv):
         game_speed: int = 1.0,
         phase: int = 1,
         random_player_pose: bool = False,
+        skip_steps: bool = False,
         resolution: tuple[int, int] = (90, 160),
     ):
         """Overwrite the observation space to use the game image.
@@ -413,9 +421,10 @@ class IudexImgEnv(IudexEnv):
             game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
             phase: Set the boss phase. Either 1 or 2 for Iudex.
             random_player_pose: Flag to randomize the player pose on reset.
+            skip_steps: Flag to skip steps while the player is disabled.
             resolution: The resolution of the game image.
         """
-        super().__init__(game_speed, phase, random_player_pose)
+        super().__init__(game_speed, phase, random_player_pose, skip_steps=skip_steps)
         assert len(resolution) == 2
         self.observation_space = spaces.Box(
             low=0, high=255, shape=resolution + (3,), dtype=np.uint8

@@ -65,11 +65,12 @@ class SoulsEnv(gymnasium.Env, ABC):
     ARENA_LIM_LOW: ClassVar[list[float]]
     ARENA_LIM_HIGH: ClassVar[list[float]]
 
-    def __init__(self, game_speed: float = 1.0):
+    def __init__(self, game_speed: float = 1.0, skip_steps: bool = False):
         """Initialize the game managers, load the environment config and set the game properties.
 
         Args:
             game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
+            skip_steps: Flag to skip steps while the player is disabled.
         """
         super().__init__()
         assert game_speed > 0, "Game speed must be positive!"
@@ -89,6 +90,7 @@ class SoulsEnv(gymnasium.Env, ABC):
         self._lock_on_timer = 0  # Steps until "lock on" press is allowed
         self._is_init = False
         self.terminated = False
+        self._skip_steps = skip_steps  # Flag to allow stepping while only one action is valid
         self._set_game_properties()
         logger.debug("Env init complete")
 
@@ -157,9 +159,10 @@ class SoulsEnv(gymnasium.Env, ABC):
             raise ResetNeeded("Environment step called after environment was terminated")
         previous_game_state = self._game_state.copy()
         self._step(action)
+        if self._skip_steps:  # Optional: Continue stepping until the player is no longer disabled
+            while len(actions := self.current_valid_actions()) == 1 and not self.terminated:
+                self._step(actions[0])  # Choose the only valid action
         reward = self.compute_reward(previous_game_state, self._game_state)
-        if self.terminated:
-            logger.debug("Episode finished")
         return self.obs, reward, self.terminated, False, self.info
 
     def close(self):
