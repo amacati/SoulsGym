@@ -154,7 +154,9 @@ class IudexEnv(SoulsEnv):
         Returns:
             The current info dict of the environment.
         """
-        return {"allowed_actions": self.current_valid_actions()}
+        action_mask = np.zeros(self.action_space.n, dtype=bool)
+        action_mask[self.current_valid_actions()] = True
+        return {"allowed_actions": action_mask}
 
     def game_state(self) -> IudexState:
         """Read the current game state.
