@@ -1,5 +1,0 @@
-name: "PyCodeStyle check"
-description: "Checks Python code for PEP8 violations"
-runs:
-  using: "docker"
-  image: "Dockerfile"
