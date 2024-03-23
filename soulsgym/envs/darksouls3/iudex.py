@@ -37,6 +37,8 @@ class IudexState(GameState):
 
     This class extends the base ``GameState`` with additional data members that are specific to the
     Iudex Gundyr fight.
+
+    :meta private:
     """
 
 

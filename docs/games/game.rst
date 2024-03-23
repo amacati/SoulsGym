@@ -1,5 +1,4 @@
-games.game
-==========
+Game
+====
 
 .. automodule:: soulsgym.games.game
-    :members:

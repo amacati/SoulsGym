@@ -1,9 +1,8 @@
 .. _games.eldenring:
 
-games.eldenring
-===============
+Elden Ring
+==========
 
 .. automodule:: soulsgym.games.eldenring
-    :members:
 
 

@@ -32,6 +32,8 @@ class VordtState(GameState):
 
     This class extends the base ``GameState`` with additional data members that are specific to the
     Vordt of the Boreal Valley fight.
+
+    :meta private:
     """
 
 
