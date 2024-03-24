@@ -3,8 +3,8 @@
 #pragma once
 #include "pch.h"
 #include "utils.h"
-#include "pybind11-global/pybind11/pybind11.h"
-#include "pybind11-global/pybind11/numpy.h"
+#include "pybind11/pybind11.h"
+#include "pybind11/numpy.h"
 
 namespace winrt
 {

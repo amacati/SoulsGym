@@ -1,6 +1,6 @@
 #pragma once
 #include "pch.h"
-#include "pybind11-global/pybind11/numpy.h"
+#include "pybind11/numpy.h"
 
 /* This utility header is mainly a selective copy of all necessary definitions from the robmikh.common 0.22 beta library.
    See https://github.com/robmikh/robmikh.common

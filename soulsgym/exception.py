@@ -26,7 +26,7 @@ class LockOnFailure(SoulsGymException):
 
 
 class InjectionFailure(SoulsGymException):
-    """SpeedHack DLL injection failure."""
+    """Speedhack DLL injection failure."""
 
 
 class InvalidGameSettings(SoulsGymException):

@@ -17,7 +17,7 @@ if platform.system() == "Windows":  # Windows imports, ignore for unix to make i
     import win32con
     import win32gui
 
-from soulsgym.core.game_window.window_capture import WindowCapture
+    from soulsgym.core.game_window._C.window_capture import WindowCapture
 
 
 class GameWindow:

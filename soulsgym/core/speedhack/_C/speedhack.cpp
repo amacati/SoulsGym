@@ -24,7 +24,7 @@ std::recursive_mutex GTCMutex;
 std::recursive_mutex QPCMutex;
 
 template <class T>
-class SpeedHackClass
+class SpeedHack
 {
 private:
 	double speed = 0;
@@ -32,11 +32,13 @@ private:
 	T initialtime;
 
 public:
-	SpeedHackClass()
+	SpeedHack()
 	{
 		speed = 1.0;
+		initialoffset = 0;
+		initialtime = 0;
 	}
-	SpeedHackClass(T _initialtime, T _initialoffset, double _speed = 1.0)
+	SpeedHack(T _initialtime, T _initialoffset, double _speed = 1.0)
 	{
 		speed = _speed;
 		initialoffset = _initialoffset;
@@ -63,10 +65,10 @@ public:
 	}
 };
 
-SpeedHackClass<LONGLONG> h_QueryPerformanceCounter;
-SpeedHackClass<DWORD> h_GetTickCount;
-SpeedHackClass<ULONGLONG> h_GetTickCount64;
-SpeedHackClass<DWORD> h_GetTime;
+SpeedHack<LONGLONG> h_QueryPerformanceCounter;
+SpeedHack<DWORD> h_GetTickCount;
+SpeedHack<ULONGLONG> h_GetTickCount64;
+SpeedHack<DWORD> h_GetTime;
 
 // QueryPerformanceCounter is generally what is used to calculate how much time has passed between frames. It will set the performanceCounter to the amount of micro seconds the machine has been running
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms644904(v=vs.85).aspx
@@ -121,10 +123,10 @@ void InitializeSpeedHackConnection(LPVOID hModule)
 		std::unique_lock<std::recursive_mutex> gtc_lock(GTCMutex);
 		originalQueryPerformanceCounter(&initialtime64);
 		newQueryPerformanceCounter(&initialoffset64);
-		h_QueryPerformanceCounter = SpeedHackClass<LONGLONG>(initialtime64.QuadPart, initialoffset64.QuadPart, speed);
-		h_GetTickCount = SpeedHackClass<DWORD>(originalGetTickCount(), newGetTickCount(), speed);
-		h_GetTickCount64 = SpeedHackClass<ULONGLONG>(originalGetTickCount64(), newGetTickCount64(), speed);
-		h_GetTime = SpeedHackClass<DWORD>(originalTimeGetTime(), newTimeGetTime(), speed);
+		h_QueryPerformanceCounter = SpeedHack<LONGLONG>(initialtime64.QuadPart, initialoffset64.QuadPart, speed);
+		h_GetTickCount = SpeedHack<DWORD>(originalGetTickCount(), newGetTickCount(), speed);
+		h_GetTickCount64 = SpeedHack<ULONGLONG>(originalGetTickCount64(), newGetTickCount64(), speed);
+		h_GetTime = SpeedHack<DWORD>(originalTimeGetTime(), newTimeGetTime(), speed);
 	}
 
 	HANDLE hPipe;
@@ -189,10 +191,10 @@ void InitDLL(LPVOID hModule)
 		originalQueryPerformanceCounter(&initialtime64);
 		initialoffset64 = initialtime64;
 
-		h_QueryPerformanceCounter = SpeedHackClass<LONGLONG>(initialtime64.QuadPart, initialoffset64.QuadPart);
-		h_GetTickCount = SpeedHackClass<DWORD>(originalGetTickCount(), originalGetTickCount());
-		h_GetTickCount64 = SpeedHackClass<ULONGLONG>(originalGetTickCount64(), originalGetTickCount64());
-		h_GetTime = SpeedHackClass<DWORD>(originalTimeGetTime(), originalTimeGetTime());
+		h_QueryPerformanceCounter = SpeedHack<LONGLONG>(initialtime64.QuadPart, initialoffset64.QuadPart);
+		h_GetTickCount = SpeedHack<DWORD>(originalGetTickCount(), originalGetTickCount());
+		h_GetTickCount64 = SpeedHack<ULONGLONG>(originalGetTickCount64(), originalGetTickCount64());
+		h_GetTime = SpeedHack<DWORD>(originalTimeGetTime(), originalTimeGetTime());
 	}
 	// ah detours; they are awesome!!
 	DisableThreadLibraryCalls((HMODULE)hModule);
