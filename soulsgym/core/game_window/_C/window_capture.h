@@ -25,12 +25,12 @@ public:
 
     void close();
 
-    py::array_t<UINT8> get_img();
+    py::array_t<UINT8> get_img(DWORD timeout = 1);
 
     ~WindowCapture();
 
 private:
-    winrt::com_ptr<ID3D11Texture2D> get_texture();
+    winrt::com_ptr<ID3D11Texture2D> get_texture(DWORD timeout);
     void on_frame_arrived(winrt::Direct3D11CaptureFramePool const &framePool, winrt::Windows::Foundation::IInspectable const &);
 
     std::atomic<bool> m_is_open = false;
@@ -59,7 +59,7 @@ WindowCapture::WindowCapture()
 
 void WindowCapture::open(int window_handle)
 {
-    if (m_is_open)
+    if (m_is_open.load(std::memory_order_acquire))
         return;
     auto d3d_device = utils::CreateD3DDevice();
     auto dxgi_device = d3d_device.as<IDXGIDevice>();
@@ -86,7 +86,7 @@ void WindowCapture::close()
 {
     if (!m_is_open.load(std::memory_order_acquire))
         return;
-    m_is_open.store(false);
+    m_is_open.store(false, std::memory_order_release);
     // End the capture
     m_session.Close();
     m_frame_pool.Close();
@@ -100,12 +100,12 @@ void WindowCapture::close()
     m_gc_item = nullptr;
 }
 
-winrt::com_ptr<ID3D11Texture2D> WindowCapture::get_texture()
+winrt::com_ptr<ID3D11Texture2D> WindowCapture::get_texture(DWORD timeout)
 {
-    auto success = m_capture_event.wait();
+    auto success = m_capture_event.wait(timeout * 1000);
     if (!success)
-        throw std::runtime_error("Capture wait returned unsuccessful");
-    winrt::Direct3D11CaptureFrame local_frame = { nullptr };  // Declare in outer scope so that it is defined
+        throw std::runtime_error("Capture timeout while waiting for a new frame.");
+    winrt::Direct3D11CaptureFrame local_frame = {nullptr}; // Declare in outer scope so that it is defined
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         m_capture_event.ResetEvent();
@@ -115,11 +115,11 @@ winrt::com_ptr<ID3D11Texture2D> WindowCapture::get_texture()
     return utils::CopyD3DTexture(m_d3d_device, texture, true);
 }
 
-py::array_t<UINT8> WindowCapture::get_img()
+py::array_t<UINT8> WindowCapture::get_img(DWORD timeout)
 {
     if (!m_is_open.load(std::memory_order_acquire))
         throw std::runtime_error("Tried to get an image without an open window");
-    auto texture = get_texture();
+    auto texture = get_texture(timeout);
     // Get description for conversion into numpy array
     D3D11_TEXTURE2D_DESC desc;
     texture->GetDesc(&desc);

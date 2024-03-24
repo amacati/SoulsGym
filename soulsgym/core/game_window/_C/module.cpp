@@ -26,7 +26,7 @@ PYBIND11_MODULE(window_capture, m)
             hwnd: Handle of the window to open. Note that this is not the process ID, but the window
                 handle.
     )pbdoc")
-        .def("get_img", &WindowCapture::get_img, py::return_value_policy::reference_internal, R"pbdoc(
+        .def("get_img", &WindowCapture::get_img, py::arg("timeout") = 1, py::return_value_policy::reference_internal, R"pbdoc(
         Get the current image of the window as array.
 
         Returns:

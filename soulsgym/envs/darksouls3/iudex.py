@@ -255,11 +255,7 @@ class IudexEnv(SoulsEnv):
 
     @max_retries(retries=5)
     def _arena_setup(self):
-        """Set up the arena.
-
-        Args:
-            init_retries: Maximum number of retries in case of initialization failure.
-        """
+        """Set up the arena."""
         self.game.game_speed = 3  # Increase game speed to speed up player actions
         # Make sure to start around the bonfire. In case the player has entered the arena on a
         # previous try, Iudex has to deaggro before the player can enter the arena again. This
