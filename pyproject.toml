@@ -31,7 +31,7 @@ dependencies = [
     "opencv-python >= 4.0.0",
     "windows-capture>=1.0.62; platform_system=='Windows'",
 ]
-# Caused by window capture. TODO: Move window capture to own package and relax requirements
+
 # random.choice does not work with numpy on 3.11.0/1 (https://github.com/python/cpython/issues/100805)
 requires-python = ">=3.11.2"
 
