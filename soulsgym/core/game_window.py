@@ -112,20 +112,22 @@ class GameWindow:
 
     @property
     def img(self) -> np.ndarray:
-        """The current game screenshot.
+        """The latest processed game screenshot.
 
         Returns:
-            The current game screenshot.
+            The processed image.
         """
+        assert self._latest_frame is not None, "No frame available."
         return self._process_fn(self._latest_frame.frame_buffer[..., :3])
 
     @property
     def raw_img(self) -> np.ndarray:
-        """The current game screenshot.
+        """The latest raw game screenshot.
 
         Returns:
-            The current game screenshot.
+            The raw image.
         """
+        assert self._latest_frame is not None, "No frame available."
         return self._latest_frame.frame_buffer[..., :3]
 
     def focus(self):
@@ -142,6 +144,7 @@ class GameWindow:
     def close(self):
         """Close the game window capture."""
         self._close_capture.set()
+        self._latest_frame = None
 
     def _default_processing(self, img: np.ndarray) -> np.ndarray:
         """Default processing function.
