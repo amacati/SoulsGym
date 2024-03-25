@@ -172,7 +172,7 @@ class VordtEnv(SoulsEnv):
             A tuple of the first game state and the info dict after the reset.
         """
         self._game_input.reset()
-        self._game_window.focus_application()
+        self._game_window.focus()
         if self._reload_required():
             self._reload()
         if self._arena_setup_required():
@@ -301,7 +301,7 @@ class VordtEnv(SoulsEnv):
             self.game.sleep(0.01)
             self._game_input.reset()  # Prevent getting stuck if initial press is missed
             if not self._game_window.focused:
-                self._game_window.focus_application()
+                self._game_window.focus()
 
     @staticmethod
     def compute_reward(game_state: VordtState, next_game_state: VordtState) -> float:

@@ -201,7 +201,7 @@ class IudexEnv(SoulsEnv):
             A tuple of the first game state and the info dict after the reset.
         """
         self._game_input.reset()
-        self._game_window.focus_application()
+        self._game_window.focus()
         if self._reload_required():
             self._reload()
         if self._arena_setup_required():
@@ -332,7 +332,7 @@ class IudexEnv(SoulsEnv):
             self.game.sleep(0.01)
             self._game_input.reset()  # Prevent getting stuck if initial press is missed
             if not self._game_window.focused:
-                self._game_window.focus_application()
+                self._game_window.focus()
 
     def _entity_reset_check(self, player_pose: np.ndarray) -> bool:
         """Check if the entity reset was successful.

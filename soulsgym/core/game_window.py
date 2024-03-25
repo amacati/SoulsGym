@@ -1,12 +1,13 @@
-"""The ``GameWindow`` is a wrapper around the ``window_capture`` submodule for screen capture.
+"""The ``GameWindow`` is a wrapper around the ``windows_capture`` library.
 
-Window capture itself is implemented in C++ to enable fast and efficient screen capture.
+The capture mechanism itself is implemented in ``rust`` to enable fast and efficient screen capture.
 ``GameWindow`` also allows us to focus the Dark Souls III application on gym start.
 """
 
 import platform
 import time
 from itertools import groupby
+from multiprocessing import Event
 from typing import Callable
 
 import cv2
@@ -16,8 +17,7 @@ if platform.system() == "Windows":  # Windows imports, ignore for unix to make i
     import win32api
     import win32con
     import win32gui
-
-    from soulsgym.core.game_window._C.window_capture import WindowCapture
+    from windows_capture import Frame, InternalCaptureControl, WindowsCapture
 
 
 class GameWindow:
@@ -30,6 +30,7 @@ class GameWindow:
 
     window_ids = {"DarkSoulsIII": "DARK SOULS III", "EldenRing": "ELDEN RING™"}
     game_resolution = {"DarkSoulsIII": (800, 450), "EldenRing": (800, 450)}
+    _initial_timeout = 5
 
     def __init__(
         self,
@@ -53,12 +54,35 @@ class GameWindow:
         self.img_height = img_height or 90
         self.img_width = img_width or 160
         self._process_fn = processing or self._default_processing
-        # Initialize the window capture
         self.hwnd = win32gui.FindWindow(None, self.window_ids[game_id])
-        if not self.hwnd:
-            raise Exception("Window not found: {}".format(game_id))
-        self._window_capture = WindowCapture()
-        self._window_capture.open(self.hwnd)
+        # Configure the windows capture module and wait for the first frame to arrive. If we do not
+        # receive a frame within 5 seconds, we raise an error.
+        self._latest_frame: Frame | None = None
+        self.capture = WindowsCapture(
+            cursor_capture=None,
+            draw_border=None,
+            monitor_index=None,
+            window_name=self.window_ids[game_id],
+        )
+        self._close_capture = Event()
+
+        @self.capture.event
+        def on_frame_arrived(frame: Frame, capture_control: InternalCaptureControl):
+            self._latest_frame = frame
+            if self._close_capture.is_set():
+                capture_control.close()
+
+        @self.capture.event
+        def on_closed():
+            self._latest_frame = None
+            raise RuntimeError("Game window capture closed unexpectedly.")
+
+        self.capture.start_free_threaded()
+        t_start = time.time()
+        while self._latest_frame is None and time.time() - t_start < self._initial_timeout:
+            time.sleep(0.1)
+        if self._latest_frame is None:
+            raise RuntimeError("Failed to capture the game window. Is the game paused?")
         # The image we get from the game capture module game window initially does not match the
         # desired resolution. We therefore determine the necessary crop indices to remove the image
         # padding. See function docs for more details.
@@ -86,21 +110,25 @@ class GameWindow:
         """
         return win32gui.GetForegroundWindow() == self.hwnd
 
-    def get_img(self, return_raw: bool = False) -> np.ndarray:
-        """Fetch the current image from the targeted application.
-
-        Args:
-            return_raw: Option to get the unprocessed frame.
+    @property
+    def img(self) -> np.ndarray:
+        """The current game screenshot.
 
         Returns:
             The current game screenshot.
         """
-        img = self._window_capture.get_img()
-        if return_raw:
-            return img
-        return self._process_fn(img)
+        return self._process_fn(self._latest_frame.frame_buffer[..., :3])
 
-    def focus_application(self):
+    @property
+    def raw_img(self) -> np.ndarray:
+        """The current game screenshot.
+
+        Returns:
+            The current game screenshot.
+        """
+        return self._latest_frame.frame_buffer[..., :3]
+
+    def focus(self):
         """Shift the application focus of Windows to the game application.
 
         Also sets the cursor within the game window.
@@ -110,6 +138,10 @@ class GameWindow:
         left, top, _, _ = win32gui.GetWindowRect(self.hwnd)
         win32api.SetCursorPos((left + 100, top + 100))
         win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, left + 100, top + 5, 0, 0)
+
+    def close(self):
+        """Close the game window capture."""
+        self._close_capture.set()
 
     def _default_processing(self, img: np.ndarray) -> np.ndarray:
         """Default processing function.
@@ -141,7 +173,7 @@ class GameWindow:
         Raises:
             RuntimeError: If the crop detection fails due to unexpected window or crop sizes.
         """
-        img = self.get_img(return_raw=True)
+        img = self.raw_img
         desired_resolution = self.game_resolution[self.game_id][::-1]
         # Detect all rows and columns in the image that are completely black
         black_pixels = np.all(img == 0, axis=2)

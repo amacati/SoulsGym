@@ -38,7 +38,7 @@ class EldenRing(Game):
 
         Images have a shape of [90, 160, 3] with RGB channels.
         """
-        return self._game_window.get_img()
+        return self._game_window.img
 
     @img.setter
     def img(self, _: Any):
