@@ -7,7 +7,6 @@ The capture mechanism itself is implemented in ``rust`` to enable fast and effic
 import platform
 import time
 from itertools import groupby
-from multiprocessing import Event
 from typing import Callable
 
 import cv2
@@ -17,7 +16,7 @@ if platform.system() == "Windows":  # Windows imports, ignore for unix to make i
     import win32api
     import win32con
     import win32gui
-    from windows_capture import Frame, InternalCaptureControl, WindowsCapture
+    from pixel_forge import Capture, Window
 
 
 class GameWindow:
@@ -50,6 +49,8 @@ class GameWindow:
             img_height: The height of the captured image.
             img_width: The width of the captured image.
         """
+        if game_id not in self.window_ids:
+            raise ValueError(f"Game ID {game_id} not supported.")
         self.game_id = game_id
         self.img_height = img_height or 90
         self.img_width = img_width or 160
@@ -57,32 +58,8 @@ class GameWindow:
         self.hwnd = win32gui.FindWindow(None, self.window_ids[game_id])
         # Configure the windows capture module and wait for the first frame to arrive. If we do not
         # receive a frame within 5 seconds, we raise an error.
-        self._latest_frame: Frame | None = None
-        self.capture = WindowsCapture(
-            cursor_capture=None,
-            draw_border=None,
-            monitor_index=None,
-            window_name=self.window_ids[game_id],
-        )
-        self._close_capture = Event()
-
-        @self.capture.event
-        def on_frame_arrived(frame: Frame, capture_control: InternalCaptureControl):
-            self._latest_frame = frame
-            if self._close_capture.is_set():
-                capture_control.close()
-
-        @self.capture.event
-        def on_closed():
-            self._latest_frame = None
-            raise RuntimeError("Game window capture closed unexpectedly.")
-
-        self.capture.start_free_threaded()
-        t_start = time.time()
-        while self._latest_frame is None and time.time() - t_start < self._initial_timeout:
-            time.sleep(0.1)
-        if self._latest_frame is None:
-            raise RuntimeError("Failed to capture the game window. Is the game paused?")
+        self.capture = Capture()
+        self.capture.start(Window(self.window_ids[game_id]))
         # The image we get from the game capture module game window initially does not match the
         # desired resolution. We therefore determine the necessary crop indices to remove the image
         # padding. See function docs for more details.
@@ -117,8 +94,7 @@ class GameWindow:
         Returns:
             The processed image.
         """
-        assert self._latest_frame is not None, "No frame available."
-        return self._process_fn(self._latest_frame.frame_buffer[..., :3])
+        return self._process_fn(self.raw_img)
 
     @property
     def raw_img(self) -> np.ndarray:
@@ -127,8 +103,7 @@ class GameWindow:
         Returns:
             The raw image.
         """
-        assert self._latest_frame is not None, "No frame available."
-        return self._latest_frame.frame_buffer[..., :3]
+        return self.capture.frame()[..., [2, 1, 0]]
 
     def focus(self):
         """Shift the application focus of Windows to the game application.
@@ -143,8 +118,7 @@ class GameWindow:
 
     def close(self):
         """Close the game window capture."""
-        self._close_capture.set()
-        self._latest_frame = None
+        self.capture.stop()
 
     def _default_processing(self, img: np.ndarray) -> np.ndarray:
         """Default processing function.
