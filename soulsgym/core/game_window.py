@@ -1,4 +1,6 @@
-"""The ``GameWindow`` is a wrapper around the ``windows_capture`` library.
+"""The ``GameWindow`` is a wrapper around `pixel_forge`_, a minimalistic Windows screenshot library.
+
+.. _pixel_forge: https://github.com/amacati/pixel_forge
 
 The capture mechanism itself is implemented in ``rust`` to enable fast and efficient screen capture.
 ``GameWindow`` also allows us to focus the Dark Souls III application on gym start.

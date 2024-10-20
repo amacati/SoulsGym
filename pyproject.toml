@@ -51,7 +51,6 @@ soulsgym = [
     "core/data/darksouls3/*.yaml",
     "core/data/eldenring/*.yaml",
     "core/speedhack/_C/*.dll",
-    "core/game_window/_C/window_capture.pyd",
     "envs/config/*.yaml",
 ]
 
