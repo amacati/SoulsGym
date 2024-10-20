@@ -11,8 +11,8 @@ To pause and accelerate the game, the :mod:`.speedhack` module provides function
 into the game process and dynamically change the game loop speed.
 
 In addition to the ground truth game states like the exact player coordinates etc., we also read out
-the game's current frame with the :mod:`.game_window` module. It features a Python wrapper around a
-``window_capture`` submodule for screen capture. The capture itself is implemented in C++ with
+the game's current frame with the :mod:`.game_window` module. It is a thin Python wrapper around
+`pixel_forge <https://github.com/amacati/pixel_forge>`_, a Rust-based screenshot library leveraging
 DirectX to enable fast and efficient screen capture.
 
 The :mod:`.static` module offers several game related constants, lists and settings as dictionaries.

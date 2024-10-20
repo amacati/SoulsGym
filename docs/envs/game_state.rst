@@ -1,6 +1,3 @@
-envs.game_state
-===============
+Game State
+==========
 .. automodule:: soulsgym.envs.game_state
-
-.. autoclass:: GameState
-    :members:

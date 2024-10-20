@@ -125,17 +125,17 @@ class SpeedHackConnector(metaclass=Singleton):
     communicate with the injected pipe using only a single client.
 
     Note:
-        The ``SpeedHackDLL.dll`` is compiled to `soulsgym/core/speedhack/_C/x64/Release`. In order
-        to use it for the injection, either update the path or move the dll file into the `_C`
-        folder.
+        The ``speedhack.dll`` is compiled to `soulsgym/core/speedhack/_C/x64/Release` and copied
+        over into `soulsgym/core/speedhack/_C` after the build has succeeded. If you want to use a
+        recompiled version, you have to rerun the build process with Visual Studio.
     """
 
     pipe_name = r"\\.\pipe\SoulsGymSpeedHackPipe"
-    dll_path = Path(__file__).parent / "_C" / "SpeedHackDLL.dll"
+    dll_path = Path(__file__).parent / "_C" / "speedhack.dll"
     _lock = Lock()
 
     def __init__(self, process_name: str):
-        """Connect to the SpeedHack pipe.
+        """Connect to the speed hack pipe.
 
         If the pipe is not yet open, inject the DLL into the game.
 
@@ -146,15 +146,15 @@ class SpeedHackConnector(metaclass=Singleton):
         self.target_name = process_name
         try:
             self.pipe = self._connect_pipe()
-            logger.info("SpeedHack already enabled, skipping injection")
+            logger.info("Speed hack already enabled, skipping injection")
         except pywintypes.error as e:  # Pipe may not be open. In that case, we have to inject first
             if not e.args[0] == 2 and e.args[1] == "CreateFile":
                 raise e  # Not the anticipated error on missing pipe, so we re-raise
-            logger.info("SpeedHack not active, proceeding with injection")
+            logger.info("Speed hack not active, proceeding with injection")
             inject_dll(self.target_name, self.dll_path)
             time.sleep(0.1)  # Give the pipe time to come up after the injection (very conservative)
             self.pipe = self._connect_pipe()
-            logger.info("SpeedHack activation successful")
+            logger.info("Speed hack activation successful")
 
     def set_game_speed(self, value: float):
         """Set the game speed to a new value.

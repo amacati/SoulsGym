@@ -3,6 +3,3 @@
 core.speedhack
 ==============
 .. automodule:: soulsgym.core.speedhack
-
-.. autoclass:: SpeedHackConnector
-    :members:

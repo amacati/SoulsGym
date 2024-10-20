@@ -31,6 +31,12 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'sphinx.ext.todo']
 
 # Autodoc config
 autodoc_member_order = 'bysource'
+autodoc_default_options = {
+    'members': True,
+    'member-order': 'bysource',
+    'special-members': '__init__',
+    'show-inheritance': True}
+
 if on_rtd:
     # We have to include ctypes since RTD can't import windows ctypes
     autodoc_mock_imports = [

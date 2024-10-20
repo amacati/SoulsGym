@@ -112,44 +112,89 @@ def _load_addresses() -> tuple[dict, dict, dict]:
 
 
 # Initialize all static data dictionaries. Each dictionary is indexed by the game's name.
-#: Dictionary mapping of player actions to keyboard keys.
 keybindings = {}
-#: Dictionary mapping of keyboard keys to Windows virtual-key codes. See `virtual-key codes docs
-#: <https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes>`_.
+"""Dictionary mapping of player actions to keyboard keys.
+
+:meta hide-value:
+"""
+
 keymap = {}
+"""Dictionary mapping of keyboard keys to Windows virtual-key codes.
+
+See `virtual-key codes docs 
+<https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes>`_.
+
+:meta hide-value:
+"""
 
 keybindings, keymap = _load_keybindings_and_mapping()  # Load here to allow documentation
 
-#: Dictionary mapping of integers to action combinations.
 actions = _load_actions()
+"""Dictionary mapping of integers to action combinations.
 
-#: Dictionary mapping of game coordinates for each boss fight.
+:meta hide-value:
+    """
+
 coordinates = _load_coordinates()
+"""Dictionary mapping of game coordinates for each boss fight.
+
+:meta hide-value:
+"""
 
 #: Dictionary of player animations. All animations have an animation timing during which the player
 #: cannot take any action, and a unique ID.
 player_animations = {}
-#: ``critical`` animations should not occur during normal operation and can be disregarded by users.
-#: They require special recovery handling by the gym.
+"""Dictionary of player animations. Each animation has an animation timing during which the player
+cannot take any action, and a unique ID.
+
+:meta hide-value:
+"""
+
 critical_player_animations = {}
-#: Dictionary of boss animations. Each boss has its own dictionary accessed by its boss ID.
-#: Individual boss animations are separated into ``attacks``, ``movement`` and ``all``. ``all``
-#: animations have a unique ID.
+"""Dictionary of critical player animations. These animations should not occur during normal
+operation and require special recovery handling by the gym.
+
+:meta hide-value:
+"""
+
 boss_animations = {}
+"""Dictionary of boss animations. Each boss has its own dictionary accessed by its boss ID.
+Individual boss animations are separated into ``attacks``, ``movement`` and ``all``. ``all``
+animations have a unique ID.
+
+:meta hide-value:
+"""
 
 player_animations, critical_player_animations, boss_animations = _load_animations()
 
-#: Dictionary of player stats for each boss fight. Player stats are mapped by boss ID.
 player_stats = _load_player_stats()
+"""Dictionary of player stats for each boss fight. Player stats are mapped by boss ID.
 
-#: Dictionary mapping of bonfire IDs to ingame integer IDs.
+:meta hide-value:
+"""
+
 bonfires = _load_bonfires()
+"""Dictionary mapping of bonfire IDs to ingame integer IDs.
 
-#: Dictionary of recurring initial base address offset from the game's ``base_address``
+:meta hide-value:
+"""
+
 address_bases = {}
-#: Dictionary of address offsets for the pointer chain to each game property's memory location
+"""Dictionary of recurring initial base address offset from the game's ``base_address``.
+
+:meta hide-value:
+"""
+
 addresses = {}
-#: Dictionary of patterns that can be scanned by AOB modules to locate the base addresses
+"""Dictionary of address offsets for the pointer chain to each game property's memory location.
+
+:meta hide-value:
+"""
+
 address_base_patterns = {}
+"""Dictionary of patterns that can be scanned by AOB modules to locate the base addresses.
+
+:meta hide-value:
+"""
 
 address_bases, addresses, address_base_patterns = _load_addresses()

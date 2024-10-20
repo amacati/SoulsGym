@@ -37,6 +37,8 @@ class IudexState(GameState):
 
     This class extends the base ``GameState`` with additional data members that are specific to the
     Iudex Gundyr fight.
+
+    :meta private:
     """
 
 
@@ -199,7 +201,7 @@ class IudexEnv(SoulsEnv):
             A tuple of the first game state and the info dict after the reset.
         """
         self._game_input.reset()
-        self._game_window.focus_application()
+        self._game_window.focus()
         if self._reload_required():
             self._reload()
         if self._arena_setup_required():
@@ -253,11 +255,7 @@ class IudexEnv(SoulsEnv):
 
     @max_retries(retries=5)
     def _arena_setup(self):
-        """Set up the arena.
-
-        Args:
-            init_retries: Maximum number of retries in case of initialization failure.
-        """
+        """Set up the arena."""
         self.game.game_speed = 3  # Increase game speed to speed up player actions
         # Make sure to start around the bonfire. In case the player has entered the arena on a
         # previous try, Iudex has to deaggro before the player can enter the arena again. This
@@ -334,7 +332,7 @@ class IudexEnv(SoulsEnv):
             self.game.sleep(0.01)
             self._game_input.reset()  # Prevent getting stuck if initial press is missed
             if not self._game_window.focused:
-                self._game_window.focus_application()
+                self._game_window.focus()
 
     def _entity_reset_check(self, player_pose: np.ndarray) -> bool:
         """Check if the entity reset was successful.

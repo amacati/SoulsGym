@@ -139,6 +139,5 @@ tests/debug
 soulsgym/core/speedhack/_C/x64
 soulsgym/core/game_window/_C/x64
 soulsgym/core/game_window/_C/packages
-!soulsgym/core/game_window/_C/window_capture.pyd
 
 ce_tables/notes.txt

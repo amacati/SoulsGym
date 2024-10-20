@@ -6,9 +6,10 @@ soulsgym.envs
 .. toctree::
     :hidden:
 
-    soulsgym
+    soulsenv
     game_state
     iudex
+    vordt
 
 Game speed
 ~~~~~~~~~~

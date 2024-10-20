@@ -1,11 +1,4 @@
-envs.darksouls3.iudex
-=====================
+Iudex Gundyr
+============
 .. automodule:: soulsgym.envs.darksouls3.iudex
-
-.. autoclass:: IudexEnv
-    :members:
-    :inherited-members:
-
-.. autoclass:: IudexEnvDemo
-    :members:
     :inherited-members:

@@ -29,8 +29,9 @@ dependencies = [
     "pywin32 >= 305.0; platform_system=='Windows'",
     "PyYAML >= 6.0",
     "opencv-python >= 4.0.0",
+    "pixel-forge>=0.1.1; platform_system=='Windows'",
 ]
-# Caused by window capture. TODO: Move window capture to own package and relax requirements
+
 # random.choice does not work with numpy on 3.11.0/1 (https://github.com/python/cpython/issues/100805)
 requires-python = ">=3.11.2"
 
@@ -50,7 +51,6 @@ soulsgym = [
     "core/data/darksouls3/*.yaml",
     "core/data/eldenring/*.yaml",
     "core/speedhack/_C/*.dll",
-    "core/game_window/_C/window_capture.pyd",
     "envs/config/*.yaml",
 ]
 
