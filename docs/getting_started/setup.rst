@@ -112,6 +112,9 @@ and set your keys to these values:
 .. note::
     Fields with --- have to be explicitly unset, empty fields can be whatever.
 
+.. warning::
+    Using a non-English keyboard layout can lead to issues where actions are not executed properly. This can occur even if you only have a secondary language installed and are **not** using it, i.e. the English layout is selected. Removing the secondary language layout from your system should fix these errors.
+
 Graphic settings
 ^^^^^^^^^^^^^^^^
 The game has to be in Windowed mode and profits from stable frame rates. We therefore recommend setting
