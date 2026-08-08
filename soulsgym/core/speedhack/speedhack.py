@@ -1,32 +1,33 @@
-"""The injection functions inject a DLL into a target process and force it to load the library.
+"""Speed hack connector for pausing and accelerating the game.
 
-First, we obtain a handle of the target process and allocate memory in the external process. Then we
-write the path to the DLL into the allocated memory, create a remote thread in the target process,
-and call ``LoadLibrary`` on ``kernel32.lib`` to force the process to load the DLL. The allocated
-memory is subsequently released and the handles are closed. This completes the injection.
+The speed hack is a small DLL that is loaded into the game and rewires the game's timer functions to
+scaled versions. The game derives its frame delta from these, so scaling them slows, accelerates or
+pauses the game.
 
-The injection reroutes the game's calls to Windows' performance timer functions to custom timers.
-These timers have an adjustable speed parameter to slow and/or accelerate the game. In order to
-dynamically adjust the speed, a `NamedPipe` is opened and continuously read by a second process. The
-values sent over the pipe are then used to update the speed parameter at runtime.
+The speed is set at runtime over a loopback TCP socket the DLL listens on. TCP works identically on
+native Windows and under Proton/Wine, so this connector is the same on both platforms. Loading the
+DLL, however, differs per platform. On Windows, we inject the DLL at runtime via :func:`inject_dll`.
+On Linux/Proton, the DLL is loaded as a ``dinput8.dll`` proxy at game launch. We first run
+:func:`install_proxy` to place the files. Then, add the steam launch option
+``WINEDLLOVERRIDES="dinput8=n,b"``, and start the game. Loading at startup means SoulsGym has to
+launch the game on Linux.
 
-The module implements a singleton that provides thread-safe access to the named pipe created by the
-DLL. This is necessary because only a limited number of clients can connect to the pipe. Otherwise,
-multiple game interface objects could not be instantiated.
+The connector is a singleton because the DLL accepts a single controller at a time, while multiple
+:class:`.Game` objects may exist.
 """
 
 import logging
-import platform
+import shutil
+import socket
 import struct
 import time
-from multiprocessing import Lock
 from pathlib import Path
 
-if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
-    import pywintypes
+from soulsgym.core.platform import SYSTEM, System
+
+if SYSTEM is System.WINDOWS:  # Windows-only injection imports
     import win32api
     import win32event
-    import win32file
     import win32process
 
 from soulsgym.core.utils import Singleton, get_pid
@@ -34,6 +35,13 @@ from soulsgym.exception import InjectionFailure
 
 logger = logging.getLogger(__name__)
 
+# Loopback host/port the speed hack DLL listens on must match rust/src/lib.rs.
+CONTROL_HOST = "127.0.0.1"
+CONTROL_PORT = 51285
+
+DLL_PATH = Path(__file__).parent / "_bin" / "speedhack.dll"
+
+# Win32 constants for injection.
 PROCESS_ALL_ACCESS = 0x000F0000 | 0x00100000 | 0x00000FFF
 MEM_CREATE = 0x00001000 | 0x00002000
 MEM_RELEASE = 0x00008000
@@ -44,14 +52,18 @@ PAGE_READWRITE = 0x04
 def inject_dll(process_name: str, dll_path: Path):
     """Inject a DLL into the target process.
 
-    Injection opens a process handle of the target process, allocates virtual memory in its address
-    space, writes the DLL path to this address and forces the process to open the DLL by creating a
-    remote thread.
+    Opens a process handle, allocates virtual memory in its address space, writes the DLL path there
+    and forces the process to load the DLL.
+
+    Warning:
+        Windows only.
 
     Args:
         process_name: Target process name.
         dll_path: Path to the DLL file.
     """
+    if SYSTEM is not System.WINDOWS:
+        raise RuntimeError("DLL injection is only supported on Windows")
     try:
         pid = get_pid(process_name)
     except RuntimeError:
@@ -80,7 +92,7 @@ def _write_dll_to_process(p_handle: int, dll_path: Path) -> int:
     if not mem_addr:
         win32api.CloseHandle(p_handle)
         raise InjectionFailure(
-            ("Failed to execute virtual allocation for writing the DLL to the" " targeted process")
+            "Failed to execute virtual allocation for writing the DLL to the targeted process"
         )
     if not win32process.WriteProcessMemory(p_handle, mem_addr, str(dll_path).encode("ascii")):
         win32api.CloseHandle(p_handle)
@@ -112,68 +124,114 @@ def _injection_cleanup(p_handle: int, t_handle: int, mem_addr: int):
         t_handle: Injection thread handle.
         mem_addr: Address of the DLL path memory.
     """
-    win32process.VirtualFreeEx(p_handle, mem_addr, 0, MEM_RELEASE)  # TODO: Enable Mem Free
+    win32process.VirtualFreeEx(p_handle, mem_addr, 0, MEM_RELEASE)
     win32api.CloseHandle(p_handle)
     win32api.CloseHandle(t_handle)
 
 
+def install_proxy(game_dir: Path, proton_dir: Path):
+    """Install the speed hack so it loads into the game at launch.
+
+    Places the speed hack and the original library it stands in for into the game directory. The
+    game must be closed while this runs. Enabling the loader and starting the game are manual steps
+    covered in the setup guide.
+
+    Args:
+        game_dir: The game's install directory.
+        proton_dir: The Proton installation directory.
+    """
+    game_dir, proton_dir = Path(game_dir), Path(proton_dir)
+    builtin = proton_dir / "dist/lib64/wine/x86_64-windows/dinput8.dll"
+    if not builtin.is_file():
+        raise FileNotFoundError(f"Proton builtin dinput8 not found at {builtin}")
+    shutil.copy(DLL_PATH, game_dir / "dinput8.dll")
+    shutil.copy(builtin, game_dir / "dinput8_hook.dll")
+    logger.debug(f"Speed hack proxy installed in {game_dir}.")
+
+
+def _check_status(sock: socket.socket):
+    """Read the speed hack's status byte and raise if it reports a failure."""
+    data = sock.recv(1)
+    if len(data) != 1:
+        raise InjectionFailure("Speed hack connected but did not report its status")
+    if data[0]:
+        raise InjectionFailure("Speed hack loaded but failed to hook one or more game timers.")
+
+
 class SpeedHackConnector(metaclass=Singleton):
-    """Inject the speed hack and connect to the speed command pipe.
+    """Set the game speed at runtime through the speed hack.
 
-    The connector is designed as singleton as only a single connection to the pipe is allowed, but
-    multiple :class:`.Game` objects might exist. The connector provides a thread-safe method to
-    communicate with the injected pipe using only a single client.
-
-    Note:
-        The ``speedhack.dll`` is compiled to `soulsgym/core/speedhack/_C/x64/Release` and copied
-        over into `soulsgym/core/speedhack/_C` after the build has succeeded. If you want to use a
-        recompiled version, you have to rerun the build process with Visual Studio.
+    A single connector controls the speed, shared across all game objects. On Windows the speed
+    hack is injected on demand. On Linux it must already be loaded into the running game.
     """
 
-    pipe_name = r"\\.\pipe\SoulsGymSpeedHackPipe"
-    dll_path = Path(__file__).parent / "_C" / "speedhack.dll"
-    _lock = Lock()
+    dll_path = DLL_PATH
 
-    def __init__(self, process_name: str):
-        """Connect to the speed hack pipe.
-
-        If the pipe is not yet open, inject the DLL into the game.
+    def __init__(self, process_name: str = "DarkSoulsIII.exe"):
+        """Connect to the speed hack, injecting it first if necessary.
 
         Args:
-            process_name: Name of the process to connect to.
+            process_name: Name of the game process.
+
+        Raises:
+            InjectionFailure: The speed hack could not be reached.
         """
-        self.pipe = None
-        self.target_name = process_name
+        self.process_name = process_name
+        self.sock: socket.socket | None = None
         try:
-            self.pipe = self._connect_pipe()
-            logger.info("Speed hack already enabled, skipping injection")
-        except pywintypes.error as e:  # Pipe may not be open. In that case, we have to inject first
-            if not e.args[0] == 2 and e.args[1] == "CreateFile":
-                raise e  # Not the anticipated error on missing pipe, so we re-raise
-            logger.info("Speed hack not active, proceeding with injection")
-            inject_dll(self.target_name, self.dll_path)
-            time.sleep(0.1)  # Give the pipe time to come up after the injection (very conservative)
-            self.pipe = self._connect_pipe()
-            logger.info("Speed hack activation successful")
+            self.sock = self._connect()
+            logger.info("Speed hack already active, connected to control port")
+            return
+        except OSError:
+            pass  # Not loaded yet
+        if SYSTEM is System.WINDOWS:
+            logger.info("Speed hack not active, injecting DLL")
+            inject_dll(process_name, self.dll_path)
+            self.sock = self._connect(retries=50, delay=0.1)
+            logger.info("Speed hack injection successful")
+        else:
+            raise InjectionFailure(
+                "Speed hack control port is not open. The DLL must be loaded as a dinput8 proxy at "
+                'game launch. Ensure the launch option WINEDLLOVERRIDES="dinput8=n,b" is used, then '
+                "start the game."
+            )
 
-    def set_game_speed(self, value: float):
-        """Set the game speed to a new value.
+    def update_game_speed(self, value: float):
+        """Update the game speed to a new value.
 
         Args:
-            value: The new game speed. Can't be lower than 0.
+            value: The new game speed. Must be >= 0. 0 pauses the game.
         """
-        assert value >= 0
-        win32file.WriteFile(self.pipe, struct.pack("f", value))
+        assert value >= 0, "Game speed must be >= 0"
+        self.sock.sendall(struct.pack("<f", value))
 
-    def _connect_pipe(self) -> int:
-        return win32file.CreateFile(
-            self.pipe_name, win32file.GENERIC_WRITE, 0, None, win32file.OPEN_EXISTING, 0, None
-        )
+    def _connect(self, retries: int = 1, delay: float = 0.1) -> socket.socket:
+        """Open a TCP connection to the DLL's control port, retrying while it comes up.
+
+        Args:
+            retries: Number of connection attempts.
+            delay: Delay between attempts in seconds.
+
+        Returns:
+            The connected socket.
+
+        Raises:
+            OSError: The control port could not be reached within the retry budget.
+            InjectionFailure: The DLL never opened the control port, or reported a failure status.
+        """
+        for i in range(retries):
+            try:
+                sock = socket.create_connection((CONTROL_HOST, CONTROL_PORT), timeout=2)
+                sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+                _check_status(sock)
+                return sock
+            except OSError as e:
+                if i == retries - 1:
+                    raise e
+                time.sleep(delay)
+        raise InjectionFailure("Speed hack loaded but control port never opened")
 
     def __del__(self):
-        """Close the pipe handle on deletion."""
-        if self.pipe is not None:
-            try:
-                win32file.CloseHandle(self.pipe)
-            except TypeError:  # Throws NoneType object not callable error for some reason
-                ...
+        """Close the control socket on deletion."""
+        if self.sock is not None:
+            self.sock.close()

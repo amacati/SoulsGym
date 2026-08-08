@@ -141,3 +141,8 @@ soulsgym/core/game_window/_C/x64
 soulsgym/core/game_window/_C/packages
 
 ce_tables/notes.txt
+# Local dev notes
+/dev/
+
+# Rust build artifacts
+soulsgym/core/speedhack/rust/target/

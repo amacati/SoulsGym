@@ -1,0 +1,11 @@
+; On Wine, we load our DLL as a dinput8 proxy at startup instead of injecting it. The game then
+; imports its DirectInput functions from us, so we mirror the original DLL by forwarding them to the
+; Proton builtin: dinput8_hook.dll. GetdfDIJoystick is missing because Proton does not export it.
+; Native Windows dinput8 does, but on Windows we inject and never use these exports.
+
+EXPORTS
+DirectInput8Create=dinput8_hook.DirectInput8Create
+DllCanUnloadNow=dinput8_hook.DllCanUnloadNow
+DllGetClassObject=dinput8_hook.DllGetClassObject
+DllRegisterServer=dinput8_hook.DllRegisterServer
+DllUnregisterServer=dinput8_hook.DllUnregisterServer

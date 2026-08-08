@@ -19,9 +19,10 @@ class EldenRing(Game):
 
     game_id = "EldenRing"
     process_name = "eldenring.exe"
+    app_id = 1245620
 
     def __init__(self):
-        """Create a new EldenRing game interface and set the game speed to 1.0."""
+        """Initialize the EldenRing game interface and set the game speed to normal."""
         super().__init__()
         self._game_flags = {}  # Cache game flags to restore them after a game reload
         self._game_speed = 1.0
@@ -470,5 +471,5 @@ class EldenRing(Game):
     def game_speed(self, value: float):
         if value < 0:
             raise ValueError("Attempting to set a negative game speed")
-        self._speed_hack_connector.set_game_speed(value)
+        self._speed_hack_connector.update_game_speed(value)
         self._game_speed = value

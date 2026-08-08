@@ -22,8 +22,10 @@ def get_pid(process_name: str) -> int:
     Raises:
         RuntimeError: No process with name ``process_name`` currently open.
     """
-    for proc in psutil.process_iter():
-        if proc.name() == process_name:
+    for proc in psutil.process_iter(["name"]):
+        name = proc.info["name"]
+        # Linux truncates the process name (comm) to 15 chars, e.g. "DarkSoulsIII.ex".
+        if name == process_name or (len(name) == 15 and process_name.startswith(name)):
             return proc.pid
     raise RuntimeError(f"Process {process_name} not open")
 

@@ -16,6 +16,7 @@ Warning:
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from soulsgym.core import platform
 from soulsgym.core.game_input import GameInput
 from soulsgym.core.game_window import GameWindow
 from soulsgym.core.memory_manipulator import MemoryManipulator
@@ -86,19 +87,27 @@ class Game(ABC):
     """
 
     def __init__(self):
-        """Initialize the interface tools to target the specified game.
+        """Bring the game up and connect all interfaces.
 
-        Load the static data and initialize the memory manipulator, the game window, game input and
-        speed hack connector.
+        Launches the game if it is not running, then builds the memory, window, input and speed hack
+        interfaces.
+
+        Note:
+            We can only launch the game on Linux. On Windows the game must already be running.
         """
         super().__init__()
-        # Load the static data for the specific game
         self.data = StaticGameData(self.game_id)
+        platform.boot(self.app_id, self.process_name)
         self.mem = MemoryManipulator(process_name=self.process_name)
         self.mem.clear_cache()  # If the singleton already exists, clear the cache
         self._game_window = GameWindow(self.game_id)
         self._game_input = GameInput(self.game_id)  # Necessary for camera control etc
         self._speed_hack_connector = SpeedHackConnector(self.process_name)
+
+    @property
+    @abstractmethod
+    def app_id(self) -> int:
+        """The game's Steam app id."""
 
     @property
     @abstractmethod

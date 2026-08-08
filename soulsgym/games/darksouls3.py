@@ -21,16 +21,11 @@ class DarkSoulsIII(Game):
 
     game_id = "DarkSoulsIII"
     process_name = "DarkSoulsIII.exe"
+    app_id = 374320
 
     def __init__(self):
-        """Initialize the :class:`.MemoryManipulator` and the :class:`.GameInput`.
-
-        Note:
-            The game has to run at initialization, otherwise the initialization of the
-            ``MemoryManipulator`` will fail.
-        """
-        super().__init__()  # Initialize helpers for game access and manipulation
-        # Helper attributes
+        """Initialize the Dark Souls III game interface and set the game speed to normal."""
+        super().__init__()
         self._game_flags = {}  # Cache game flags to restore them after a game reload
         self._game_speed = 1.0
         self.game_speed = 1.0
@@ -916,7 +911,7 @@ class DarkSoulsIII(Game):
     def game_speed(self, value: float):
         if value < 0:
             raise ValueError("Attempting to set a negative game speed")
-        self._speed_hack_connector.set_game_speed(value)
+        self._speed_hack_connector.update_game_speed(value)
         self._game_speed = value
 
     @property

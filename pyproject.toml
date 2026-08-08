@@ -50,7 +50,7 @@ namespaces = true
 soulsgym = [
     "core/data/darksouls3/*.yaml",
     "core/data/eldenring/*.yaml",
-    "core/speedhack/_C/*.dll",
+    "core/speedhack/_bin/*.dll",
     "envs/config/*.yaml",
 ]
 

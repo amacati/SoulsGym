@@ -1,0 +1,24 @@
+[package]
+name = "speedhack"
+version = "0.1.0"
+edition = "2024"
+description = "SoulsGym game-speed hook compatible with Windows and Proton/Wine."
+
+[lib]
+crate-type = ["cdylib"]
+name = "speedhack"
+
+[dependencies]
+# unsafe_alignment: the Souls games' import thunks sit at 4-aligned RVAs, which pelite otherwise
+# rejects. It drops the alignment requirement to 1, matching an unaligned read.
+pelite = { version = "0.10", default-features = false, features = ["unsafe_alignment"] }
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Memory",
+] }
+
+[profile.release]
+panic = "abort"
+opt-level = "z"
+strip = true
