@@ -1,8 +1,8 @@
 """The core module of ``soulsgym`` provides all necessary interfaces to the Dark Souls III process.
 
-At the lowest level we directly manipulate the game memory with the :mod:`.memory_manipulator`. This
-memory manipulator is leveraged in the :mod:`soulsgym.games` module to provide an abstraction layer
-and allows us to interact with the game as if we had access to the actual game properties.
+At the lowest level we directly read and write to the game memory with the :mod:`.game_memory`. This
+layer is leveraged in the :mod:`soulsgym.games` module to provide an abstraction layer and allows us
+to interact with the game as if we had access to the actual game properties.
 
 While we can change the game memory, we cannot trigger actions directly in game. Instead, we rely on
 the :mod:`.game_input` to trigger keystrokes to control the player.

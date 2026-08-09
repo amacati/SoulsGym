@@ -50,6 +50,20 @@ wheels = [
 ]
 
 [[package]]
+name = "iced-x86"
+version = "1.21.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/7a/0838fc746873d8b46da350fd3d6caf07f16a1c049712c72838d2c26de681/iced-x86-1.21.0.tar.gz", hash = "sha256:1248b00647dd83b911214895eafbeb2642caa3007de2796ffad1c69aa6d8cd87", size = 231145, upload-time = "2024-01-20T16:21:49.837Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/68/d5439a9ee27890c7c54275289197c77e4f3ce4fa5c2d3ac0fe0b39fd057f/iced_x86-1.21.0-cp38-abi3-macosx_10_12_x86_64.whl", hash = "sha256:bf4ff01b891dac585f40ee86ba482becdf7208d33c788f590dbff19409a02a41", size = 905048, upload-time = "2024-01-20T16:21:36.224Z" },
+    { url = "https://files.pythonhosted.org/packages/5d/08/054cac5c4f435a243e423323783992c78c7c2f22cf2269fcca145b8423af/iced_x86-1.21.0-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:489789377bfc1fe432bd2a8a5780c9f3e7c35be2e6133b0de5432cd901cad32c", size = 949386, upload-time = "2024-01-20T16:21:37.993Z" },
+    { url = "https://files.pythonhosted.org/packages/f5/79/32adda497116cc7d1034a1fbce1a0ccbb39b466b55b57f67235744f2ff9b/iced_x86-1.21.0-cp38-abi3-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:45edcd725f2375c873f20071e4ec41085b12b66278c0b0a4e5a36f9c84cfeefc", size = 957119, upload-time = "2024-01-20T16:21:39.356Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/29/710748a217e5cb696d3b51ad5128a8747c3c681e17fe62351962907576b3/iced_x86-1.21.0-cp38-abi3-musllinux_1_1_x86_64.whl", hash = "sha256:091bdc151115bd84741f6a4597a216c8a553dda8b5b5eeccbba1ebec0cda0ffd", size = 982742, upload-time = "2024-01-20T16:21:40.867Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/d6/5fc671564a1d0116db978a6d38bd49d1a2d4b791569cb160d72b98c8d0cd/iced_x86-1.21.0-cp38-abi3-win32.whl", hash = "sha256:75cc281aafdccbb81bdf7e159e64540808e827db6aa167c38ce6b1615fb9da8e", size = 844783, upload-time = "2024-01-20T16:21:43.394Z" },
+    { url = "https://files.pythonhosted.org/packages/04/9e/ab21c70472b605bbcaca5a181cfda56b0750b061f4a946192888142ec37c/iced_x86-1.21.0-cp38-abi3-win_amd64.whl", hash = "sha256:04e04a8cc49ca7d89448fb78e3bab4ae364cf1fc888c996540a791c9999077c1", size = 886006, upload-time = "2024-01-20T16:21:44.715Z" },
+]
+
+[[package]]
 name = "iniconfig"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -391,6 +405,7 @@ version = "1.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "gymnasium" },
+    { name = "iced-x86" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "opencv-python" },
@@ -409,6 +424,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "gymnasium", specifier = ">=0.27.0" },
+    { name = "iced-x86", specifier = ">=1.21.0" },
     { name = "numpy", specifier = ">=1.21.0" },
     { name = "opencv-python", specifier = ">=4.0.0" },
     { name = "pixel-forge", marker = "sys_platform == 'win32'", specifier = ">=0.1.1" },

@@ -6,9 +6,9 @@ import time
 from typing import Any
 
 import numpy as np
-from pymem.exception import MemoryReadError
 
 from soulsgym.core.utils import wrap_to_pi
+from soulsgym.exception import MemoryReadError
 from soulsgym.games import Game
 
 logger = logging.getLogger(__name__)

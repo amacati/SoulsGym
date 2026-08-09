@@ -30,6 +30,7 @@ dependencies = [
     "PyYAML >= 6.0",
     "opencv-python >= 4.0.0",
     "pixel-forge>=0.1.1; platform_system=='Windows'",
+    "iced-x86>=1.21.0",
 ]
 
 # random.choice does not work with numpy on 3.11.0/1 (https://github.com/python/cpython/issues/100805)

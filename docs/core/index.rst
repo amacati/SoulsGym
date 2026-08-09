@@ -8,7 +8,7 @@ soulsgym.core
 
     game_input
     game_window
-    memory_manipulator
+    game_memory
     speedhack
     static
     utils

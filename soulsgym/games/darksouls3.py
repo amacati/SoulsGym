@@ -8,9 +8,9 @@ import time
 from typing import Any
 
 import numpy as np
-from pymem.exception import MemoryReadError
 
 from soulsgym.core.utils import wrap_to_pi
+from soulsgym.exception import MemoryReadError
 from soulsgym.games import Game
 
 logger = logging.getLogger(__name__)
@@ -950,11 +950,11 @@ class DarkSoulsIII(Game):
         self.game_speed = 1
 
     def clear_cache(self):
-        """Clear the address cache of the memory manipulator.
+        """Clear the address cache of the game memory.
 
         Warning:
             The cache is invalidated on a player death and needs to be manually cleared. See
-            :meth:`.MemoryManipulator.clear_cache` for detailed information.
+            :meth:`.GameMemory.clear_cache` for detailed information.
         """
         self.mem.clear_cache()
 

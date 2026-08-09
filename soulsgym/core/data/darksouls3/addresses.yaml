@@ -56,7 +56,6 @@ addresses:
     offsets: [0x80, 0x1F90, 0x28, 0x898]
     type: str
     length: 40
-    codec: utf-16
   PlayerAnimationTime:
     base: WorldChrMan
     offsets: [0x80, 0x1F90, 0x10, 0x24]
@@ -143,7 +142,6 @@ addresses:
     offsets: [0x0, 0x320, 0x0, 0x1F90, 0x28, 0x898]
     type: str
     length: 40
-    codec: utf-16
   IudexAnimationTime:
     base: Iudex
     offsets: [0x0, 0x320, 0x0, 0x1F90, 0x10, 0x24]
@@ -201,7 +199,6 @@ addresses:
     offsets: [0x0, 0x4C8, 0x0, 0x1F90, 0x28, 0x898]
     type: str
     length: 40
-    codec: utf-16
   VordtAttackID:
     base: Vordt
     offsets: [0x0, 0x4C8, 0x0, 0x58, 0x320, 0x7428]  # SABlend drop in

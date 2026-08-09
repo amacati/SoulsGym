@@ -4,9 +4,9 @@ They abstract the memory manipulation into properties and functions that write i
 game memory addresses.
 
 Note:
-    The interface is essentially a wrapper around the :class:`.MemoryManipulator`. As such it
-    inherits the same cache restrictions. See :data:`.MemoryManipulator.cache`,
-    :meth:`.Game.clear_cache` and :meth:`.MemoryManipulator.clear_cache` for more information.
+    The interface is essentially a wrapper around the :class:`.GameMemory`. As such it
+    inherits the same cache restrictions. See :data:`.GameMemory.cache`,
+    :meth:`.Game.clear_cache` and :meth:`.GameMemory.clear_cache` for more information.
 
 Warning:
     Writing into the process memory is not guaranteed to be "stable". Race conditions with the main
@@ -18,8 +18,8 @@ from dataclasses import dataclass
 
 from soulsgym.core import platform
 from soulsgym.core.game_input import GameInput
+from soulsgym.core.game_memory import GameMemory
 from soulsgym.core.game_window import GameWindow
-from soulsgym.core.memory_manipulator import MemoryManipulator
 from soulsgym.core.speedhack import SpeedHackConnector
 from soulsgym.core.static import (
     actions,
@@ -98,7 +98,7 @@ class Game(ABC):
         super().__init__()
         self.data = StaticGameData(self.game_id)
         platform.boot(self.app_id, self.process_name)
-        self.mem = MemoryManipulator(process_name=self.process_name)
+        self.mem = GameMemory(process_name=self.process_name)
         self.mem.clear_cache()  # If the singleton already exists, clear the cache
         self._game_window = GameWindow(self.game_id)
         self._game_input = GameInput(self.game_id)  # Necessary for camera control etc
