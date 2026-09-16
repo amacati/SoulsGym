@@ -18,7 +18,20 @@ You need to have the latest version of Dark Souls III installed since SoulsGym u
 > **Warning:** Please follow the setup description in our [official docs](https://soulsgym.readthedocs.io/en/latest/index.html) for the correct key settings, ban prevention, loss of game saves etc.
 
 ## Installation
-To install soulsgym, use `pip install soulsgym`. At this time, we only support Windows. SoulsGym requires a running instance of the game (see [requirements](#requirements)) and relies on the win32api. It is therefore not available on other operating systems.
+To install soulsgym, use `pip install soulsgym`. SoulsGym runs on **Windows** and on **Linux** under
+Steam Proton/Wine. It requires a running instance of the game (see [requirements](#requirements)).
+
+### Linux (Proton) setup
+Launch the game once through Steam so Proton creates its environment, then install the speed-hack
+proxy DLL once with `install_proxy`
+
+```python
+from soulsgym.core.speedhack import install_proxy
+
+install_proxy(".../steamapps/common/DARK SOULS III/Game", ".../steamapps/common/Proton 7.0")
+```
+
+and enable it by adding the Steam launch option `WINEDLLOVERRIDES="dinput8=n,b" %command%`.
 
 ## API
 SoulsGym's environments follow the `gymnasium` API as closely as possible. Since our environments are based on the Souls games and Dark Souls III, Elden Ring etc. are nondeterministic, we are, however, not able to provide reproducible results by setting the RNG seeds.

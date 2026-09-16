@@ -5,8 +5,8 @@ SoulsGym setup
 
 Requirements
 ~~~~~~~~~~~~
-SoulsGym requires you to have Dark Souls III installed in version 1.15.2 with all DLCs. It is only
-compatible with Windows. 
+SoulsGym requires you to have Dark Souls III installed in version 1.15.2 with all DLCs. It runs on
+Windows, and on Linux under Steam Proton/Wine.
 
 Installation
 ~~~~~~~~~~~~
@@ -17,8 +17,22 @@ The soulsgym package can be installed with pip:
     pip install soulsgym
 
 .. note::
-    You need at least Python 3.11.2 to run soulsgym! See the project's pyproject.toml for more 
+    You need at least Python 3.11.2 to run soulsgym! See the project's pyproject.toml for more
     details.
+
+Linux (Proton)
+^^^^^^^^^^^^^^
+On Linux the game runs under Steam Proton/Wine. In addition to the settings below, you have to load
+the speed hack once. Install the proxy files into the game directory:
+
+.. code-block:: python
+
+    from soulsgym.core.speedhack import install_proxy
+
+    install_proxy(".../steamapps/common/DARK SOULS III/Game", ".../steamapps/common/Proton 7.0")
+
+Then enable the proxy by adding the Steam launch option ``WINEDLLOVERRIDES="dinput8=n,b" %command%``
+in Steam -> Library -> Dark Souls III -> Properties -> General -> Launch Options.
 
 Setup
 ~~~~~

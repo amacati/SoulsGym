@@ -7,8 +7,12 @@ over a loopback TCP socket, which behaves identically on Windows and under Proto
 
 On Windows the DLL is injected on demand via ``CreateRemoteThread`` + ``LoadLibrary``. On
 Linux/Proton it is loaded as a ``dinput8.dll`` proxy at game launch via :func:`install_proxy`, which
-places the files and sets the ``WINEDLLOVERRIDES="dinput8=n,b"`` launch option. See
-:mod:`soulsgym.core.speedhack.speedhack` for details.
+places the files.
+
+Warning:
+    The launch option that activates the proxy on Linux is a manual step covered in the setup guide.
+
+See :mod:`soulsgym.core.speedhack.speedhack` for details.
 """
 
 from soulsgym.core.speedhack.speedhack import SpeedHackConnector, inject_dll, install_proxy

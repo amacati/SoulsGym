@@ -1,8 +1,0 @@
-gymnasium==0.27.1
-numpy==1.22.3
-psutil==5.9.0
-Pymem==1.10.0
-pytest==7.2.2
-pywin32==305.1
-PyYAML==6.0
-setuptools==65.5.0
