@@ -2,9 +2,11 @@
 
 from typing import Any, Callable
 
-from gymnasium.error import RetriesExceededError
-
 from soulsgym.exception import SoulsGymException
+
+
+class RetriesExceededError(Exception):
+    """Raised when a retried function exhausts its retry budget."""
 
 
 def max_retries(retries: int = 3) -> Callable:
