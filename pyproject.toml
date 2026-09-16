@@ -29,7 +29,7 @@ dependencies = [
     "pywin32 >= 305.0; platform_system=='Windows'",
     "PyYAML >= 6.0",
     "opencv-python >= 4.0.0",
-    "pixel-forge>=0.1.1; platform_system=='Windows'",
+    "pixel-forge>=0.2.1",
     "iced-x86>=1.21.0",
 ]
 

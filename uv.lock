@@ -239,16 +239,16 @@ wheels = [
 
 [[package]]
 name = "pixel-forge"
-version = "0.1.1"
+version = "0.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/92/ef/aa7dafbdfbbbff8486c4b3355b7cce1bf2eace42e0299dc2191c1cfd7b56/pixel_forge-0.1.1.tar.gz", hash = "sha256:ca68118acf950cc1991465e6c94d5b0a87161260c15f9c541a6e3b6ebce00fca", size = 168663, upload-time = "2024-04-20T19:57:58.931Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/95/c0512ad96d137743e51949a022d0b2c408f1634c85417276351986a4039c/pixel_forge-0.2.1.tar.gz", hash = "sha256:13817466b253db196a47200b620a24c2a8f7fce2423b2eb755b34a1969b7c315", size = 175174, upload-time = "2026-09-16T13:55:48.909Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ce/54/16b16c5b78e1383e012312485254599bcf280c716d39623eb2ef2b2bd534/pixel_forge-0.1.1-cp311-none-win_amd64.whl", hash = "sha256:c121e0326c255acf4e29b0cf4c875a6b0f960bec5ed10df9afd98bdc77c91622", size = 171085, upload-time = "2024-04-20T19:57:51.783Z" },
-    { url = "https://files.pythonhosted.org/packages/97/d4/99ef241c09d7714ad12aa011f2e5a5e319975524dba356482b6b7d8b0eb7/pixel_forge-0.1.1-cp312-none-win_amd64.whl", hash = "sha256:fca17eedab3662a88e0424e22794a7ed2b45215326d3f3181ce0817695a38c82", size = 169194, upload-time = "2024-04-20T19:57:53.575Z" },
+    { url = "https://files.pythonhosted.org/packages/2f/f1/30a2db1bd5ac92dc4c8e7dc532872bc8001f54cf7b6b0b7589d0943e4c82/pixel_forge-0.2.1-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4a1af12d5c6f2c14d3553de0cf4dac26a2c5b888636ee12ed66f7dc59774468b", size = 415959, upload-time = "2026-09-16T13:55:45.721Z" },
+    { url = "https://files.pythonhosted.org/packages/9f/a4/3c17c3059a652edeb2e410924e45a7b21e9c2e9ebfde644c0981e90a0003/pixel_forge-0.2.1-cp310-abi3-win_amd64.whl", hash = "sha256:1043ef66044d9b82dd0280d219bd04b27a146f64c34023887dd8294caed0a69b", size = 185985, upload-time = "2026-09-16T13:55:47.515Z" },
 ]
 
 [[package]]
@@ -409,7 +409,7 @@ dependencies = [
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "opencv-python" },
-    { name = "pixel-forge", marker = "sys_platform == 'win32'" },
+    { name = "pixel-forge" },
     { name = "psutil" },
     { name = "pymem" },
     { name = "pywin32", marker = "sys_platform == 'win32'" },
@@ -427,7 +427,7 @@ requires-dist = [
     { name = "iced-x86", specifier = ">=1.21.0" },
     { name = "numpy", specifier = ">=1.21.0" },
     { name = "opencv-python", specifier = ">=4.0.0" },
-    { name = "pixel-forge", marker = "sys_platform == 'win32'", specifier = ">=0.1.1" },
+    { name = "pixel-forge", specifier = ">=0.2.1" },
     { name = "psutil", specifier = ">=5.9.0" },
     { name = "pymem", specifier = ">=1.10.0" },
     { name = "pytest", marker = "extra == 'test'" },

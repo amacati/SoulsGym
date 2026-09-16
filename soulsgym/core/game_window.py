@@ -1,24 +1,22 @@
-"""The ``GameWindow`` is a wrapper around `pixel_forge`_, a minimalistic Windows screenshot library.
+"""The ``GameWindow`` captures the game screen and controls window focus using `pixel_forge`_.
 
 .. _pixel_forge: https://github.com/amacati/pixel_forge
-
-The capture mechanism itself is implemented in ``rust`` to enable fast and efficient screen capture.
-``GameWindow`` also allows us to focus the Dark Souls III application on gym start.
 """
 
-import platform
 import time
 from itertools import groupby
 from typing import Callable
 
 import cv2
 import numpy as np
+from pixel_forge import Capture, Window
 
-if platform.system() == "Windows":  # Windows imports, ignore for unix to make imports work
+from soulsgym.core.platform import SYSTEM, System
+
+if SYSTEM is System.WINDOWS:
     import win32api
     import win32con
     import win32gui
-    from pixel_forge import Capture, Window
 
 
 class GameWindow:
@@ -57,11 +55,9 @@ class GameWindow:
         self.img_height = img_height or 90
         self.img_width = img_width or 160
         self._process_fn = processing or self._default_processing
-        self.hwnd = win32gui.FindWindow(None, self.window_ids[game_id])
-        # Configure the windows capture module and wait for the first frame to arrive. If we do not
-        # receive a frame within 5 seconds, we raise an error.
+        self._window = Window(self.window_ids[game_id])
         self.capture = Capture()
-        self.capture.start(Window(self.window_ids[game_id]))
+        self.capture.start(self._window)
         # The image we get from the game capture module game window initially does not match the
         # desired resolution. We therefore determine the necessary crop indices to remove the image
         # padding. See function docs for more details.
@@ -87,7 +83,7 @@ class GameWindow:
         Returns:
             True if the game window is currently focused, False otherwise.
         """
-        return win32gui.GetForegroundWindow() == self.hwnd
+        return self._window.focused
 
     @property
     def img(self) -> np.ndarray:
@@ -100,23 +96,23 @@ class GameWindow:
 
     @property
     def raw_img(self) -> np.ndarray:
-        """The latest raw game screenshot.
+        """The latest raw game screenshot as RGB.
 
         Returns:
             The raw image.
         """
-        return self.capture.frame()[..., [2, 1, 0]]
+        return self.capture.frame()[..., :3]
 
     def focus(self):
-        """Shift the application focus of Windows to the game application.
-
-        Also sets the cursor within the game window.
-        """
-        win32gui.SetForegroundWindow(self.hwnd)
-        time.sleep(0.1)
-        left, top, _, _ = win32gui.GetWindowRect(self.hwnd)
-        win32api.SetCursorPos((left + 100, top + 100))
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, left + 100, top + 5, 0, 0)
+        """Shift the application focus to the game application."""
+        self._window.focus()
+        if SYSTEM is System.WINDOWS:  # TODO: Check if we really need this
+            # Click into the window so the game grabs the mouse input.
+            time.sleep(0.1)
+            hwnd = win32gui.FindWindow(None, self.window_ids[self.game_id])
+            left, top, _, _ = win32gui.GetWindowRect(hwnd)
+            win32api.SetCursorPos((left + 100, top + 100))
+            win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, left + 100, top + 5, 0, 0)
 
     def close(self):
         """Close the game window capture."""
