@@ -340,6 +340,11 @@ class _PymemBackend:
         self.pymem = Pymem()
         self.pymem.open_process_from_id(pid)
         self._module = pym.process.module_from_name(self.pymem.process_handle, process_name)
+        # Elden Ring's patterns are scanned without pymem's page protection filter. We only pass the
+        # keyword for Elden Ring and leave the other games unchanged.
+        self._scan_kwargs = {}
+        if process_name == "eldenring.exe":
+            self._scan_kwargs["check_memory_protection"] = False
 
     def read_bytes(self, address: int, length: int) -> bytes:
         try:
@@ -354,7 +359,9 @@ class _PymemBackend:
             raise MemoryWriteError(address, data) from e
 
     def pattern_scan(self, pattern: bytes) -> int:
-        addr = pym.pattern.pattern_scan_module(self.pymem.process_handle, self._module, pattern)
+        addr = pym.pattern.pattern_scan_module(
+            self.pymem.process_handle, self._module, pattern, **self._scan_kwargs
+        )
         if addr is None:
             raise MemoryPatternScanError("Could not find pattern in module memory!")
         return addr

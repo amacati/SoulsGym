@@ -65,19 +65,25 @@ class SoulsEnv(gymnasium.Env, ABC):
     ARENA_LIM_LOW: ClassVar[list[float]]
     ARENA_LIM_HIGH: ClassVar[list[float]]
 
-    def __init__(self, game_speed: float = 1.0, skip_steps: bool = False):
+    def __init__(
+        self,
+        game_speed: float = 1.0,
+        skip_steps: bool = False,
+        game_resolution: tuple[int, int] | None = None,
+    ):
         """Initialize the game managers, load the environment config and set the game properties.
 
         Args:
             game_speed: Determines how fast the game runs during :meth:`.SoulsEnv.step`.
             skip_steps: Flag to skip steps while the player is disabled.
+            game_resolution: Optional game-window resolution override.
         """
         super().__init__()
         assert game_speed > 0, "Game speed must be positive!"
         # Initialize game managers
-        self.game = game_factory(self.game_id)
+        self.game = game_factory(self.game_id, game_resolution=game_resolution)
         self._game_input = GameInput(self.game_id, game_speed=game_speed)
-        self._game_window = GameWindow(self.game_id)
+        self._game_window = GameWindow(self.game_id, game_resolution=game_resolution)
         # Check if the player has loaded into the game
         if not self.game.is_ingame:
             logger.error("Player is not loaded into the game")

@@ -86,7 +86,7 @@ class Game(ABC):
     and instead use a ``GameInput`` instance to manually control the camera with keystrokes.
     """
 
-    def __init__(self):
+    def __init__(self, game_resolution: tuple[int, int] | None = None):
         """Bring the game up and connect all interfaces.
 
         Launches the game if it is not running, then builds the memory, window, input and speed hack
@@ -94,13 +94,16 @@ class Game(ABC):
 
         Note:
             We can only launch the game on Linux. On Windows the game must already be running.
+
+        Args:
+            game_resolution: Optional game-window resolution override.
         """
         super().__init__()
         self.data = StaticGameData(self.game_id)
         platform.boot(self.app_id, self.process_name)
         self.mem = GameMemory(process_name=self.process_name)
         self.mem.clear_cache()  # If the singleton already exists, clear the cache
-        self._game_window = GameWindow(self.game_id)
+        self._game_window = GameWindow(self.game_id, game_resolution=game_resolution)
         self._game_input = GameInput(self.game_id)  # Necessary for camera control etc
         self._speed_hack_connector = SpeedHackConnector(self.process_name)
 

@@ -5,11 +5,12 @@ from soulsgym.games.darksouls3 import DarkSoulsIII
 from soulsgym.games.eldenring import EldenRing
 
 
-def game_factory(game_id: str) -> Game:
+def game_factory(game_id: str, game_resolution: tuple[int, int] | None = None) -> Game:
     """Factory function for creating game interfaces.
 
     Args:
         game_id: The name of the game.
+        game_resolution: Optional Elden Ring game-window resolution override.
 
     Returns:
         The game interface.
@@ -18,5 +19,5 @@ def game_factory(game_id: str) -> Game:
         case "DarkSoulsIII":
             return DarkSoulsIII()
         case "EldenRing":
-            return EldenRing()
+            return EldenRing(game_resolution=game_resolution)
     raise ValueError(f"Unknown game: {game_id}")

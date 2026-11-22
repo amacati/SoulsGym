@@ -3,6 +3,7 @@
 import logging
 import struct
 import time
+from functools import cached_property
 from typing import Any
 
 import numpy as np
@@ -20,10 +21,15 @@ class EldenRing(Game):
     game_id = "EldenRing"
     process_name = "eldenring.exe"
     app_id = 1245620
+    PLAYER_IDLE_ANIMATION = 10000000  # Elden Ring reports animation IDs instead of names
 
-    def __init__(self):
-        """Initialize the EldenRing game interface and set the game speed to normal."""
-        super().__init__()
+    def __init__(self, game_resolution: tuple[int, int] | None = None):
+        """Initialize the EldenRing game interface and set the game speed to normal.
+
+        Args:
+            game_resolution: Optional game-window resolution override.
+        """
+        super().__init__(game_resolution=game_resolution)
         self._game_flags = {}  # Cache game flags to restore them after a game reload
         self._game_speed = 1.0
         self.game_speed = 1.0
@@ -54,9 +60,9 @@ class EldenRing(Game):
             image returned by `:meth:.EldenRing.img`.
 
         Returns:
-            The game resolution.
+            The game image resolution.
         """
-        return self._game_window.resolution
+        return self._game_window.img_resolution
 
     @img_resolution.setter
     def img_resolution(self, resolution: tuple[int, int]):
@@ -189,12 +195,11 @@ class EldenRing(Game):
         x, z, y = struct.unpack("fff", self.mem.read_record(self.data.addresses["PlayerLocalXYZ"]))
         new_global_pos = struct.pack("fff", x + delta[0], z + delta[2], y + delta[1])
         self.mem.write_record(self.data.addresses["PlayerLocalXYZ"], new_global_pos)
-        # TODO: Rotation is currently not working
-        # address = self.mem.resolve_record(self.data.addresses["PlayerLocalQ"])
-        # See https://www.euclideanspace.com/maths/geometry/rotations/conversions/index.htm
-        # qw, qx, qz, qy = np.cos(coordinates[3] / 2), 0, np.sin(coordinates[3] / 2), 0
-        # Order in the memory structure is qw qx qz qy
-        # self.mem.write_bytes(address, struct.pack('ffff', qw, qx, qz, qy))
+        # The player rotation is a quaternion around the vertical axis. The game interpolates the
+        # orientation towards the interpolated orientation, so we have to overwrite both
+        a = coordinates[3]
+        rotation = struct.pack("ffff", 0.0, np.sin(a / 2), 0.0, np.cos(a / 2))
+        self.mem.write_record(self.data.addresses["PlayerLocalQ"], rotation * 2)
         self.allow_player_death = allow_player_death
 
     @property
@@ -245,6 +250,74 @@ class EldenRing(Game):
         offsets = (0x2C, 0x00, 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C)
         for stat, offset in zip(stats, offsets):
             self.mem.write_int(address + offset, stat)
+
+    @property
+    def margit_hp(self) -> int:
+        """Margit's HP."""
+        return self.mem.read_record(self.data.addresses["MargitHP"])
+
+    @margit_hp.setter
+    def margit_hp(self, hp: int):
+        assert 0 <= hp, "Boss HP has to be zero or positive"
+        self.mem.write_record(self.data.addresses["MargitHP"], hp)
+
+    @property
+    def margit_max_hp(self) -> int:
+        """Margit's maximum HP."""
+        return self.mem.read_record(self.data.addresses["MargitMaxHP"])
+
+    @margit_max_hp.setter
+    def margit_max_hp(self, _: int):
+        raise RuntimeError("Boss maximum HP can't be changed directly")
+
+    def reset_boss_hp(self, boss_id: str):
+        """Reset the current boss hit points.
+
+        Args:
+            boss_id: The boss ID.
+        """
+        setattr(self, boss_id + "_hp", getattr(self, boss_id + "_max_hp"))
+
+    @property
+    def margit_pose(self) -> np.ndarray:
+        """Margit's current pose."""
+        x, z, y, a = struct.unpack("ffff", self.mem.read_record(self.data.addresses["MargitXYZA"]))
+        return np.array([x, y, z, a])
+
+    @margit_pose.setter
+    def margit_pose(self, coordinates: list[float]):
+        assert -np.pi <= coordinates[3] <= np.pi, "Boss angle must be in [-pi, pi]"
+        delta = np.array(coordinates[:3]) - self.margit_pose[:3]
+        x, z, y = struct.unpack("fff", self.mem.read_record(self.data.addresses["MargitLocalXYZ"]))
+        new_global_pos = struct.pack("fff", x + delta[0], z + delta[2], y + delta[1])
+        self.mem.write_record(self.data.addresses["MargitLocalXYZ"], new_global_pos)
+
+    @property
+    def margit_animation(self) -> str:
+        """Margit's current animation name.
+
+        Elden Ring reports animation IDs. The static data maps the IDs of Margit's animations to
+        names. IDs that are missing in the static data are reported as ``Unknown_<ID>``.
+
+        Returns:
+            The name of Margit's current animation.
+        """
+        animation_id = self.mem.read_record(self.data.addresses["MargitAnimation"])
+        return self._boss_animation_names["margit"].get(animation_id, f"Unknown_{animation_id}")
+
+    @margit_animation.setter
+    def margit_animation(self, _: str):
+        raise NotImplementedError("Boss animation can't be set!")
+
+    @property
+    def margit_animation_time(self) -> float:
+        """Margit's current animation time."""
+        return self.mem.read_record(self.data.addresses["MargitAnimationTime"])
+
+    @property
+    def margit_animation_max_time(self) -> float:
+        """Margit's maximum animation time for the current animation."""
+        return self.mem.read_record(self.data.addresses["MargitAnimationMaxTime"])
 
     @property
     def camera_pose(self) -> np.ndarray:
@@ -350,7 +423,7 @@ class EldenRing(Game):
     @gravity.setter
     def gravity(self, flag: bool):
         address = self.mem.resolve_record(self.data.addresses["PlayerGravity"])
-        self.mem.write_bit(address, index=0, val=0 if flag else 1)
+        self.mem.write_bit(address, index=0, value=0 if flag else 1)
 
     @property
     def allow_weapon_durability_dmg(self) -> bool:
@@ -365,26 +438,33 @@ class EldenRing(Game):
     def allow_weapon_durability_dmg(self, _: bool): ...
 
     def reload(self):
-        """Kill the player, clear the address cache and wait for the player to respawn."""
-        raise NotImplementedError("Respawn animations need to be checked!")
-        # self.player_hp = 0
-        # self._save_game_flags()
-        # if self.game_speed == 0:
-        #    self.resume()  # For safety, player might never change animation otherwise
-        # self.clear_cache()
-        # self.sleep(0.5)  # Give the game time to register player death and change animation
-        # while True:
-        #    try:
-        # Break on player resurrection animation. If missed, also break on Idle
-        #        if self.player_animation in ("Event63000", "Idle"):
-        #            break
-        #    except (MemoryReadError, UnicodeDecodeError):  # Read during death reset might fail
-        #        pass
-        #    self.clear_cache()
-        #    self.sleep(0.05)
-        # while self.player_animation != "Idle":  # Wait for the player to reach a safe "Idle" state
-        #     self.sleep(0.05)
-        # self._restore_game_flags()
+        """Kill the player, clear the address cache and wait for the player to respawn.
+
+        The respawn animations of Elden Ring differ from Dark Souls III. Instead of waiting for
+        specific animations, we wait until the player is back ingame with positive HP and idle. The
+        player is not idle while the game loads and while the player rises at the grace.
+        """
+        self._save_game_flags()
+        self.player_hp = 0
+        if self.game_speed == 0:
+            self.resume()  # For safety, the player might never respawn otherwise
+        self.clear_cache()
+        t_start = time.time()
+        while True:
+            try:
+                if (
+                    self.is_ingame
+                    and self.player_hp > 0
+                    and self.player_animation == self.PLAYER_IDLE_ANIMATION
+                ):
+                    break
+            except MemoryReadError:  # Reads during the death reset might fail
+                pass
+            self.clear_cache()
+            time.sleep(0.05)
+            if time.time() - t_start > 30:
+                raise RuntimeError("Elden Ring reload timed out while waiting for player respawn")
+        self._restore_game_flags()
 
     @property
     def time(self) -> int:
@@ -473,3 +553,44 @@ class EldenRing(Game):
             raise ValueError("Attempting to set a negative game speed")
         self._speed_hack_connector.update_game_speed(value)
         self._game_speed = value
+
+    def pause(self):
+        """Pause the game by setting the global speed to 0."""
+        self.game_speed = 0
+
+    def resume(self):
+        """Resume the game by setting the global speed to 1."""
+        self.game_speed = 1
+
+    def clear_cache(self):
+        """Clear the address cache of the game memory.
+
+        Warning:
+            The cache is invalidated on a player death and needs to be manually cleared. See
+            :meth:`.GameMemory.clear_cache` for detailed information.
+        """
+        self.mem.clear_cache()
+
+    def _save_game_flags(self):
+        """Save game flags to the game flags cache."""
+        self._game_flags["allow_player_death"] = self.allow_player_death
+
+    def _restore_game_flags(self):
+        """Set the game flags to the values saved in the game flags cache.
+
+        Note:
+            :meth:`.Game._save_game_flags` has to be called at least once before this method.
+        """
+        self.allow_player_death = self._game_flags["allow_player_death"]
+
+    @cached_property
+    def _boss_animation_names(self) -> dict[str, dict[int, str]]:
+        """The animation names by animation ID for each boss."""
+        return {
+            boss: {
+                animation_id: name
+                for section in ("attacks", "movement", "misc")
+                for name, animation_id in animations[section].items()
+            }
+            for boss, animations in self.data.boss_animations.items()
+        }

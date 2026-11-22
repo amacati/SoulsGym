@@ -429,7 +429,7 @@ requires-dist = [
     { name = "opencv-python", specifier = ">=4.0.0" },
     { name = "pixel-forge", specifier = ">=0.2.1" },
     { name = "psutil", specifier = ">=5.9.0" },
-    { name = "pymem", specifier = ">=1.10.0" },
+    { name = "pymem", specifier = ">=1.14.0" },
     { name = "pytest", marker = "extra == 'test'" },
     { name = "pywin32", marker = "sys_platform == 'win32'", specifier = ">=305.0" },
     { name = "pyyaml", specifier = ">=6.0" },

@@ -9,6 +9,7 @@ soulsgym.envs
     soulsenv
     game_state
     iudex
+    margit
     vordt
 
 Game speed
