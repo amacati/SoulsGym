@@ -76,11 +76,11 @@ addresses:
     offsets: [0x10EF8, 0x0, 0x6C0]
     type: bytes
     length: 16
-  PlayerLocalQ:
+  PlayerLocalQ:  # Orientation and interpolated orientation quaternions (xyzw)
     base: WorldChrMan
-    offsets: [0x10EF8, 0x0, 0x190, 0x68, 0x5C]
+    offsets: [0x10EF8, 0x0, 0x190, 0x68, 0x50]
     type: bytes
-    length: 16
+    length: 32
   PlayerLocalXYZ:
     base: WorldChrMan
     offsets: [0x10EF8, 0x0, 0x190, 0x68, 0x70]
@@ -100,7 +100,7 @@ addresses:
     type: int
   LastGrace:
     base: GameMan
-    offsets: [0xB30]
+    offsets: [0xB60]
     type: int
   Time:
     base: GameDataMan
@@ -128,4 +128,34 @@ addresses:
     offsets: [0x2831]
     type: bytes
     length: 1
+  MargitHP:
+    base: WorldChrMan
+    offsets: [0x500, 0x180, 0x190, 0x0, 0x138]
+    type: int
+  MargitMaxHP:
+    base: WorldChrMan
+    offsets: [0x500, 0x180, 0x190, 0x0, 0x13C]
+    type: int
+  MargitAnimation:
+    base: WorldChrMan
+    offsets: [0x500, 0x180, 0x190, 0x18, 0x20]
+    type: int
+  MargitAnimationTime:
+    base: WorldChrMan
+    offsets: [0x500, 0x180, 0x190, 0x18, 0x24]
+    type: float
+  MargitAnimationMaxTime:
+    base: WorldChrMan
+    offsets: [0x500, 0x180, 0x190, 0x18, 0x28]
+    type: float
+  MargitXYZA:
+    base: WorldChrMan
+    offsets: [0x500, 0x180, 0x190, 0x68, 0x70]
+    type: bytes
+    length: 16
+  MargitLocalXYZ:
+    base: WorldChrMan
+    offsets: [0x500, 0x180, 0x190, 0x68, 0x70]
+    type: bytes
+    length: 12
 bases:

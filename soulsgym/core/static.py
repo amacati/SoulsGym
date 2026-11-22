@@ -162,6 +162,9 @@ boss_animations = {}
 Individual boss animations are separated into ``attacks``, ``movement`` and ``all``. ``all``
 animations have a unique ID.
 
+Dark Souls III lists the animation names in each section. Elden Ring reports integer animation IDs
+instead, so its sections map the animation names to these IDs.
+
 :meta hide-value:
 """
 

@@ -5,8 +5,8 @@ binding:
   right: d
   lightattack: l
   roll: ' '
-  useitem: q
-  lock_on: r
+  useitem: r
+  lock_on: q
   interact: e
   cameraup: j
   cameradown: k
