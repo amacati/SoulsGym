@@ -76,7 +76,16 @@ Initially, `soulsgym` was planned as a Dark Souls III RL extension only. However
 
 - [x] Refactor repository to support multiple Souls games
 - [x] Add Elden Ring game interface
-- [ ] Implement 'Margit, The Fell Omen' as gymnasium environment
+- [x] Implement 'Margit, The Fell Omen' as gymnasium environment
+
+Margit is available as `SoulsGymMargit-v0`. The environment has known limitations:
+
+- Only phase 1 is supported. Creating the environment with `phase=2` raises
+    `NotImplementedError`. Accordingly, only the animations of phase 1 are defined.
+- The Elden Ring debug flags are not mapped yet. The environment therefore cannot freeze the
+    entities while it resets the poses, and it cannot prevent player deaths. A death in the game,
+    e.g. from a fall, ends the episode.
+- The arena limits are not calibrated yet.
 
 ### Increasing the number of environments
 This one goes without saying. Having more bosses implemented is just better. There is not much focus on this though as long as we are transitioning to image observations, since the change of observation space also impacts how the environments have to be implemented.
