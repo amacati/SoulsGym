@@ -4,7 +4,6 @@
 """
 
 import time
-from itertools import groupby
 from typing import Callable
 
 import cv2
@@ -37,6 +36,7 @@ class GameWindow:
         processing: Callable | None = None,
         img_height: int | None = None,
         img_width: int | None = None,
+        game_resolution: tuple[int, int] | None = None,
     ):
         """Initialize the monitor and screen frame grab.
 
@@ -48,10 +48,12 @@ class GameWindow:
             processing: Optional function for raw image processing.
             img_height: The height of the captured image.
             img_width: The width of the captured image.
+            game_resolution: Optional game-window resolution override.
         """
         if game_id not in self.window_ids:
             raise ValueError(f"Game ID {game_id} not supported.")
         self.game_id = game_id
+        self.game_resolution = self._resolve_game_resolutions(game_id, game_resolution)
         self.img_height = img_height or 90
         self.img_width = img_width or 160
         self._process_fn = processing or self._default_processing
@@ -62,6 +64,23 @@ class GameWindow:
         # desired resolution. We therefore determine the necessary crop indices to remove the image
         # padding. See function docs for more details.
         self._crop_heights, self._crop_widths = self._determine_image_crop()
+
+    @classmethod
+    def _resolve_game_resolutions(
+        cls, game_id: str, game_resolution: tuple[int, int] | None
+    ) -> dict[str, tuple[int, int]]:
+        """Return instance-local game resolutions with an optional validated override."""
+        resolutions = cls.game_resolution.copy()
+        if game_resolution is None:
+            return resolutions
+        if (
+            not isinstance(game_resolution, tuple)
+            or len(game_resolution) != 2
+            or any(type(dimension) is not int or dimension <= 0 for dimension in game_resolution)
+        ):
+            raise ValueError("Game resolution must be a tuple of two positive integers.")
+        resolutions[game_id] = game_resolution
+        return resolutions
 
     @property
     def img_resolution(self) -> tuple[int, int]:
@@ -137,6 +156,17 @@ class GameWindow:
             return img
         return cv2.resize(img, (self.img_width, self.img_height), interpolation=cv2.INTER_AREA)
 
+    @staticmethod
+    def _edge_padding_length(mask: np.ndarray, from_start: bool) -> int:
+        """Count contiguous black padding on one edge of a 1D mask."""
+        edge_mask = mask if from_start else mask[::-1]
+        count = 0
+        for is_black in edge_mask:
+            if not is_black:
+                break
+            count += 1
+        return count
+
     def _determine_image_crop(self) -> tuple[np.ndarray, np.ndarray]:
         """Determine the necessary crop to remove the image padding and title bar.
 
@@ -152,18 +182,15 @@ class GameWindow:
         desired_resolution = self.game_resolution[self.game_id][::-1]
         # Detect all rows and columns in the image that are completely black
         black_pixels = np.all(img == 0, axis=2)
-        black_rows, black_columns = (
+        black_columns, black_rows = (
             np.all(black_pixels == 1, axis=0),
             np.all(black_pixels == 1, axis=1),
         )
-        # Generate a list of the lengths of the black pixel rows and columns
-        img_column_paddings = [len(list(v)) for k, v in groupby(black_columns) if k == 1]
-        img_row_paddings = [len(list(v)) for k, v in groupby(black_rows) if k == 1]
         # The initial values for the crop remove the black padding around the borders of the image
-        top_crop = 0 if not black_rows[0] else img_column_paddings[0]
-        bottom_crop = img.shape[0] if not black_rows[-1] else img.shape[0] - img_column_paddings[-1]
-        left_crop = 0 if not black_columns[0] else img_row_paddings[0]
-        right_crop = img.shape[1] if not black_columns[-1] else img.shape[1] - img_row_paddings[-1]
+        top_crop = self._edge_padding_length(black_rows, from_start=True)
+        bottom_crop = img.shape[0] - self._edge_padding_length(black_rows, from_start=False)
+        left_crop = self._edge_padding_length(black_columns, from_start=True)
+        right_crop = img.shape[1] - self._edge_padding_length(black_columns, from_start=False)
         # Check if the image resolution can still be cropped to the desired resolution and
         res_diff = np.array([bottom_crop - top_crop, right_crop - left_crop]) - desired_resolution
         if np.any(res_diff < 0):
