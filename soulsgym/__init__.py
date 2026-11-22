@@ -45,7 +45,7 @@ def set_log_level(level: int):
     logger.setLevel(level)
 
 
-available_envs = ["SoulsGymIudex-v0", "SoulsGymIudexDemo-v0"]
+available_envs = ["SoulsGymIudex-v0", "SoulsGymIudexDemo-v0", "SoulsGymMargit-v0"]
 
 # Register environments in gymnasium
 register(id="SoulsGymIudex-v0",
@@ -62,5 +62,9 @@ register(id="SoulsGymIudexDemo-v0",
          nondeterministic=True)
 register(id="SoulsGymVordt-v0",
          entry_point='soulsgym.envs.darksouls3.vordt:VordtEnv',
+         max_episode_steps=3000,
+         nondeterministic=True)
+register(id="SoulsGymMargit-v0",
+         entry_point='soulsgym.envs.eldenring.margit:MargitEnv',
          max_episode_steps=3000,
          nondeterministic=True)
