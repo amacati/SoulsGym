@@ -12,26 +12,29 @@
 //!   Windows: injected at runtime via CreateRemoteThread + LoadLibrary. See also speedhack.py.
 //!   Proton/Wine: loaded as a dinput8.dll proxy via WINEDLLOVERRIDES. Real dinput8 exports are
 //!     forwarded to a copied builtin shipped as dinput8_hook.dll.
-//! 
+//!
+//! Before the game's entry point runs, the DLL neuters the game's Arxan anti-tamper with
+//! `dearxan`, so later hooks into game code are neither detected nor reverted.
+//!
 //! In general, this whole hack is highly unsafe. This is expected, we are patching a live process's
 //! memory after all. Rust does not help us here, but the tooling is much nicer than if we go with
 //! C/C++.
 
 use core::ffi::c_void;
+use pelite::pe64::imports::Import;
+use pelite::pe64::{Pe, PeView, Va};
 use std::io::{Read, Write};
 use std::net::TcpListener;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use pelite::pe64::imports::Import;
-use pelite::pe64::{Pe, PeView, Va};
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
-use windows_sys::Win32::System::Memory::{VirtualProtect, PAGE_EXECUTE_READWRITE};
+use windows_sys::Win32::System::Memory::{PAGE_EXECUTE_READWRITE, VirtualProtect};
 
 /// Loopback port the DLL listens on for speed commands.
 const CONTROL_PORT: u16 = 51285;
 
 /// Timer scaling state
-/// 
+///
 /// Timing functions compute `fake = fake0 + (real - real0) * speed`. On every speed change
 /// `real0` and `fake0` are set to the current instant, so the fake clock stays continuous across
 /// the change instead of jumping. GetTickCount and timeGetTime are 32-bit and widen to i64 here.
@@ -43,7 +46,11 @@ struct Scale {
 
 impl Scale {
     const fn new() -> Self {
-        Scale { real0: 0, fake0: 0, speed: 1.0 }
+        Scale {
+            real0: 0,
+            fake0: 0,
+            speed: 1.0,
+        }
     }
 
     /// Scale a real timestamp to the real clock.
@@ -181,7 +188,9 @@ fn control_server() {
     for stream in listener.incoming() {
         let Ok(mut s) = stream else { continue };
         let _ = s.set_nodelay(true);
-        if s.write_all(&[HOOK_FAILED.load(Ordering::Relaxed) as u8]).is_err() {
+        if s.write_all(&[HOOK_FAILED.load(Ordering::Relaxed) as u8])
+            .is_err()
+        {
             continue;
         }
         let mut buf = [0u8; 4];
@@ -249,8 +258,16 @@ fn install() {
 pub extern "system" fn DllMain(_hinst: isize, reason: u32, _reserved: *mut c_void) -> i32 {
     const DLL_PROCESS_ATTACH: u32 = 1;
     if reason == DLL_PROCESS_ATTACH {
-        // Do the work off the loader lock.
-        std::thread::spawn(install);
+        // Neutering Arxan hooks the game's entry point. The callback that installs our hooks runs
+        // once Arxan is disabled.
+        unsafe {
+            dearxan::disabler::neuter_arxan(|result| {
+                if result.is_err() {
+                    HOOK_FAILED.store(true, Ordering::Relaxed);
+                }
+                install();
+            });
+        }
     }
     1
 }

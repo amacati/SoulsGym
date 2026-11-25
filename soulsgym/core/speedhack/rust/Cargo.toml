@@ -9,6 +9,7 @@ crate-type = ["cdylib"]
 name = "speedhack"
 
 [dependencies]
+dearxan = "0.5.8"
 # unsafe_alignment: the Souls games' import thunks sit at 4-aligned RVAs, which pelite otherwise
 # rejects. It drops the alignment requirement to 1, matching an unaligned read.
 pelite = { version = "0.10", default-features = false, features = ["unsafe_alignment"] }
